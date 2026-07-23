@@ -131,7 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentIndex = users.findIndex(
       (u) => u.email.toLowerCase() === user.email.toLowerCase()
     );
-    if (currentIndex === -1) throw new Error("Account not found.");
+    const currentUser = users[currentIndex];
+    if (currentIndex === -1 || !currentUser) throw new Error("Account not found.");
+    
 
     // Block switching to a username/email already used by a different account.
     const usernameTaken = users.some(
@@ -145,8 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     if (emailTaken) throw new Error("An account with this email already exists.");
 
-    const updated: StoredUser = { ...users[currentIndex], ...payload };
-    users[currentIndex] = updated;
+const updated: StoredUser = { ...currentUser, ...payload };    users[currentIndex] = updated;
     saveStoredUsers(users);
 
     const safeUser = toSafeUser(updated);

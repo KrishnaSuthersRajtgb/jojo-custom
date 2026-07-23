@@ -150,13 +150,18 @@ export default function Payment() {
       },
     };
 
+    if (!window.Razorpay) {
+      setError("Payment gateway failed to load. Please refresh and try again.");
+      setProcessing(false);
+      return;
+    }
+
     const rzp = new window.Razorpay(options);
     rzp.on("payment.failed", () => {
       setError("Payment failed. Please try again.");
       setProcessing(false);
     });
     rzp.open();
-  };
 
   if (paid) {
     return (

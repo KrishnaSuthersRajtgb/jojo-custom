@@ -7,14 +7,19 @@ export default function FabricDetail() {
   const { tone, fabricId } = useParams<{ tone: string; fabricId: string }>();
   const navigate = useNavigate();
 
-  const fabric = FABRICS.find((f) => f.id === fabricId && f.tone === tone);
+ const fabric = FABRICS.find((f) => f.id === fabricId && f.tone === tone);
+
+  const defaultGarment = GARMENT_TYPES[0];
+  if (!defaultGarment) {
+    throw new Error("GARMENT_TYPES must contain at least one garment type.");
+  }
 
   const [selectedGarment, setSelectedGarment] = useState<GarmentType>(
-    GARMENT_TYPES[0]
+    defaultGarment
   );
-  const [meters, setMeters] = useState(GARMENT_TYPES[0].defaultMeters);
+  const [meters, setMeters] = useState(defaultGarment.defaultMeters);
   const [metersInput, setMetersInput] = useState(
-    String(GARMENT_TYPES[0].defaultMeters)
+    String(defaultGarment.defaultMeters)
   );
 
   // Guard: unknown fabric/tone combo in the URL -> send back to the fabrics dashboard

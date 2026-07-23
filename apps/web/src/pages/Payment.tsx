@@ -156,12 +156,13 @@ export default function Payment() {
       return;
     }
 
-    const rzp = new window.Razorpay(options);
+   const rzp = new window.Razorpay(options);
     rzp.on("payment.failed", () => {
       setError("Payment failed. Please try again.");
       setProcessing(false);
     });
     rzp.open();
+  };
 
   if (paid) {
     return (

@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { Ruler, Save, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { MEASUREMENTS_UPDATED_EVENT } from "../components/MeasurementSidebar";
+import BodyTypeSelector from "../components/BodyTypeSelector";
+
+// ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx / ProductAccessories.tsx / ProductSummary.tsx / Address.tsx)
+//   ink      #1B1512  headings, primary text
+//   wine     #5C1A32  primary accent (replaces fuchsia-800 / pink-600)
+//   brass    #B8935A  secondary accent
+//   bone     #F6F1E7  page background
+// Display face: Fraunces, for the page title.
+
+const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
 type MeasurementValues = Record<string, string>;
 
@@ -93,44 +104,51 @@ export default function MeasurementPage() {
   const handleSave = () => {
     localStorage.setItem(storageKey, JSON.stringify(values));
     setSaved(true);
+    // Let the persistent sidebar (mounted in App.tsx) know it should re-read localStorage.
+    window.dispatchEvent(new Event(MEASUREMENTS_UPDATED_EVENT));
   };
 
   return (
-    <div className="w-full">
-      <section className="w-full px-6 py-14 bg-rose-50/40">
+    // pt-16 clears the fixed h-16 Navbar; min-h-screen keeps the bone
+    // background filling the viewport instead of showing white below
+    // shorter content.
+    <div className="w-full min-h-screen bg-[#F6F1E7] pt-16">
+      <section className="w-full px-6 pt-10 pb-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-2 mb-2">
-            <Ruler className="h-6 w-6 text-fuchsia-800" />
-            <h1 className="text-4xl font-serif font-bold text-gray-900">
+            <Ruler className="h-6 w-6 text-[#5C1A32]" />
+            <h1 className="text-4xl text-[#1B1512]" style={serif}>
               Product Measurement Details
             </h1>
           </div>
-          <p className="text-gray-500">
+          <p className="text-[#4A413B]">
             Welcome{user ? `, ${user.username}` : ""} — enter your measurements in inches
           </p>
         </div>
       </section>
 
-      <section className="w-full px-6 py-10">
+      <section className="w-full px-6 pb-16">
         <div className="max-w-6xl mx-auto">
+          <BodyTypeSelector />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {SECTIONS.map((section) => (
               <div
                 key={section.storageSuffix}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                className="bg-white rounded-sm border border-[#5C1A32]/12 shadow-sm overflow-hidden"
               >
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <h2 className="text-xs font-bold tracking-wide text-gray-800">
-                    {section.title.toUpperCase()}
+                <div className="px-4 py-3 border-b border-[#5C1A32]/10">
+                  <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
+                    {section.title}
                   </h2>
                 </div>
                 <div className="p-4 space-y-3">
                   {section.fields.map((field, idx) => (
                     <div key={field.key} className="flex items-center gap-3">
-                      <span className="w-5 text-xs font-semibold text-gray-400">
+                      <span className="w-5 text-xs font-semibold text-[#B8935A]">
                         {idx + 1}
                       </span>
-                      <label className="flex-1 text-sm text-gray-700">
+                      <label className="flex-1 text-sm text-[#2A211D]">
                         {field.label}
                       </label>
                       <div className="flex items-center gap-1">
@@ -141,10 +159,10 @@ export default function MeasurementPage() {
                           onChange={(e) =>
                             { handleChange(section.storageSuffix, field.key, e.target.value); }
                           }
-                          className="w-16 rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-fuchsia-800 focus:border-fuchsia-800"
+                          className="w-16 rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-[#1B1512] text-center focus:outline-none focus:ring-2 focus:ring-[#5C1A32]/40 focus:border-[#5C1A32]"
                           placeholder="0.0"
                         />
-                        <span className="text-xs text-gray-400">in</span>
+                        <span className="text-xs text-[#4A413B]/60">in</span>
                       </div>
                     </div>
                   ))}
@@ -156,7 +174,7 @@ export default function MeasurementPage() {
           <div className="flex items-center gap-4 mt-8">
             <button
               onClick={handleSave}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-800 to-pink-600 text-white font-semibold py-3 px-6 hover:opacity-95 transition-opacity"
+              className="inline-flex items-center gap-2 rounded-sm bg-[#1B1512] text-[#F6F1E7] font-semibold py-3 px-6 hover:bg-[#5C1A32] transition-colors"
             >
               <Save className="h-4 w-4" />
               Save Measurements

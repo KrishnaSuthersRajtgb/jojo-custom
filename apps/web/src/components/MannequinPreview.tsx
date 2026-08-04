@@ -12,14 +12,14 @@ export type SleeveStyle = 'sleeveless' | 'cap' | 'short' | 'elbow' | 'long' | 'p
 export type Silhouette = 'fitted' | 'aline' | 'straight' | 'flared' | 'anarkali' | 'highlow';
 
 interface MannequinPreviewProps {
-  title?: string;
-  bust?: MeasurementPoint;
-  waist?: MeasurementPoint;
-  hip?: MeasurementPoint;
-  neckline?: Neckline;
-  sleeveStyle?: SleeveStyle;
-  silhouette?: Silhouette;
-  styleLabel?: string;
+  title?: string | undefined;
+  bust?: MeasurementPoint | undefined;
+  waist?: MeasurementPoint | undefined;
+  hip?: MeasurementPoint | undefined;
+  neckline?: Neckline | undefined;
+  sleeveStyle?: SleeveStyle | undefined;
+  silhouette?: Silhouette | undefined;
+  styleLabel?: string | undefined;
 }
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
@@ -130,7 +130,7 @@ export default function MannequinPreview({
     Z
   `;
 
-  const rows: { key: string; y: number; point?: MeasurementPoint }[] = [
+  const rows: { key: string; y: number; point?: MeasurementPoint | undefined }[] = [
     { key: 'bust', y: bustY, point: bust },
     { key: 'waist', y: waistY, point: waist },
     { key: 'hip', y: hipY, point: hip },

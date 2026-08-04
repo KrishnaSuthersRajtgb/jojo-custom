@@ -306,10 +306,10 @@ const CHUDI_SLEEVE_VISUALS: Record<string, SleeveStyle> = {
 };
 
 interface StyleVisual {
-  neckline?: Neckline;
-  sleeveStyle?: SleeveStyle;
-  silhouette?: Silhouette;
-  styleLabel?: string;
+  neckline?: Neckline | undefined;
+  sleeveStyle?: SleeveStyle | undefined;
+  silhouette?: Silhouette | undefined;
+  styleLabel?: string | undefined;
 }
 
 function buildStyleVisual(
@@ -633,7 +633,7 @@ export default function ProductStyle() {
 
         <div className="flex flex-col gap-10">
           {config.sections.map((section) => {
-            const sel = selections[section.id];
+            const sel: SectionSelection | undefined = selections[section.id];
             const usesAccordion = sectionHasSubOptions(section);
 
             return (

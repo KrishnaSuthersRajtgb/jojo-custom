@@ -7,22 +7,9 @@ interface MeasurementPoint {
   baseline: number;
 }
 
-export type Neckline = "round" | "v" | "sweetheart" | "boat" | "high";
-export type SleeveStyle =
-  | "sleeveless"
-  | "cap"
-  | "short"
-  | "elbow"
-  | "long"
-  | "puff"
-  | "bell";
-export type Silhouette =
-  | "fitted"
-  | "aline"
-  | "straight"
-  | "flared"
-  | "anarkali"
-  | "highlow";
+export type Neckline = 'round' | 'v' | 'sweetheart' | 'boat' | 'high';
+export type SleeveStyle = 'sleeveless' | 'cap' | 'short' | 'elbow' | 'long' | 'puff' | 'bell';
+export type Silhouette = 'fitted' | 'aline' | 'straight' | 'flared' | 'anarkali' | 'highlow';
 
 interface MannequinPreviewProps {
   title?: string;
@@ -46,33 +33,33 @@ function scaleFor(point?: MeasurementPoint): number {
 
 function necklinePath(type: Neckline, centerX: number): string {
   switch (type) {
-    case "v":
-      return `M ${centerX - 20} 142 L ${centerX} 180 L ${centerX + 20} 142`;
-    case "sweetheart":
-      return `M ${centerX - 20} 146 Q ${centerX - 10} 158, ${centerX} 150 Q ${centerX + 10} 158, ${centerX + 20} 146`;
-    case "boat":
-      return `M ${centerX - 30} 150 Q ${centerX} 160, ${centerX + 30} 150`;
-    case "high":
-      return `M ${centerX - 13} 136 L ${centerX + 13} 136`;
-    case "round":
+    case 'v':
+      return `M ${String(centerX - 20)} 142 L ${String(centerX)} 180 L ${String(centerX + 20)} 142`;
+    case 'sweetheart':
+      return `M ${String(centerX - 20)} 146 Q ${String(centerX - 10)} 158, ${String(centerX)} 150 Q ${String(centerX + 10)} 158, ${String(centerX + 20)} 146`;
+    case 'boat':
+      return `M ${String(centerX - 30)} 150 Q ${String(centerX)} 160, ${String(centerX + 30)} 150`;
+    case 'high':
+      return `M ${String(centerX - 13)} 136 L ${String(centerX + 13)} 136`;
+    case 'round':
     default:
-      return `M ${centerX - 20} 148 Q ${centerX} 168, ${centerX + 20} 148`;
+      return `M ${String(centerX - 20)} 148 Q ${String(centerX)} 168, ${String(centerX + 20)} 148`;
   }
 }
 
 function silhouetteParams(type: Silhouette | undefined) {
   switch (type) {
-    case "aline":
+    case 'aline':
       return { hipMultiplier: 1.15, hemY: 430 };
-    case "straight":
+    case 'straight':
       return { hipMultiplier: 0.82, hemY: 418 };
-    case "flared":
+    case 'flared':
       return { hipMultiplier: 1.35, hemY: 432 };
-    case "anarkali":
+    case 'anarkali':
       return { hipMultiplier: 1.3, hemY: 478 };
-    case "highlow":
+    case 'highlow':
       return { hipMultiplier: 1.2, hemY: 458 };
-    case "fitted":
+    case 'fitted':
     default:
       return { hipMultiplier: 1, hemY: 420 };
   }
@@ -82,19 +69,19 @@ const ARM_TOTAL = 170;
 
 function sleeveLength(style: SleeveStyle | undefined): number {
   switch (style) {
-    case "sleeveless":
+    case 'sleeveless':
       return 0;
-    case "cap":
+    case 'cap':
       return 32;
-    case "short":
+    case 'short':
       return 68;
-    case "elbow":
+    case 'elbow':
       return 108;
-    case "puff":
+    case 'puff':
       return 62;
-    case "bell":
+    case 'bell':
       return 150;
-    case "long":
+    case 'long':
       return ARM_TOTAL;
     default:
       return 68;
@@ -106,9 +93,9 @@ export default function MannequinPreview({
   bust,
   waist,
   hip,
-  neckline = "round",
-  sleeveStyle = "short",
-  silhouette = "fitted",
+  neckline = 'round',
+  sleeveStyle = 'short',
+  silhouette = 'fitted',
   styleLabel,
 }: MannequinPreviewProps) {
   const bustScale = scaleFor(bust);
@@ -130,32 +117,32 @@ export default function MannequinPreview({
   const hipY = 312;
 
   const bodyPath = `
-    M ${centerX - shoulderHalf} ${shoulderY}
-    C ${centerX - bustHalf} ${shoulderY + 22}, ${centerX - bustHalf} ${bustY - 18}, ${centerX - bustHalf} ${bustY}
-    C ${centerX - bustHalf} ${bustY + 24}, ${centerX - waistHalf} ${waistY - 16}, ${centerX - waistHalf} ${waistY}
-    L ${centerX - hipHalf} ${hipY}
-    L ${centerX - hipHalf * 0.82} ${hemY}
-    L ${centerX + hipHalf * 0.82} ${hemY}
-    L ${centerX + hipHalf} ${hipY}
-    L ${centerX + waistHalf} ${waistY}
-    C ${centerX + waistHalf} ${waistY - 16}, ${centerX + bustHalf} ${bustY + 24}, ${centerX + bustHalf} ${bustY}
-    C ${centerX + bustHalf} ${bustY - 18}, ${centerX + bustHalf} ${shoulderY + 22}, ${centerX + shoulderHalf} ${shoulderY}
+    M ${String(centerX - shoulderHalf)} ${String(shoulderY)}
+    C ${String(centerX - bustHalf)} ${String(shoulderY + 22)}, ${String(centerX - bustHalf)} ${String(bustY - 18)}, ${String(centerX - bustHalf)} ${String(bustY)}
+    C ${String(centerX - bustHalf)} ${String(bustY + 24)}, ${String(centerX - waistHalf)} ${String(waistY - 16)}, ${String(centerX - waistHalf)} ${String(waistY)}
+    L ${String(centerX - hipHalf)} ${String(hipY)}
+    L ${String(centerX - hipHalf * 0.82)} ${String(hemY)}
+    L ${String(centerX + hipHalf * 0.82)} ${String(hemY)}
+    L ${String(centerX + hipHalf)} ${String(hipY)}
+    L ${String(centerX + waistHalf)} ${String(waistY)}
+    C ${String(centerX + waistHalf)} ${String(waistY - 16)}, ${String(centerX + bustHalf)} ${String(bustY + 24)}, ${String(centerX + bustHalf)} ${String(bustY)}
+    C ${String(centerX + bustHalf)} ${String(bustY - 18)}, ${String(centerX + bustHalf)} ${String(shoulderY + 22)}, ${String(centerX + shoulderHalf)} ${String(shoulderY)}
     Z
   `;
 
   const rows: { key: string; y: number; point?: MeasurementPoint }[] = [
-    { key: "bust", y: bustY, point: bust },
-    { key: "waist", y: waistY, point: waist },
-    { key: "hip", y: hipY, point: hip },
+    { key: 'bust', y: bustY, point: bust },
+    { key: 'waist', y: waistY, point: waist },
+    { key: 'hip', y: hipY, point: hip },
   ];
 
   // Arm rendering: a skin-colored base arm, with a fabric-colored
   // overlay whose length depends on the selected sleeve style. Puff and
   // bell styles get an extra shape to suggest volume/flare.
   const sleeveLen = sleeveLength(sleeveStyle);
-  const renderArm = (side: "left" | "right") => {
-    const sign = side === "left" ? -1 : 1;
-    const x = side === "left" ? centerX - shoulderHalf - 18 : centerX + shoulderHalf;
+  const renderArm = (side: 'left' | 'right') => {
+    const sign = side === 'left' ? -1 : 1;
+    const x = side === 'left' ? centerX - shoulderHalf - 18 : centerX + shoulderHalf;
     const skinTop = shoulderY + 10;
     return (
       <g key={side}>
@@ -184,7 +171,7 @@ export default function MannequinPreview({
           />
         )}
         {/* puff bulge near shoulder */}
-        {sleeveStyle === "puff" && (
+        {sleeveStyle === 'puff' && (
           <ellipse
             cx={x + 9}
             cy={skinTop + 16}
@@ -196,12 +183,12 @@ export default function MannequinPreview({
           />
         )}
         {/* bell flare at cuff */}
-        {sleeveStyle === "bell" && (
+        {sleeveStyle === 'bell' && (
           <path
-            d={`M ${x - 4} ${skinTop + sleeveLen - 6}
-                L ${x + 22} ${skinTop + sleeveLen - 6}
-                L ${x + (sign < 0 ? 27 : -7)} ${skinTop + sleeveLen + 20}
-                L ${x - (sign < 0 ? -9 : 9)} ${skinTop + sleeveLen + 20}
+            d={`M ${String(x - 4)} ${String(skinTop + sleeveLen - 6)}
+                L ${String(x + 22)} ${String(skinTop + sleeveLen - 6)}
+                L ${String(x + (sign < 0 ? 27 : -7))} ${String(skinTop + sleeveLen + 20)}
+                L ${String(x - (sign < 0 ? -9 : 9))} ${String(skinTop + sleeveLen + 20)}
                 Z`}
             fill="#f6d8e0"
             stroke="#9d174d"
@@ -209,7 +196,7 @@ export default function MannequinPreview({
           />
         )}
         {/* cap shoulder flourish */}
-        {sleeveStyle === "cap" && (
+        {sleeveStyle === 'cap' && (
           <ellipse
             cx={x + 9}
             cy={skinTop + 6}
@@ -232,7 +219,7 @@ export default function MannequinPreview({
         </h3>
       )}
 
-      <svg viewBox={`0 0 260 ${footY + 30}`} className="w-full h-auto">
+      <svg viewBox={`0 0 260 ${String(footY + 30)}`} className="w-full h-auto">
         {/* Hair */}
         <ellipse cx={centerX} cy={78} rx={26} ry={20} fill="#6b4a35" />
         {/* Head */}
@@ -241,8 +228,8 @@ export default function MannequinPreview({
         <rect x={centerX - 8} y={112} width={16} height={20} fill="#f0d3b8" />
 
         {/* Arms (drawn before body so the body's shoulders overlap them cleanly) */}
-        {renderArm("left")}
-        {renderArm("right")}
+        {renderArm('left')}
+        {renderArm('right')}
 
         {/* Body / garment silhouette */}
         <path d={bodyPath} fill="#faf1ea" stroke="#9d174d" strokeWidth={1.5} />
@@ -251,8 +238,22 @@ export default function MannequinPreview({
         <path d={necklinePath(neckline, centerX)} fill="none" stroke="#9d174d" strokeWidth={2} />
 
         {/* Legs */}
-        <rect x={centerX - 34} y={hemY} width={26} height={kneeY - hemY + 30} rx={10} fill="#f0d3b8" />
-        <rect x={centerX + 8} y={hemY} width={26} height={kneeY - hemY + 30} rx={10} fill="#f0d3b8" />
+        <rect
+          x={centerX - 34}
+          y={hemY}
+          width={26}
+          height={kneeY - hemY + 30}
+          rx={10}
+          fill="#f0d3b8"
+        />
+        <rect
+          x={centerX + 8}
+          y={hemY}
+          width={26}
+          height={kneeY - hemY + 30}
+          rx={10}
+          fill="#f0d3b8"
+        />
         {/* Feet */}
         <ellipse cx={centerX - 21} cy={footY} rx={16} ry={7} fill="#c99a67" />
         <ellipse cx={centerX + 21} cy={footY} rx={16} ry={7} fill="#c99a67" />
@@ -260,8 +261,7 @@ export default function MannequinPreview({
         {/* Guide lines + labels */}
         {rows.map(({ key, y, point }) => {
           if (!point) return null;
-          const half =
-            key === "bust" ? bustHalf : key === "waist" ? waistHalf : hipHalf;
+          const half = key === 'bust' ? bustHalf : key === 'waist' ? waistHalf : hipHalf;
           return (
             <g key={key}>
               <line

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 import {
   Package,
   User,
@@ -8,8 +8,8 @@ import {
   Clock,
   ChevronDown,
   ShieldCheck,
-} from "lucide-react";
-import type { Address } from "../context/AddressContext";
+} from 'lucide-react';
+import type { Address } from '../../context/AddressContext';
 
 // ── Design tokens (same family as Home.jsx) ────────────────────────────────
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
@@ -62,38 +62,44 @@ interface AdminOrderRow extends SavedOrder {
 // Mirrors BODY_TYPE_LABELS in OrderTracking.tsx — duplicated locally
 // since these are plain page-local constants, not shared exports.
 const BODY_TYPE_LABELS: Record<string, string> = {
-  invertedTriangle: "The Inverted Triangle",
-  column: "The Column",
-  rectangle: "The Rectangle",
-  apple: "The Apple",
-  pear: "The Pear",
-  hourglass: "The Hour Glass",
+  invertedTriangle: 'The Inverted Triangle',
+  column: 'The Column',
+  rectangle: 'The Rectangle',
+  apple: 'The Apple',
+  pear: 'The Pear',
+  hourglass: 'The Hour Glass',
 };
 
-const ORDERS_KEY_PREFIX = "jojo_orders_";
+const ORDERS_KEY_PREFIX = 'jojo_orders_';
 
 function formatRupees(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
+    return new Date(iso).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
     });
   } catch {
     return iso;
   }
 }
 
-// Reads every jojo_orders_<username> key present in this browser's
-// localStorage and flattens them into one list, tagging each order with
-// which user placed it. NOTE: this only sees orders placed on THIS
-// device/browser — there's no backend order store yet, so orders placed
-// by a customer on their own device won't appear here unless viewed on
-// the same browser profile.
+// Runtime guard so we don't depend on `as SavedOrder[]` resolving across
+// the AddressContext import boundary — validates the minimal shape we
+// actually rely on before treating the parsed JSON as a SavedOrder.
+function isSavedOrder(value: unknown): value is SavedOrder {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.id !== 'string' || typeof v.placedAt !== 'string') return false;
+  if (typeof v.orderDetails !== 'object' || v.orderDetails === null) return false;
+  if (typeof v.address !== 'object' || v.address === null) return false;
+  return true;
+}
+
 function loadAllOrders(): AdminOrderRow[] {
   const rows: AdminOrderRow[] = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -103,16 +109,19 @@ function loadAllOrders(): AdminOrderRow[] {
     const raw = localStorage.getItem(key);
     if (!raw) continue;
     try {
-      const orders = JSON.parse(raw) as SavedOrder[];
-      orders.forEach((order) => rows.push({ ...order, username }));
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) continue;
+      parsed.forEach((entry: unknown) => {
+        if (isSavedOrder(entry)) {
+          rows.push({ ...entry, username });
+        }
+      });
     } catch {
       // Skip a malformed entry for this one user rather than failing
       // the whole page.
     }
   }
-  return rows.sort(
-    (a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime()
-  );
+  return rows.sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime());
 }
 
 export default function AdminOrders() {
@@ -144,7 +153,9 @@ export default function AdminOrders() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
             <div className="bg-[#F6F1E7] rounded-sm border border-[#5C1A32]/15 p-5">
               <p className="text-xs text-[#4A413B]/60 mb-1">Total Orders</p>
-              <p className="text-2xl text-[#1B1512]" style={serif}>{orders.length}</p>
+              <p className="text-2xl text-[#1B1512]" style={serif}>
+                {orders.length}
+              </p>
             </div>
             <div className="bg-[#F6F1E7] rounded-sm border border-[#5C1A32]/15 p-5">
               <p className="text-xs text-[#4A413B]/60 mb-1">Paid Orders</p>
@@ -180,7 +191,9 @@ export default function AdminOrders() {
                 >
                   <button
                     type="button"
-                    onClick={() => setExpandedId(isOpen ? null : order.id)}
+                    onClick={() => {
+                      setExpandedId(isOpen ? null : order.id);
+                    }}
                     className="w-full text-left px-5 py-4 flex items-center justify-between gap-4"
                   >
                     <div className="min-w-0">
@@ -194,8 +207,8 @@ export default function AdminOrders() {
                         </span>
                       </div>
                       <p className="text-xs text-[#4A413B]/60 mt-0.5">
-                        Placed {formatDate(order.placedAt)} · Deliver to{" "}
-                        {order.address.fullName}, {order.address.city}
+                        Placed {formatDate(order.placedAt)} · Deliver to {order.address.fullName},{' '}
+                        {order.address.city}
                       </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
@@ -215,7 +228,7 @@ export default function AdminOrders() {
                       </span>
                       <ChevronDown
                         className={`h-4 w-4 text-[#4A413B]/50 transition-transform ${
-                          isOpen ? "rotate-180" : ""
+                          isOpen ? 'rotate-180' : ''
                         }`}
                       />
                     </div>
@@ -234,9 +247,8 @@ export default function AdminOrders() {
                           </p>
                           <p className="text-sm text-[#4A413B]">
                             {order.address.line1}
-                            {order.address.line2 ? `, ${order.address.line2}` : ""},{" "}
-                            {order.address.city}, {order.address.state} -{" "}
-                            {order.address.pincode}
+                            {order.address.line2 ? `, ${order.address.line2}` : ''},{' '}
+                            {order.address.city}, {order.address.state} - {order.address.pincode}
                           </p>
                         </div>
 
@@ -248,12 +260,12 @@ export default function AdminOrders() {
                             <div className="space-y-1">
                               {d.selections.map((sel, idx) => (
                                 <div
-                                  key={`${sel.sectionLabel}-${idx}`}
+                                  key={`${sel.sectionLabel}-${String(idx)}`}
                                   className="flex items-center justify-between text-sm"
                                 >
                                   <span className="text-[#4A413B]">{sel.sectionLabel}</span>
                                   <span className="font-medium text-[#1B1512]">
-                                    {sel.subOptionLabel ?? sel.optionLabel ?? "—"}
+                                    {sel.subOptionLabel ?? sel.optionLabel ?? '—'}
                                   </span>
                                 </div>
                               ))}
@@ -302,9 +314,7 @@ export default function AdminOrders() {
                             ))}
                           <div className="flex items-center justify-between text-sm pt-2 font-bold">
                             <span className="text-[#1B1512]">Total Paid</span>
-                            <span className="text-[#5C1A32]">
-                              {formatRupees(d.total)}
-                            </span>
+                            <span className="text-[#5C1A32]">{formatRupees(d.total)}</span>
                           </div>
                           {order.paymentId && (
                             <p className="text-xs text-[#4A413B]/60 mt-2">
@@ -315,32 +325,27 @@ export default function AdminOrders() {
                       </div>
 
                       {/* Right: size details */}
-                      {d.measurementValues &&
-                        Object.keys(d.measurementValues).length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <Ruler className="h-3.5 w-3.5 text-[#5C1A32]" />
-                              <h3 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
-                                Size Details Used
-                              </h3>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                              {Object.entries(d.measurementValues).map(
-                                ([label, value], idx) => (
-                                  <div key={label} className="flex items-center gap-2 text-sm">
-                                    <span className="w-4 text-xs text-[#4A413B]/50">
-                                      {idx + 1}
-                                    </span>
-                                    <span className="flex-1 text-[#4A413B]">{label}</span>
-                                    <span className="font-medium text-[#1B1512]">
-                                      {value && value.trim() !== "" ? value : "0.0"} in
-                                    </span>
-                                  </div>
-                                )
-                              )}
-                            </div>
+                      {d.measurementValues && Object.keys(d.measurementValues).length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Ruler className="h-3.5 w-3.5 text-[#5C1A32]" />
+                            <h3 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
+                              Size Details Used
+                            </h3>
                           </div>
-                        )}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                            {Object.entries(d.measurementValues).map(([label, value], idx) => (
+                              <div key={label} className="flex items-center gap-2 text-sm">
+                                <span className="w-4 text-xs text-[#4A413B]/50">{idx + 1}</span>
+                                <span className="flex-1 text-[#4A413B]">{label}</span>
+                                <span className="font-medium text-[#1B1512]">
+                                  {value && value.trim() !== '' ? value : '0.0'} in
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

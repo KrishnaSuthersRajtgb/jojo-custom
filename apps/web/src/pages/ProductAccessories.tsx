@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useState } from 'react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx)
 //   ink      #1B1512  headings, primary text
@@ -22,14 +22,14 @@ interface AccessoryOption {
 // Kurta Types) whenever an item needs different embellishment options,
 // and add it to PRODUCT_ACCESSORIES below.
 const DEFAULT_ACCESSORIES: AccessoryOption[] = [
-  { id: "zari-embroidery", label: "Zari Embroidery", price: 800 },
-  { id: "mirror-work-border", label: "Mirror Work Border", price: 650 },
-  { id: "hand-embroidery", label: "Hand Embroidery", price: 1200 },
-  { id: "stone-work", label: "Stone Work", price: 750 },
-  { id: "tassel-detailing", label: "Tassel Detailing", price: 320 },
-  { id: "piping-edge", label: "Piping Edge", price: 200 },
-  { id: "embroidered-belt", label: "Embroidered Belt", price: 450 },
-  { id: "contrast-lining", label: "Contrast Lining", price: 280 },
+  { id: 'zari-embroidery', label: 'Zari Embroidery', price: 800 },
+  { id: 'mirror-work-border', label: 'Mirror Work Border', price: 650 },
+  { id: 'hand-embroidery', label: 'Hand Embroidery', price: 1200 },
+  { id: 'stone-work', label: 'Stone Work', price: 750 },
+  { id: 'tassel-detailing', label: 'Tassel Detailing', price: 320 },
+  { id: 'piping-edge', label: 'Piping Edge', price: 200 },
+  { id: 'embroidered-belt', label: 'Embroidered Belt', price: 450 },
+  { id: 'contrast-lining', label: 'Contrast Lining', price: 280 },
 ];
 
 const PRODUCT_ACCESSORIES: Record<string, AccessoryOption[]> = {
@@ -37,9 +37,9 @@ const PRODUCT_ACCESSORIES: Record<string, AccessoryOption[]> = {
   chudidhar: DEFAULT_ACCESSORIES,
   frocks: DEFAULT_ACCESSORIES,
   lehanga: DEFAULT_ACCESSORIES,
-  "ready-to-wear-saree": DEFAULT_ACCESSORIES,
+  'ready-to-wear-saree': DEFAULT_ACCESSORIES,
   pant: DEFAULT_ACCESSORIES,
-  "over-coat": DEFAULT_ACCESSORIES,
+  'over-coat': DEFAULT_ACCESSORIES,
 };
 
 // Fabric details forwarded from FabricDetail.tsx -> CustomOutfit.tsx ->
@@ -67,7 +67,7 @@ interface IncomingState {
 }
 
 function formatRupees(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 export default function ProductAccessories() {
@@ -78,7 +78,7 @@ export default function ProductAccessories() {
   const fabric = incoming.fabric ?? null;
 
   const accessories = productId ? PRODUCT_ACCESSORIES[productId] : undefined;
-  const productName = incoming.productName ?? productId ?? "Item";
+  const productName = incoming.productName ?? productId ?? 'Item';
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
@@ -104,10 +104,7 @@ export default function ProductAccessories() {
   };
 
   const selectedAccessories = accessories.filter((a) => selected[a.id]);
-  const accessoriesOnlyTotal = selectedAccessories.reduce(
-    (sum, a) => sum + a.price,
-    0
-  );
+  const accessoriesOnlyTotal = selectedAccessories.reduce((sum, a) => sum + a.price, 0);
   const grandTotal = accessoriesOnlyTotal + (fabric?.fabricTotal ?? 0);
 
   const handleViewSummary = () => {
@@ -144,13 +141,12 @@ export default function ProductAccessories() {
               Accessories &amp; Embellishments
             </h1>
             <p className="text-[#4A413B]">
-              Optional add-ons for your {productName.toLowerCase()} — select
-              as many as you like.
+              Optional add-ons for your {productName.toLowerCase()} — select as many as you like.
             </p>
           </div>
           <div className="text-right shrink-0">
             <div className="text-xs text-[#4A413B]/60 mb-1">
-              {fabric ? "Running total" : "Tailoring total"}
+              {fabric ? 'Running total' : 'Tailoring total'}
             </div>
             <div className="text-2xl font-bold text-[#5C1A32]" style={serif}>
               {formatRupees(grandTotal)}
@@ -166,10 +162,7 @@ export default function ProductAccessories() {
         {fabric && (
           <div className="mb-8 rounded-sm border border-[#5C1A32]/15 bg-white px-5 py-3 flex items-center justify-between text-sm">
             <span className="text-[#4A413B]">
-              Fabric:{" "}
-              <span className="font-semibold text-[#1B1512]">
-                {fabric.fabricName}
-              </span>
+              Fabric: <span className="font-semibold text-[#1B1512]">{fabric.fabricName}</span>
             </span>
             <span className="font-semibold text-[#5C1A32]">
               {fabric.meters}m · {formatRupees(fabric.fabricTotal)}
@@ -185,20 +178,20 @@ export default function ProductAccessories() {
                 key={accessory.id}
                 className={`flex items-center justify-between gap-3 rounded-sm border px-5 py-4 cursor-pointer transition-colors ${
                   isChecked
-                    ? "border-[#5C1A32] bg-[#5C1A32]/5"
-                    : "border-[#5C1A32]/12 hover:border-[#5C1A32]/30 bg-white"
+                    ? 'border-[#5C1A32] bg-[#5C1A32]/5'
+                    : 'border-[#5C1A32]/12 hover:border-[#5C1A32]/30 bg-white'
                 }`}
               >
                 <span className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={isChecked}
-                    onChange={() => toggleAccessory(accessory.id)}
+                    onChange={() => {
+                      toggleAccessory(accessory.id);
+                    }}
                     className="h-4 w-4 accent-[#5C1A32]"
                   />
-                  <span className="text-sm font-medium text-[#1B1512]">
-                    {accessory.label}
-                  </span>
+                  <span className="text-sm font-medium text-[#1B1512]">{accessory.label}</span>
                 </span>
                 <span className="text-sm font-semibold text-[#5C1A32]">
                   +{formatRupees(accessory.price)}

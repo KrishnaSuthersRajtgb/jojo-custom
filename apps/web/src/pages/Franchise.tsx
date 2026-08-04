@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   ArrowLeft,
@@ -11,7 +11,7 @@ import {
   GraduationCap,
   Boxes,
   CheckCircle2,
-} from "lucide-react";
+} from 'lucide-react';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / FabricDetail.tsx) ───────
 //   ink      #1B1512  headings, dark panel background
@@ -21,14 +21,14 @@ import {
 // Display face: Fraunces. Body face: Inter.
 
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
-const serifItalic = { ...serif, fontStyle: "italic" as const };
+const serifItalic = { ...serif, fontStyle: 'italic' as const };
 
 // Same literal tailor's-tape divider used on Home — kept local since it
 // isn't exported from Home.tsx.
-function TapeRule({ tone = "wine" }: { tone?: "wine" | "brass" }) {
+function TapeRule({ tone = 'wine' }: { tone?: 'wine' | 'brass' }) {
   const ticks = Array.from({ length: 41 });
-  const tickColor = tone === "wine" ? "bg-[#5C1A32]/25" : "bg-[#B8935A]/50";
-  const majorColor = tone === "wine" ? "bg-[#5C1A32]/50" : "bg-[#B8935A]/80";
+  const tickColor = tone === 'wine' ? 'bg-[#5C1A32]/25' : 'bg-[#B8935A]/50';
+  const majorColor = tone === 'wine' ? 'bg-[#5C1A32]/50' : 'bg-[#B8935A]/80';
   return (
     <div className="w-full overflow-hidden" aria-hidden="true">
       <div className="max-w-5xl mx-auto px-6 flex items-end justify-between h-4">
@@ -53,20 +53,15 @@ interface FranchiseFormState {
 }
 
 const EMPTY_FORM: FranchiseFormState = {
-  fullName: "",
-  phone: "",
-  email: "",
-  city: "",
-  investment: "",
-  message: "",
+  fullName: '',
+  phone: '',
+  email: '',
+  city: '',
+  investment: '',
+  message: '',
 };
 
-const INVESTMENT_BANDS = [
-  "₹5L – ₹10L",
-  "₹10L – ₹25L",
-  "₹25L – ₹50L",
-  "₹50L+",
-];
+const INVESTMENT_BANDS = ['₹5L – ₹10L', '₹10L – ₹25L', '₹25L – ₹50L', '₹50L+'];
 
 type FormErrors = Partial<Record<keyof FranchiseFormState, string>>;
 
@@ -79,63 +74,63 @@ export default function Franchise() {
   const [submitting, setSubmitting] = useState(false);
 
   const franchiseStats = [
-    { icon: <Store className="h-5 w-5" />, label: "Outlets", value: "25+" },
-    { icon: <MapPin className="h-5 w-5" />, label: "Cities", value: "12" },
-    { icon: <Users className="h-5 w-5" />, label: "Happy Partners", value: "40+" },
+    { icon: <Store className="h-5 w-5" />, label: 'Outlets', value: '25+' },
+    { icon: <MapPin className="h-5 w-5" />, label: 'Cities', value: '12' },
+    { icon: <Users className="h-5 w-5" />, label: 'Happy Partners', value: '40+' },
   ];
 
   const benefits = [
     {
       icon: <Wallet className="h-5 w-5" />,
-      title: "Low Entry Investment",
-      desc: "Structured investment tiers designed to fit first-time franchise partners.",
+      title: 'Low Entry Investment',
+      desc: 'Structured investment tiers designed to fit first-time franchise partners.',
     },
     {
       icon: <GraduationCap className="h-5 w-5" />,
-      title: "Full Training",
-      desc: "Onboarding covers tailoring standards, fabric handling, and store operations.",
+      title: 'Full Training',
+      desc: 'Onboarding covers tailoring standards, fabric handling, and store operations.',
     },
     {
       icon: <Boxes className="h-5 w-5" />,
-      title: "Supply Chain Support",
-      desc: "Direct access to our mill partners and swatch library from day one.",
+      title: 'Supply Chain Support',
+      desc: 'Direct access to our mill partners and swatch library from day one.',
     },
     {
       icon: <ShieldCheck className="h-5 w-5" />,
-      title: "Brand & Marketing",
-      desc: "Launch support, signage, and ongoing marketing playbooks included.",
+      title: 'Brand & Marketing',
+      desc: 'Launch support, signage, and ongoing marketing playbooks included.',
     },
   ];
 
   const steps = [
     {
-      mark: "01",
-      title: "Apply Online",
-      desc: "Share your city, budget, and a little about yourself below.",
+      mark: '01',
+      title: 'Apply Online',
+      desc: 'Share your city, budget, and a little about yourself below.',
     },
     {
-      mark: "02",
-      title: "Discovery Call",
-      desc: "Our partnerships team walks you through fit, terms, and next steps.",
+      mark: '02',
+      title: 'Discovery Call',
+      desc: 'Our partnerships team walks you through fit, terms, and next steps.',
     },
     {
-      mark: "03",
-      title: "Site & Setup",
-      desc: "We help you scout, design, and fit out your outlet.",
+      mark: '03',
+      title: 'Site & Setup',
+      desc: 'We help you scout, design, and fit out your outlet.',
     },
     {
-      mark: "04",
-      title: "Launch",
-      desc: "Trained staff, stocked shelves, and a marketing push on opening day.",
+      mark: '04',
+      title: 'Launch',
+      desc: 'Trained staff, stocked shelves, and a marketing push on opening day.',
     },
   ];
 
-  const handleChange = (
-    field: keyof FranchiseFormState
-  ) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [field]: e.target.value }));
-    setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
+  const handleChange =
+    (field: keyof FranchiseFormState) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setForm((prev) => ({ ...prev, [field]: e.target.value }));
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    };
 
   const handleInvestmentSelect = (band: string) => {
     setForm((prev) => ({ ...prev, investment: band }));
@@ -145,27 +140,27 @@ export default function Franchise() {
   const validate = (): FormErrors => {
     const next: FormErrors = {};
 
-    if (!form.fullName.trim()) next.fullName = "Please enter your full name.";
+    if (!form.fullName.trim()) next.fullName = 'Please enter your full name.';
 
     if (!form.phone.trim()) {
-      next.phone = "Please enter a phone number.";
-    } else if (!/^\+?\d{10,13}$/.test(form.phone.replace(/[\s-]/g, ""))) {
-      next.phone = "Enter a valid phone number.";
+      next.phone = 'Please enter a phone number.';
+    } else if (!/^\+?\d{10,13}$/.test(form.phone.replace(/[\s-]/g, ''))) {
+      next.phone = 'Enter a valid phone number.';
     }
 
     if (!form.email.trim()) {
-      next.email = "Please enter an email address.";
+      next.email = 'Please enter an email address.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      next.email = "Enter a valid email address.";
+      next.email = 'Enter a valid email address.';
     }
 
-    if (!form.city.trim()) next.city = "Please enter your city.";
-    if (!form.investment) next.investment = "Select an investment range.";
+    if (!form.city.trim()) next.city = 'Please enter your city.';
+    if (!form.investment) next.investment = 'Select an investment range.';
 
     return next;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     const validation = validate();
     setErrors(validation);
@@ -173,7 +168,7 @@ export default function Franchise() {
 
     setSubmitting(true);
     // TODO: wire to actual franchise-lead endpoint (e.g. POST /api/franchise-leads)
-    console.log("Franchise application:", form);
+    console.log('Franchise application:', form);
     await new Promise((resolve) => setTimeout(resolve, 600));
     setSubmitting(false);
     setSubmitted(true);
@@ -191,13 +186,14 @@ export default function Franchise() {
               Application received
             </h1>
             <p className="text-sm text-[#4A413B] mb-8 leading-relaxed">
-              Thank you, {form.fullName.split(" ")[0] || "there"}. Our
-              partnerships team will reach out to{" "}
-              <span className="font-semibold text-[#1B1512]">{form.phone}</span>{" "}
-              within 2 business days.
+              Thank you, {form.fullName.split(' ')[0] || 'there'}. Our partnerships team will reach
+              out to <span className="font-semibold text-[#1B1512]">{form.phone}</span> within 2
+              business days.
             </p>
             <button
-              onClick={() => { void navigate("/"); }}
+              onClick={() => {
+                void navigate('/');
+              }}
               className="inline-flex items-center gap-2 bg-[#1B1512] text-[#F6F1E7] font-medium text-sm px-6 py-3 rounded-sm hover:bg-[#5C1A32] transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -236,8 +232,8 @@ export default function Franchise() {
             </span>
           </h1>
           <p className="text-[#4A413B] text-base max-w-md mx-auto leading-relaxed">
-            Low investment, full training, and end-to-end business support
-            for the right partner in the right city.
+            Low investment, full training, and end-to-end business support for the right partner in
+            the right city.
           </p>
         </div>
       </section>
@@ -282,9 +278,7 @@ export default function Franchise() {
                 <span className="h-10 w-10 rounded-sm border border-[#5C1A32]/25 text-[#5C1A32] flex items-center justify-center mb-4">
                   {b.icon}
                 </span>
-                <h3 className="text-base font-semibold text-[#1B1512] mb-1.5">
-                  {b.title}
-                </h3>
+                <h3 className="text-base font-semibold text-[#1B1512] mb-1.5">{b.title}</h3>
                 <p className="text-sm text-[#4A413B] leading-relaxed">{b.desc}</p>
               </div>
             ))}
@@ -312,9 +306,7 @@ export default function Franchise() {
                   {step.mark}
                 </span>
                 <div className="h-px w-8 bg-[#5C1A32]/30 mb-4" />
-                <h3 className="text-base font-semibold text-[#1B1512] mb-1.5">
-                  {step.title}
-                </h3>
+                <h3 className="text-base font-semibold text-[#1B1512] mb-1.5">{step.title}</h3>
                 <p className="text-sm text-[#4A413B] leading-relaxed">{step.desc}</p>
               </div>
             ))}
@@ -337,7 +329,9 @@ export default function Franchise() {
           </div>
 
           <form
-            onSubmit={(e) => { void handleSubmit(e); }}
+            onSubmit={(e) => {
+              void handleSubmit(e);
+            }}
             noValidate
             className="bg-white border border-[#5C1A32]/12 rounded-sm shadow-sm p-6 sm:p-10 space-y-6"
           >
@@ -353,12 +347,12 @@ export default function Franchise() {
                   id="fullName"
                   type="text"
                   value={form.fullName}
-                  onChange={handleChange("fullName")}
+                  onChange={handleChange('fullName')}
                   placeholder="Priya Subramaniam"
                   className={`w-full rounded-sm border px-3 py-2.5 text-sm text-[#1B1512] bg-[#F6F1E7] focus:outline-none focus:ring-1 transition-colors ${
                     errors.fullName
-                      ? "border-red-600 focus:ring-red-600"
-                      : "border-[#5C1A32]/20 focus:ring-[#5C1A32] focus:border-[#5C1A32]"
+                      ? 'border-red-600 focus:ring-red-600'
+                      : 'border-[#5C1A32]/20 focus:ring-[#5C1A32] focus:border-[#5C1A32]'
                   }`}
                 />
                 {errors.fullName && (
@@ -378,17 +372,15 @@ export default function Franchise() {
                   type="tel"
                   inputMode="tel"
                   value={form.phone}
-                  onChange={handleChange("phone")}
+                  onChange={handleChange('phone')}
                   placeholder="+91 98765 43210"
                   className={`w-full rounded-sm border px-3 py-2.5 text-sm text-[#1B1512] bg-[#F6F1E7] focus:outline-none focus:ring-1 transition-colors ${
                     errors.phone
-                      ? "border-red-600 focus:ring-red-600"
-                      : "border-[#5C1A32]/20 focus:ring-[#5C1A32] focus:border-[#5C1A32]"
+                      ? 'border-red-600 focus:ring-red-600'
+                      : 'border-[#5C1A32]/20 focus:ring-[#5C1A32] focus:border-[#5C1A32]'
                   }`}
                 />
-                {errors.phone && (
-                  <p className="text-xs text-red-600 mt-1.5">{errors.phone}</p>
-                )}
+                {errors.phone && <p className="text-xs text-red-600 mt-1.5">{errors.phone}</p>}
               </div>
             </div>
 
@@ -404,17 +396,15 @@ export default function Franchise() {
                   id="email"
                   type="email"
                   value={form.email}
-                  onChange={handleChange("email")}
+                  onChange={handleChange('email')}
                   placeholder="priya@example.com"
                   className={`w-full rounded-sm border px-3 py-2.5 text-sm text-[#1B1512] bg-[#F6F1E7] focus:outline-none focus:ring-1 transition-colors ${
                     errors.email
-                      ? "border-red-600 focus:ring-red-600"
-                      : "border-[#5C1A32]/20 focus:ring-[#5C1A32] focus:border-[#5C1A32]"
+                      ? 'border-red-600 focus:ring-red-600'
+                      : 'border-[#5C1A32]/20 focus:ring-[#5C1A32] focus:border-[#5C1A32]'
                   }`}
                 />
-                {errors.email && (
-                  <p className="text-xs text-red-600 mt-1.5">{errors.email}</p>
-                )}
+                {errors.email && <p className="text-xs text-red-600 mt-1.5">{errors.email}</p>}
               </div>
 
               <div>
@@ -428,17 +418,15 @@ export default function Franchise() {
                   id="city"
                   type="text"
                   value={form.city}
-                  onChange={handleChange("city")}
+                  onChange={handleChange('city')}
                   placeholder="Chennai"
                   className={`w-full rounded-sm border px-3 py-2.5 text-sm text-[#1B1512] bg-[#F6F1E7] focus:outline-none focus:ring-1 transition-colors ${
                     errors.city
-                      ? "border-red-600 focus:ring-red-600"
-                      : "border-[#5C1A32]/20 focus:ring-[#5C1A32] focus:border-[#5C1A32]"
+                      ? 'border-red-600 focus:ring-red-600'
+                      : 'border-[#5C1A32]/20 focus:ring-[#5C1A32] focus:border-[#5C1A32]'
                   }`}
                 />
-                {errors.city && (
-                  <p className="text-xs text-red-600 mt-1.5">{errors.city}</p>
-                )}
+                {errors.city && <p className="text-xs text-red-600 mt-1.5">{errors.city}</p>}
               </div>
             </div>
 
@@ -451,11 +439,13 @@ export default function Franchise() {
                   <button
                     key={band}
                     type="button"
-                    onClick={() => { handleInvestmentSelect(band); }}
+                    onClick={() => {
+                      handleInvestmentSelect(band);
+                    }}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                       form.investment === band
-                        ? "bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7]"
-                        : "border-[#5C1A32]/20 text-[#4A413B] hover:border-[#5C1A32]"
+                        ? 'bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7]'
+                        : 'border-[#5C1A32]/20 text-[#4A413B] hover:border-[#5C1A32]'
                     }`}
                   >
                     {band}
@@ -472,7 +462,7 @@ export default function Franchise() {
                 htmlFor="message"
                 className="block text-[11px] font-semibold tracking-[0.15em] text-[#1B1512] uppercase mb-2"
               >
-                Tell us more{" "}
+                Tell us more{' '}
                 <span className="text-[#4A413B]/50 normal-case tracking-normal font-normal">
                   (optional)
                 </span>
@@ -481,7 +471,7 @@ export default function Franchise() {
                 id="message"
                 rows={4}
                 value={form.message}
-                onChange={handleChange("message")}
+                onChange={handleChange('message')}
                 placeholder="Retail experience, preferred location, timeline..."
                 className="w-full rounded-sm border border-[#5C1A32]/20 px-3 py-2.5 text-sm text-[#1B1512] bg-[#F6F1E7] focus:outline-none focus:ring-1 focus:ring-[#5C1A32] focus:border-[#5C1A32] transition-colors resize-none"
               />
@@ -492,13 +482,13 @@ export default function Franchise() {
               disabled={submitting}
               className="w-full inline-flex items-center justify-center gap-2 bg-[#1B1512] text-[#F6F1E7] font-semibold text-sm py-3.5 rounded-sm hover:bg-[#5C1A32] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {submitting ? "Submitting..." : "Submit Application"}
+              {submitting ? 'Submitting...' : 'Submit Application'}
               {!submitting && <ArrowRight className="h-4 w-4" />}
             </button>
 
             <p className="text-xs text-[#4A413B]/50 text-center">
-              By applying, you agree to be contacted by our partnerships team
-              regarding this opportunity.
+              By applying, you agree to be contacted by our partnerships team regarding this
+              opportunity.
             </p>
           </form>
         </div>

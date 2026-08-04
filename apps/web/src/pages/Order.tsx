@@ -1,5 +1,5 @@
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import {
   ShoppingBag,
   ArrowLeft,
@@ -10,9 +10,9 @@ import {
   Briefcase,
   Pencil,
   Sparkles,
-} from "lucide-react";
-import { useAddresses, type AddressType } from "../context/AddressContext";
-import { useAuth } from "../context/AuthContext";
+} from 'lucide-react';
+import { useAddresses, type AddressType } from '../context/AddressContext';
+import { useAuth } from '../context/AuthContext';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx)
 //   ink      #1B1512  headings, primary text
@@ -24,9 +24,9 @@ import { useAuth } from "../context/AuthContext";
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
 const TYPE_META: Record<AddressType, { label: string; icon: typeof Home }> = {
-  home: { label: "Home", icon: Home },
-  work: { label: "Work", icon: Briefcase },
-  other: { label: "Other", icon: MapPin },
+  home: { label: 'Home', icon: Home },
+  work: { label: 'Work', icon: Briefcase },
+  other: { label: 'Other', icon: MapPin },
 };
 
 // ---- Shape #1: sent by FabricDetail.tsx's "Buy Now" button ----
@@ -81,10 +81,7 @@ type IncomingOrderState = DirectOrderState | CustomOutfitOrderState;
 
 function isDirectOrder(state: IncomingOrderState): state is DirectOrderState {
   return (
-    "fabricId" in state &&
-    "total" in state &&
-    !("grandTotal" in state) &&
-    !("accessories" in state)
+    'fabricId' in state && 'total' in state && !('grandTotal' in state) && !('accessories' in state)
   );
 }
 
@@ -113,7 +110,7 @@ interface NormalizedOrder {
 
 function normalizeOrder(
   state: IncomingOrderState,
-  bodyType: string | null
+  bodyType: string | null,
 ): NormalizedOrder | null {
   if (isDirectOrder(state)) {
     return {
@@ -131,7 +128,7 @@ function normalizeOrder(
     };
   }
 
-  const custom = state as CustomOutfitOrderState;
+  const custom = state;
   if (!custom.fabric && !custom.productId) return null;
 
   const fabric = custom.fabric;
@@ -141,10 +138,10 @@ function normalizeOrder(
 
   return {
     isCustom: true,
-    fabricId: fabric?.fabricId ?? "",
-    fabricName: fabric?.fabricName ?? "—",
-    tone: fabric?.fabricTone ?? "",
-    garment: fabric?.garment ?? custom.productId ?? "",
+    fabricId: fabric?.fabricId ?? '',
+    fabricName: fabric?.fabricName ?? '—',
+    tone: fabric?.fabricTone ?? '',
+    garment: fabric?.garment ?? custom.productId ?? '',
     garmentLabel: fabric?.garmentLabel ?? custom.productName,
     meters: fabric?.meters ?? 0,
     pricePerMeter: fabric?.pricePerMeter ?? 0,
@@ -164,7 +161,7 @@ function normalizeOrder(
 }
 
 function formatRupees(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 export default function Order() {
@@ -176,7 +173,7 @@ export default function Order() {
   // Same storage key BodyTypeSelector.tsx / MeasurementSidebar.tsx write
   // to. Read directly (no listener needed — this page just needs the
   // value at order-review time, not live updates).
-  const bodyTypeKey = `jojo_bodytype_${user?.username ?? "guest"}`;
+  const bodyTypeKey = `jojo_bodytype_${user?.username ?? 'guest'}`;
   const storedBodyType = localStorage.getItem(bodyTypeKey);
 
   const orderDetails = incoming ? normalizeOrder(incoming, storedBodyType) : null;
@@ -190,10 +187,10 @@ export default function Order() {
 
   const handlePlaceOrder = () => {
     if (!defaultAddress) {
-      void navigate("/addresses");
+      void navigate('/addresses');
       return;
     }
-    void navigate("/payment", { state: { orderDetails, address: defaultAddress } });
+    void navigate('/payment', { state: { orderDetails, address: defaultAddress } });
   };
 
   return (
@@ -204,7 +201,9 @@ export default function Order() {
       <section className="w-full px-6 pt-8 pb-6">
         <div className="max-w-5xl mx-auto">
           <button
-            onClick={() => { void navigate(-1); }}
+            onClick={() => {
+              void navigate(-1);
+            }}
             className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -216,9 +215,7 @@ export default function Order() {
               Review Your Order
             </h1>
           </div>
-          <p className="text-[#4A413B]">
-            Confirm the details before placing your order
-          </p>
+          <p className="text-[#4A413B]">Confirm the details before placing your order</p>
         </div>
       </section>
 
@@ -237,7 +234,9 @@ export default function Order() {
                 </h2>
                 {defaultAddress && (
                   <button
-                    onClick={() => { void navigate("/addresses"); }}
+                    onClick={() => {
+                      void navigate('/addresses');
+                    }}
                     className="inline-flex items-center gap-1 text-xs font-medium text-[#5C1A32] hover:underline"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -258,8 +257,8 @@ export default function Order() {
                       <p className="font-semibold text-[#1B1512]">{defaultAddress.fullName}</p>
                       <p className="text-sm text-[#4A413B] mt-1 leading-relaxed">
                         {defaultAddress.line1}
-                        {defaultAddress.line2 ? `, ${defaultAddress.line2}` : ""}
-                        {defaultAddress.landmark ? `, Near ${defaultAddress.landmark}` : ""}
+                        {defaultAddress.line2 ? `, ${defaultAddress.line2}` : ''}
+                        {defaultAddress.landmark ? `, Near ${defaultAddress.landmark}` : ''}
                         <br />
                         {defaultAddress.city}, {defaultAddress.state} - {defaultAddress.pincode}
                       </p>
@@ -269,12 +268,12 @@ export default function Order() {
                 })()
               ) : (
                 <div className="flex items-center justify-between rounded-sm border border-dashed border-[#5C1A32]/25 px-4 py-4">
-                  <p className="text-sm text-[#4A413B]">
-                    No delivery address saved yet.
-                  </p>
+                  <p className="text-sm text-[#4A413B]">No delivery address saved yet.</p>
                   <Button
                     size="sm"
-                    onClick={() => { void navigate("/addresses"); }}
+                    onClick={() => {
+                      void navigate('/addresses');
+                    }}
                     className="bg-[#1B1512] text-[#F6F1E7] hover:bg-[#5C1A32] rounded-sm"
                   >
                     Add Address
@@ -311,9 +310,7 @@ export default function Order() {
                   <Ruler className="h-4 w-4 text-[#B8935A]" />
                   Meters
                 </div>
-                <span className="text-sm font-semibold text-[#1B1512]">
-                  {orderDetails.meters}m
-                </span>
+                <span className="text-sm font-semibold text-[#1B1512]">{orderDetails.meters}m</span>
               </div>
 
               <div className="flex items-center justify-between py-3 border-b border-[#5C1A32]/10">
@@ -332,26 +329,26 @@ export default function Order() {
                 </div>
               )}
 
-              {orderDetails.isCustom && orderDetails.selections && orderDetails.selections.length > 0 && (
-                <div className="py-3 border-b border-[#5C1A32]/10">
-                  <span className="text-sm text-[#4A413B] block mb-2">
-                    Style selected
-                  </span>
-                  <div className="space-y-1.5">
-                    {orderDetails.selections.map((sel, idx) => (
-                      <div
-                        key={`${sel.sectionLabel}-${idx}`}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="text-[#4A413B]">{sel.sectionLabel}</span>
-                        <span className="font-medium text-[#1B1512]">
-                          {sel.subOptionLabel ?? sel.optionLabel ?? "—"}
-                        </span>
-                      </div>
-                    ))}
+              {orderDetails.isCustom &&
+                orderDetails.selections &&
+                orderDetails.selections.length > 0 && (
+                  <div className="py-3 border-b border-[#5C1A32]/10">
+                    <span className="text-sm text-[#4A413B] block mb-2">Style selected</span>
+                    <div className="space-y-1.5">
+                      {orderDetails.selections.map((sel, idx) => (
+                        <div
+                          key={`${sel.sectionLabel}-${String(idx)}`}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-[#4A413B]">{sel.sectionLabel}</span>
+                          <span className="font-medium text-[#1B1512]">
+                            {sel.subOptionLabel ?? sel.optionLabel ?? '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {orderDetails.isCustom && orderDetails.accessories.length > 0 && (
                 <div className="py-3">
@@ -363,9 +360,7 @@ export default function Order() {
                     {orderDetails.accessories.map((a) => (
                       <div key={a.id} className="flex items-center justify-between text-sm">
                         <span className="text-[#2A211D]">{a.label}</span>
-                        <span className="font-medium text-[#5C1A32]">
-                          +{formatRupees(a.price)}
-                        </span>
+                        <span className="font-medium text-[#5C1A32]">+{formatRupees(a.price)}</span>
                       </div>
                     ))}
                   </div>
@@ -399,7 +394,7 @@ export default function Order() {
 
               <div className="flex items-center justify-between pt-4 mt-2 border-t border-[#5C1A32]/15">
                 <span className="text-sm font-bold text-[#1B1512]">
-                  {orderDetails.isCustom ? "Grand Total" : "Total"}
+                  {orderDetails.isCustom ? 'Grand Total' : 'Total'}
                 </span>
                 <span className="text-xl font-bold text-[#5C1A32]" style={serif}>
                   {formatRupees(orderDetails.total)}
@@ -410,7 +405,7 @@ export default function Order() {
                 onClick={handlePlaceOrder}
                 className="w-full mt-6 inline-flex items-center justify-center gap-2 rounded-sm bg-[#1B1512] text-[#F6F1E7] font-semibold py-3 hover:bg-[#5C1A32] transition-colors"
               >
-                {defaultAddress ? "Place Order" : "Add an address to continue"}
+                {defaultAddress ? 'Place Order' : 'Add an address to continue'}
               </button>
             </div>
           </div>

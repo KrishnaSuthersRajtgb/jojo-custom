@@ -1,18 +1,14 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, ChevronDown, Check, Ruler, ImagePlus, X } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import { MEASUREMENTS_UPDATED_EVENT } from "../components/MeasurementSidebar";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, ChevronDown, Check, Ruler, ImagePlus, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { MEASUREMENTS_UPDATED_EVENT } from '../components/MeasurementSidebar';
 import MannequinPreview, {
   type Neckline,
   type SleeveStyle,
   type Silhouette,
-} from "../components/MannequinPreview";
-import {
-  MEASUREMENT_SECTIONS,
-  PRODUCT_TO_SECTION,
-  emptyValues,
-} from "../config/measurementFields";
+} from '../components/MannequinPreview';
+import { MEASUREMENT_SECTIONS, PRODUCT_TO_SECTION, emptyValues } from '../config/measurementFields';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx)
 //   ink      #1B1512  headings, primary text, selected-option fills
@@ -26,7 +22,7 @@ const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 // Reference photo constraints — kept conservative since this gets stored
 // as a base64 string in localStorage alongside measurements.
 const MAX_REFERENCE_IMAGE_BYTES = 4 * 1024 * 1024; // 4MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 interface StyleSubOption {
   id: string;
@@ -87,135 +83,135 @@ interface ReferenceImage {
 // independent sections (e.g. Chudidhar needs Kurta Type + Sleeve Design).
 const PRODUCT_STYLES: Record<string, ProductStyleConfig> = {
   blouse: {
-    name: "Blouse",
+    name: 'Blouse',
     sections: [
       {
-        id: "style",
-        label: "Blouse Style",
+        id: 'style',
+        label: 'Blouse Style',
         options: [
           {
-            id: "darted",
-            label: "Darted Blouse",
+            id: 'darted',
+            label: 'Darted Blouse',
             subOptions: [
-              { id: "2-dart", label: "2 Dart Blouse" },
-              { id: "3-dart", label: "3 Dart Blouse" },
-              { id: "4-dart", label: "4 Dart Blouse" },
+              { id: '2-dart', label: '2 Dart Blouse' },
+              { id: '3-dart', label: '3 Dart Blouse' },
+              { id: '4-dart', label: '4 Dart Blouse' },
             ],
           },
-          { id: "princess-cut", label: "Princess Cut Blouse" },
-          { id: "katori-cut", label: "Katori Cut Blouse" },
-          { id: "customized", label: "Customized Design" },
+          { id: 'princess-cut', label: 'Princess Cut Blouse' },
+          { id: 'katori-cut', label: 'Katori Cut Blouse' },
+          { id: 'customized', label: 'Customized Design' },
         ],
       },
     ],
   },
   chudidhar: {
-    name: "Chudidhar",
+    name: 'Chudidhar',
     sections: [
       {
-        id: "kurta-type",
-        label: "Kurta Type",
+        id: 'kurta-type',
+        label: 'Kurta Type',
         options: [
-          { id: "a-line", label: "A-Line Kurta" },
-          { id: "straight-cut", label: "Straight Cut Kurta" },
-          { id: "anarkali", label: "Anarkali Kurta" },
-          { id: "c-cut", label: "C-Cut Kurta" },
-          { id: "flared", label: "Flared Kurta" },
-          { id: "high-low", label: "High-Low Kurta" },
-          { id: "tail-cut", label: "Tail Cut Kurta" },
-          { id: "shirt-style", label: "Shirt Style Kurta" },
-          { id: "pakistani", label: "Pakistani Kurta" },
-          { id: "angrakha", label: "Angrakha Kurta" },
-          { id: "floor-length", label: "Floor-Length Kurta" },
-          { id: "indo-western", label: "Indo-Western Kurta" },
+          { id: 'a-line', label: 'A-Line Kurta' },
+          { id: 'straight-cut', label: 'Straight Cut Kurta' },
+          { id: 'anarkali', label: 'Anarkali Kurta' },
+          { id: 'c-cut', label: 'C-Cut Kurta' },
+          { id: 'flared', label: 'Flared Kurta' },
+          { id: 'high-low', label: 'High-Low Kurta' },
+          { id: 'tail-cut', label: 'Tail Cut Kurta' },
+          { id: 'shirt-style', label: 'Shirt Style Kurta' },
+          { id: 'pakistani', label: 'Pakistani Kurta' },
+          { id: 'angrakha', label: 'Angrakha Kurta' },
+          { id: 'floor-length', label: 'Floor-Length Kurta' },
+          { id: 'indo-western', label: 'Indo-Western Kurta' },
         ],
       },
       {
-        id: "sleeve-design",
-        label: "Sleeve Design",
+        id: 'sleeve-design',
+        label: 'Sleeve Design',
         options: [
-          { id: "butterfly", label: "Butterfly Sleeve" },
-          { id: "pleated", label: "Pleated Sleeve" },
-          { id: "split", label: "Split Sleeve" },
-          { id: "sheer-puff", label: "Sheer Puff Sleeve" },
-          { id: "blouson", label: "Blouson Sleeve" },
-          { id: "tie", label: "Tie Sleeve" },
-          { id: "double-flounce", label: "Double Flounce Sleeve" },
-          { id: "tulip", label: "Tulip Sleeve" },
-          { id: "lantern", label: "Lantern Sleeve" },
-          { id: "ruched", label: "Ruched Sleeve" },
-          { id: "cape", label: "Cape Sleeve" },
-          { id: "leg-of-mutton", label: "Leg-of-Mutton Sleeve" },
-          { id: "slit-bell", label: "Slit Bell Sleeve" },
-          { id: "eyelet", label: "Eyelet Sleeve" },
-          { id: "cut-out", label: "Cut-Out Sleeve" },
-          { id: "smocked", label: "Smocked Sleeve" },
-          { id: "tiered", label: "Tiered Sleeve" },
-          { id: "trumpet", label: "Trumpet Sleeve" },
+          { id: 'butterfly', label: 'Butterfly Sleeve' },
+          { id: 'pleated', label: 'Pleated Sleeve' },
+          { id: 'split', label: 'Split Sleeve' },
+          { id: 'sheer-puff', label: 'Sheer Puff Sleeve' },
+          { id: 'blouson', label: 'Blouson Sleeve' },
+          { id: 'tie', label: 'Tie Sleeve' },
+          { id: 'double-flounce', label: 'Double Flounce Sleeve' },
+          { id: 'tulip', label: 'Tulip Sleeve' },
+          { id: 'lantern', label: 'Lantern Sleeve' },
+          { id: 'ruched', label: 'Ruched Sleeve' },
+          { id: 'cape', label: 'Cape Sleeve' },
+          { id: 'leg-of-mutton', label: 'Leg-of-Mutton Sleeve' },
+          { id: 'slit-bell', label: 'Slit Bell Sleeve' },
+          { id: 'eyelet', label: 'Eyelet Sleeve' },
+          { id: 'cut-out', label: 'Cut-Out Sleeve' },
+          { id: 'smocked', label: 'Smocked Sleeve' },
+          { id: 'tiered', label: 'Tiered Sleeve' },
+          { id: 'trumpet', label: 'Trumpet Sleeve' },
         ],
       },
     ],
   },
   frocks: {
-    name: "Frocks",
+    name: 'Frocks',
     sections: [
       {
-        id: "style",
-        label: "Style",
-        options: [{ id: "customized", label: "Customized Design" }],
+        id: 'style',
+        label: 'Style',
+        options: [{ id: 'customized', label: 'Customized Design' }],
       },
     ],
   },
   lehanga: {
-    name: "Lehanga",
+    name: 'Lehanga',
     sections: [
       {
-        id: "style",
-        label: "Style",
-        options: [{ id: "customized", label: "Customized Design" }],
+        id: 'style',
+        label: 'Style',
+        options: [{ id: 'customized', label: 'Customized Design' }],
       },
     ],
   },
-  "ready-to-wear-saree": {
-    name: "Ready to Wear Saree",
+  'ready-to-wear-saree': {
+    name: 'Ready to Wear Saree',
     sections: [
       {
-        id: "style",
-        label: "Style",
-        options: [{ id: "customized", label: "Customized Design" }],
+        id: 'style',
+        label: 'Style',
+        options: [{ id: 'customized', label: 'Customized Design' }],
       },
     ],
   },
   pant: {
-    name: "Pant",
+    name: 'Pant',
     sections: [
       {
-        id: "pant-style",
-        label: "Pant Style",
+        id: 'pant-style',
+        label: 'Pant Style',
         options: [
-          { id: "churidar-salwaar", label: "Churidar Salwaar" },
-          { id: "patiala-salwaar", label: "Patiala Salwaar" },
-          { id: "afghani-salwaar", label: "Afghani Salwaar" },
-          { id: "dhoti-salwaar", label: "Dhoti Salwaar" },
-          { id: "tulip-salwaar", label: "Tulip Salwaar" },
-          { id: "palazzo-salwaar", label: "Palazzo Salwaar" },
-          { id: "sharara", label: "Sharara" },
-          { id: "gharara", label: "Gharara" },
-          { id: "straight-cut-salwaar", label: "Straight-Cut Salwaar" },
-          { id: "harem-salwaar", label: "Harem Salwaar" },
-          { id: "balloon-salwaar", label: "Balloon Salwaar" },
-          { id: "parallel-salwaar", label: "Parallel Salwaar" },
+          { id: 'churidar-salwaar', label: 'Churidar Salwaar' },
+          { id: 'patiala-salwaar', label: 'Patiala Salwaar' },
+          { id: 'afghani-salwaar', label: 'Afghani Salwaar' },
+          { id: 'dhoti-salwaar', label: 'Dhoti Salwaar' },
+          { id: 'tulip-salwaar', label: 'Tulip Salwaar' },
+          { id: 'palazzo-salwaar', label: 'Palazzo Salwaar' },
+          { id: 'sharara', label: 'Sharara' },
+          { id: 'gharara', label: 'Gharara' },
+          { id: 'straight-cut-salwaar', label: 'Straight-Cut Salwaar' },
+          { id: 'harem-salwaar', label: 'Harem Salwaar' },
+          { id: 'balloon-salwaar', label: 'Balloon Salwaar' },
+          { id: 'parallel-salwaar', label: 'Parallel Salwaar' },
         ],
       },
     ],
   },
-  "over-coat": {
-    name: "Over Coat",
+  'over-coat': {
+    name: 'Over Coat',
     sections: [
       {
-        id: "style",
-        label: "Style",
-        options: [{ id: "customized", label: "Customized Design" }],
+        id: 'style',
+        label: 'Style',
+        options: [{ id: 'customized', label: 'Customized Design' }],
       },
     ],
   },
@@ -228,31 +224,31 @@ const PRODUCT_STYLES: Record<string, ProductStyleConfig> = {
 // of Bust/Waist).
 function buildPreviewMeasurements(
   storageSuffix: string | undefined,
-  values: Record<string, string>
+  values: Record<string, string>,
 ) {
   const num = (key: string): number | undefined => {
     const raw = values[key];
-    if (raw === undefined || raw === "") return undefined;
+    if (raw === undefined || raw === '') return undefined;
     const parsed = parseFloat(raw);
     return Number.isNaN(parsed) ? undefined : parsed;
   };
 
   switch (storageSuffix) {
-    case "blouse":
+    case 'blouse':
       return {
-        bust: { label: "Bust", value: num("upperChest"), baseline: 34 },
-        waist: { label: "Waist", value: num("waistRound"), baseline: 28 },
+        bust: { label: 'Bust', value: num('upperChest'), baseline: 34 },
+        waist: { label: 'Waist', value: num('waistRound'), baseline: 28 },
       };
-    case "chudi":
+    case 'chudi':
       return {
-        bust: { label: "Bust", value: num("chest"), baseline: 34 },
-        waist: { label: "Waist", value: num("waistRound"), baseline: 28 },
-        hip: { label: "Hip", value: num("seatLoose"), baseline: 40 },
+        bust: { label: 'Bust', value: num('chest'), baseline: 34 },
+        waist: { label: 'Waist', value: num('waistRound'), baseline: 28 },
+        hip: { label: 'Hip', value: num('seatLoose'), baseline: 40 },
       };
-    case "pant":
+    case 'pant':
       return {
-        waist: { label: "Seat", value: num("seatRound"), baseline: 40 },
-        hip: { label: "Hip", value: num("hipRound"), baseline: 38 },
+        waist: { label: 'Seat', value: num('seatRound'), baseline: 40 },
+        hip: { label: 'Hip', value: num('hipRound'), baseline: 38 },
       };
     default:
       return {};
@@ -267,46 +263,46 @@ function buildPreviewMeasurements(
 type BlouseStyleVisual = { neckline: Neckline; sleeveStyle: SleeveStyle };
 
 const BLOUSE_STYLE_VISUALS: Record<string, BlouseStyleVisual> = {
-  darted: { neckline: "round", sleeveStyle: "cap" },
-  "princess-cut": { neckline: "sweetheart", sleeveStyle: "cap" },
-  "katori-cut": { neckline: "boat", sleeveStyle: "sleeveless" },
-  customized: { neckline: "v", sleeveStyle: "short" },
+  darted: { neckline: 'round', sleeveStyle: 'cap' },
+  'princess-cut': { neckline: 'sweetheart', sleeveStyle: 'cap' },
+  'katori-cut': { neckline: 'boat', sleeveStyle: 'sleeveless' },
+  customized: { neckline: 'v', sleeveStyle: 'short' },
 };
 
 const CHUDI_KURTA_SILHOUETTES: Record<string, Silhouette> = {
-  "a-line": "aline",
-  "straight-cut": "straight",
-  anarkali: "anarkali",
-  "c-cut": "aline",
-  flared: "flared",
-  "high-low": "highlow",
-  "tail-cut": "highlow",
-  "shirt-style": "straight",
-  pakistani: "anarkali",
-  angrakha: "aline",
-  "floor-length": "anarkali",
-  "indo-western": "flared",
+  'a-line': 'aline',
+  'straight-cut': 'straight',
+  anarkali: 'anarkali',
+  'c-cut': 'aline',
+  flared: 'flared',
+  'high-low': 'highlow',
+  'tail-cut': 'highlow',
+  'shirt-style': 'straight',
+  pakistani: 'anarkali',
+  angrakha: 'aline',
+  'floor-length': 'anarkali',
+  'indo-western': 'flared',
 };
 
 const CHUDI_SLEEVE_VISUALS: Record<string, SleeveStyle> = {
-  butterfly: "bell",
-  pleated: "puff",
-  split: "short",
-  "sheer-puff": "puff",
-  blouson: "puff",
-  tie: "short",
-  "double-flounce": "bell",
-  tulip: "bell",
-  lantern: "puff",
-  ruched: "short",
-  cape: "cap",
-  "leg-of-mutton": "puff",
-  "slit-bell": "bell",
-  eyelet: "short",
-  "cut-out": "short",
-  smocked: "puff",
-  tiered: "bell",
-  trumpet: "bell",
+  butterfly: 'bell',
+  pleated: 'puff',
+  split: 'short',
+  'sheer-puff': 'puff',
+  blouson: 'puff',
+  tie: 'short',
+  'double-flounce': 'bell',
+  tulip: 'bell',
+  lantern: 'puff',
+  ruched: 'short',
+  cape: 'cap',
+  'leg-of-mutton': 'puff',
+  'slit-bell': 'bell',
+  eyelet: 'short',
+  'cut-out': 'short',
+  smocked: 'puff',
+  tiered: 'bell',
+  trumpet: 'bell',
 };
 
 interface StyleVisual {
@@ -319,12 +315,12 @@ interface StyleVisual {
 function buildStyleVisual(
   productId: string | undefined,
   config: ProductStyleConfig | undefined,
-  selections: Record<string, SectionSelection>
+  selections: Record<string, SectionSelection>,
 ): StyleVisual {
   if (!productId || !config) return {};
 
-  if (productId === "blouse") {
-    const sel = selections["style"];
+  if (productId === 'blouse') {
+    const sel = selections['style'];
     if (!sel) return {};
     const option = config.sections[0]?.options.find((o) => o.id === sel.optionId);
     const subOption = option?.subOptions?.find((s) => s.id === sel.subOptionId);
@@ -335,14 +331,14 @@ function buildStyleVisual(
     };
   }
 
-  if (productId === "chudidhar") {
-    const kurtaSel = selections["kurta-type"];
-    const sleeveSel = selections["sleeve-design"];
-    const kurtaSection = config.sections.find((s) => s.id === "kurta-type");
-    const sleeveSection = config.sections.find((s) => s.id === "sleeve-design");
+  if (productId === 'chudidhar') {
+    const kurtaSel = selections['kurta-type'];
+    const sleeveSel = selections['sleeve-design'];
+    const kurtaSection = config.sections.find((s) => s.id === 'kurta-type');
+    const sleeveSection = config.sections.find((s) => s.id === 'sleeve-design');
     const kurtaLabel = kurtaSection?.options.find((o) => o.id === kurtaSel?.optionId)?.label;
     const sleeveLabel = sleeveSection?.options.find((o) => o.id === sleeveSel?.optionId)?.label;
-    const styleLabel = [kurtaLabel, sleeveLabel].filter(Boolean).join(" · ") || undefined;
+    const styleLabel = [kurtaLabel, sleeveLabel].filter(Boolean).join(' · ') || undefined;
 
     return {
       silhouette: kurtaSel ? CHUDI_KURTA_SILHOUETTES[kurtaSel.optionId] : undefined,
@@ -369,8 +365,8 @@ export default function ProductStyle() {
 
   const [selections, setSelections] = useState<Record<string, SectionSelection>>({});
   const [expanded, setExpanded] = useState<Record<string, string | null>>({});
-  const [measurementValues, setMeasurementValues] = useState<Record<string, string>>(
-    () => (measurementSection ? emptyValues(measurementSection.fields) : {})
+  const [measurementValues, setMeasurementValues] = useState<Record<string, string>>(() =>
+    measurementSection ? emptyValues(measurementSection.fields) : {},
   );
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
   const [referenceImageError, setReferenceImageError] = useState<string | null>(null);
@@ -383,7 +379,7 @@ export default function ProductStyle() {
       setMeasurementValues({});
       return;
     }
-    const measurementsKey = `jojo_measurements_${user?.username ?? "guest"}`;
+    const measurementsKey = `jojo_measurements_${user?.username ?? 'guest'}`;
     const raw = localStorage.getItem(measurementsKey);
     if (raw) {
       try {
@@ -410,7 +406,7 @@ export default function ProductStyle() {
       setReferenceImage(null);
       return;
     }
-    const referenceImagesKey = `jojo_reference_images_${user?.username ?? "guest"}`;
+    const referenceImagesKey = `jojo_reference_images_${user?.username ?? 'guest'}`;
     const raw = localStorage.getItem(referenceImagesKey);
     if (raw) {
       try {
@@ -422,7 +418,6 @@ export default function ProductStyle() {
       }
     }
     setReferenceImage(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, user?.username]);
 
   if (!productId || !config) {
@@ -464,7 +459,7 @@ export default function ProductStyle() {
   const handleSubOptionClick = (
     section: StyleSection,
     option: StyleOption,
-    subOption: StyleSubOption
+    subOption: StyleSubOption,
   ) => {
     setSelections((prev) => ({
       ...prev,
@@ -477,7 +472,7 @@ export default function ProductStyle() {
   // products' saved values are left untouched) and notifies the sidebar.
   const persistMeasurements = (nextValues: Record<string, string>) => {
     if (!measurementSection) return;
-    const measurementsKey = `jojo_measurements_${user?.username ?? "guest"}`;
+    const measurementsKey = `jojo_measurements_${user?.username ?? 'guest'}`;
     const raw = localStorage.getItem(measurementsKey);
     let all: Record<string, Record<string, string>> = {};
     try {
@@ -506,7 +501,7 @@ export default function ProductStyle() {
   // are left untouched, same approach as persistMeasurements.
   const persistReferenceImage = (next: ReferenceImage | null) => {
     if (!productId) return;
-    const referenceImagesKey = `jojo_reference_images_${user?.username ?? "guest"}`;
+    const referenceImagesKey = `jojo_reference_images_${user?.username ?? 'guest'}`;
     const raw = localStorage.getItem(referenceImagesKey);
     let all: Record<string, ReferenceImage> = {};
     try {
@@ -517,31 +512,35 @@ export default function ProductStyle() {
     if (next) {
       all[productId] = next;
     } else {
-      delete all[productId];
+      Reflect.deleteProperty(all, productId);
     }
     localStorage.setItem(referenceImagesKey, JSON.stringify(all));
   };
 
   const handleReferenceImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file later
+    e.target.value = ''; // allow re-selecting the same file later
     if (!file) return;
 
     setReferenceImageError(null);
 
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setReferenceImageError("Please upload a JPG, PNG, or WEBP image.");
+      setReferenceImageError('Please upload a JPG, PNG, or WEBP image.');
       return;
     }
     if (file.size > MAX_REFERENCE_IMAGE_BYTES) {
-      setReferenceImageError("Image is too large — please keep it under 4MB.");
+      setReferenceImageError('Image is too large — please keep it under 4MB.');
       return;
     }
 
     const reader = new FileReader();
     reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        setReferenceImageError("Couldn't read that image — please try again.");
+        return;
+      }
       const next: ReferenceImage = {
-        dataUrl: String(reader.result),
+        dataUrl: reader.result,
         fileName: file.name,
       };
       setReferenceImage(next);
@@ -582,8 +581,7 @@ export default function ProductStyle() {
     const resolvedSelections = config.sections.map((section) => {
       const sel = selections[section.id];
       const option = section.options.find((o) => o.id === sel.optionId) ?? null;
-      const subOption =
-        option?.subOptions?.find((s) => s.id === sel.subOptionId) ?? null;
+      const subOption = option?.subOptions?.find((s) => s.id === sel.subOptionId) ?? null;
       return {
         sectionId: section.id,
         sectionLabel: section.label,
@@ -608,7 +606,7 @@ export default function ProductStyle() {
 
   const previewMeasurements = buildPreviewMeasurements(
     measurementSection?.storageSuffix,
-    measurementValues
+    measurementValues,
   );
   const styleVisual = buildStyleVisual(productId, config, selections);
 
@@ -650,25 +648,27 @@ export default function ProductStyle() {
                       const isSelected = option.id === sel?.optionId;
                       const isExpanded = option.id === expanded[section.id];
                       const isOnlySelectedAsParent =
-                        isSelected && option.subOptions?.length && !sel?.subOptionId;
+                        isSelected && option.subOptions?.length && !sel.subOptionId;
 
                       return (
                         <div
                           key={option.id}
                           className={`rounded-sm border transition-colors ${
                             isSelected
-                              ? "border-[#5C1A32]"
-                              : "border-[#5C1A32]/12 hover:border-[#5C1A32]/30"
+                              ? 'border-[#5C1A32]'
+                              : 'border-[#5C1A32]/12 hover:border-[#5C1A32]/30'
                           }`}
                         >
                           <button
                             type="button"
-                            onClick={() => handleOptionClick(section, option)}
+                            onClick={() => {
+                              handleOptionClick(section, option);
+                            }}
                             aria-pressed={isSelected && !option.subOptions?.length}
                             className={`w-full flex items-center justify-between gap-3 px-5 py-4 rounded-sm text-left ${
                               isSelected && !option.subOptions?.length
-                                ? "bg-[#5C1A32] text-[#F6F1E7]"
-                                : "bg-white text-[#1B1512]"
+                                ? 'bg-[#5C1A32] text-[#F6F1E7]'
+                                : 'bg-white text-[#1B1512]'
                             }`}
                           >
                             <span className="flex items-center gap-2 font-medium text-sm">
@@ -685,7 +685,7 @@ export default function ProductStyle() {
                             {option.subOptions?.length ? (
                               <ChevronDown
                                 className={`h-4 w-4 text-[#4A413B]/50 transition-transform ${
-                                  isExpanded ? "rotate-180" : ""
+                                  isExpanded ? 'rotate-180' : ''
                                 }`}
                               />
                             ) : null}
@@ -699,19 +699,17 @@ export default function ProductStyle() {
                                   <button
                                     key={sub.id}
                                     type="button"
-                                    onClick={() =>
-                                      handleSubOptionClick(section, option, sub)
-                                    }
+                                    onClick={() => {
+                                      handleSubOptionClick(section, option, sub);
+                                    }}
                                     aria-pressed={isSubSelected}
                                     className={`flex items-center gap-2 text-left text-sm px-4 py-2.5 rounded-sm border ${
                                       isSubSelected
-                                        ? "bg-[#5C1A32]/8 border-[#5C1A32] text-[#5C1A32] font-semibold"
-                                        : "bg-white border-[#5C1A32]/12 text-[#4A413B] hover:border-[#5C1A32]/30"
+                                        ? 'bg-[#5C1A32]/8 border-[#5C1A32] text-[#5C1A32] font-semibold'
+                                        : 'bg-white border-[#5C1A32]/12 text-[#4A413B] hover:border-[#5C1A32]/30'
                                     }`}
                                   >
-                                    {isSubSelected && (
-                                      <Check className="h-3.5 w-3.5" />
-                                    )}
+                                    {isSubSelected && <Check className="h-3.5 w-3.5" />}
                                     {sub.label}
                                   </button>
                                 );
@@ -730,12 +728,14 @@ export default function ProductStyle() {
                         <button
                           key={option.id}
                           type="button"
-                          onClick={() => handleOptionClick(section, option)}
+                          onClick={() => {
+                            handleOptionClick(section, option);
+                          }}
                           aria-pressed={isSelected}
                           className={`flex items-center gap-2 text-left text-sm px-4 py-3 rounded-sm border transition-colors ${
                             isSelected
-                              ? "bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7] font-semibold"
-                              : "bg-white border-[#5C1A32]/12 text-[#2A211D] hover:border-[#5C1A32]/30"
+                              ? 'bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7] font-semibold'
+                              : 'bg-white border-[#5C1A32]/12 text-[#2A211D] hover:border-[#5C1A32]/30'
                           }`}
                         >
                           {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
@@ -775,10 +775,10 @@ export default function ProductStyle() {
                           step="0.1"
                           inputMode="decimal"
                           placeholder="0.0"
-                          value={measurementValues[field.key] ?? ""}
-                          onChange={(e) =>
-                            handleMeasurementChange(field.key, e.target.value)
-                          }
+                          value={measurementValues[field.key] ?? ''}
+                          onChange={(e) => {
+                            handleMeasurementChange(field.key, e.target.value);
+                          }}
                           className="w-full rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-[#1B1512] focus:outline-none focus:border-[#5C1A32] bg-white"
                         />
                         <span className="text-xs text-[#4A413B]/60 shrink-0">in</span>
@@ -853,16 +853,14 @@ export default function ProductStyle() {
                 <span className="text-sm font-medium text-[#1B1512]">
                   Click to upload a reference photo
                 </span>
-                <span className="text-xs text-[#4A413B]/60">
-                  JPG, PNG, or WEBP · up to 4MB
-                </span>
+                <span className="text-xs text-[#4A413B]/60">JPG, PNG, or WEBP · up to 4MB</span>
               </label>
             )}
 
             <input
               id="reference-image-input"
               type="file"
-              accept={ACCEPTED_IMAGE_TYPES.join(",")}
+              accept={ACCEPTED_IMAGE_TYPES.join(',')}
               onChange={handleReferenceImageChange}
               className="sr-only"
             />
@@ -880,8 +878,8 @@ export default function ProductStyle() {
             disabled={!isComplete}
             className={`inline-flex items-center gap-2 font-semibold text-sm px-6 py-3 rounded-full transition-colors ${
               isComplete
-                ? "bg-[#1B1512] text-[#F6F1E7] hover:bg-[#5C1A32]"
-                : "bg-[#5C1A32]/10 text-[#4A413B]/50 cursor-not-allowed"
+                ? 'bg-[#1B1512] text-[#F6F1E7] hover:bg-[#5C1A32]'
+                : 'bg-[#5C1A32]/10 text-[#4A413B]/50 cursor-not-allowed'
             }`}
           >
             Continue to Accessories

@@ -1,7 +1,7 @@
-import { useNavigate, useParams, Navigate } from "react-router-dom";
-import { useState } from "react";
-import { ArrowLeft, Minus, Plus, ShoppingCart, Scissors } from "lucide-react";
-import { FABRICS, GARMENT_TYPES, type GarmentType } from "../data/fabrics";
+import { useNavigate, useParams, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { ArrowLeft, Minus, Plus, ShoppingCart, Scissors } from 'lucide-react';
+import { FABRICS, GARMENT_TYPES, type GarmentType } from '../data/fabrics';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx) ─────────────
 //   ink      #1B1512  headings, primary text
@@ -24,16 +24,12 @@ export default function FabricDetail() {
 
   const defaultGarment = GARMENT_TYPES[0];
   if (!defaultGarment) {
-    throw new Error("GARMENT_TYPES must contain at least one garment type.");
+    throw new Error('GARMENT_TYPES must contain at least one garment type.');
   }
 
-  const [selectedGarment, setSelectedGarment] = useState<GarmentType>(
-    defaultGarment
-  );
+  const [selectedGarment, setSelectedGarment] = useState<GarmentType>(defaultGarment);
   const [meters, setMeters] = useState(defaultGarment.defaultMeters);
-  const [metersInput, setMetersInput] = useState(
-    String(defaultGarment.defaultMeters)
-  );
+  const [metersInput, setMetersInput] = useState(String(defaultGarment.defaultMeters));
 
   // Guard: unknown fabric/tone combo in the URL -> send back to the fabrics dashboard
   if (!fabric) {
@@ -54,19 +50,25 @@ export default function FabricDetail() {
     setMetersInput(String(next));
   };
 
-  const decreaseMeters = () => applyMeters(meters - 0.5);
-  const increaseMeters = () => applyMeters(meters + 0.5);
+  const decreaseMeters = () => {
+    applyMeters(meters - 0.5);
+  };
+  const increaseMeters = () => {
+    applyMeters(meters + 0.5);
+  };
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     applyMeters(parseFloat(e.target.value));
   };
 
-  const handlePresetClick = (value: number) => applyMeters(value);
+  const handlePresetClick = (value: number) => {
+    applyMeters(value);
+  };
 
   const handleMetersInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     // Allow empty string and partial decimal input (e.g. "1.") while typing
-    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setMetersInput(value);
     }
   };
@@ -81,7 +83,7 @@ export default function FabricDetail() {
   };
 
   const handleMetersInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.currentTarget.blur();
     }
   };
@@ -97,8 +99,8 @@ export default function FabricDetail() {
       pricePerMeter: fabric.pricePerMeter,
       total,
     };
-    console.log("Buy Now:", orderDetails);
-    void navigate("/order", { state: orderDetails });
+    console.log('Buy Now:', orderDetails);
+    void navigate('/order', { state: orderDetails });
   };
 
   const handleInHouse = () => {
@@ -116,20 +118,24 @@ export default function FabricDetail() {
       meters,
       fabricTotal: total,
     };
-    void navigate("/custom-outfit", { state: { fabric: fabricDetails } });
+    // Skip the "/custom-outfit" product picker grid entirely and go
+    // straight to that garment's style/measurements page (matches the
+    // route + state shape CustomOutfit.tsx's handleContinue navigates to).
+    void navigate(`/custom-outfit/${selectedGarment.id}`, {
+      state: { productName: selectedGarment.label, fabric: fabricDetails },
+    });
   };
 
   // Fallbacks for optional spec fields — see data/fabrics.ts note
   const specs = [
-    { label: "Fabric", value: fabric.material ?? "Fabric" },
-    { label: "Tone", value: fabric.tone },
-    { label: "Colour", value: fabric.colourName ?? fabric.tone },
-    { label: "Width", value: fabric.width ?? "44 Inches" },
-    { label: "Care", value: fabric.care ?? "Dry Clean" },
+    { label: 'Fabric', value: fabric.material },
+    { label: 'Tone', value: fabric.tone },
+    { label: 'Colour', value: fabric.colourName ?? fabric.tone },
+    { label: 'Width', value: fabric.width ?? '44 Inches' },
+    { label: 'Care', value: fabric.care ?? 'Dry Clean' },
   ];
 
-  const sliderFillPct =
-    ((meters - METER_MIN) / (METER_MAX - METER_MIN)) * 100;
+  const sliderFillPct = ((meters - METER_MIN) / (METER_MAX - METER_MIN)) * 100;
 
   return (
     // pt-16 clears the fixed h-16 Navbar (z-[60]) so this page's content
@@ -139,7 +145,9 @@ export default function FabricDetail() {
       <section className="w-full px-4 sm:px-6 pt-8 pb-6">
         <div className="max-w-5xl mx-auto">
           <button
-            onClick={() => { void navigate("/fabrics"); }}
+            onClick={() => {
+              void navigate('/fabrics');
+            }}
             className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -167,7 +175,7 @@ export default function FabricDetail() {
                     {fabric.name}
                   </h1>
                   <p className="text-sm text-[#F6F1E7]/85 mt-1">
-                    {(fabric.material ?? "Fabric")} · {fabric.colourName ?? fabric.tone}
+                    {fabric.material} · {fabric.colourName ?? fabric.tone}
                   </p>
                 </div>
               </div>
@@ -200,11 +208,13 @@ export default function FabricDetail() {
                   {GARMENT_TYPES.map((g) => (
                     <button
                       key={g.id}
-                      onClick={() => { handleSelectGarment(g); }}
+                      onClick={() => {
+                        handleSelectGarment(g);
+                      }}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                         selectedGarment.id === g.id
-                          ? "bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7]"
-                          : "border-[#5C1A32]/20 text-[#4A413B] hover:border-[#5C1A32]"
+                          ? 'bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7]'
+                          : 'border-[#5C1A32]/20 text-[#4A413B] hover:border-[#5C1A32]'
                       }`}
                     >
                       {g.label}
@@ -217,9 +227,7 @@ export default function FabricDetail() {
             {/* ── RIGHT COLUMN: meters slider, presets, price, actions ── */}
             <div className="lg:w-1/2 p-5 sm:p-6 flex flex-col justify-center">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold text-[#1B1512]">
-                  How many meters do you need?
-                </p>
+                <p className="text-sm font-semibold text-[#1B1512]">How many meters do you need?</p>
                 <span className="text-sm font-semibold text-[#5C1A32] whitespace-nowrap ml-2">
                   {meters}m selected
                 </span>
@@ -248,7 +256,7 @@ export default function FabricDetail() {
                     [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full
                     [&::-moz-range-thumb]:bg-[#5C1A32] [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white"
                   style={{
-                    background: `linear-gradient(to right, #5C1A32 0%, #5C1A32 ${sliderFillPct}%, rgba(92,26,50,0.15) ${sliderFillPct}%, rgba(92,26,50,0.15) 100%)`,
+                    background: `linear-gradient(to right, #5C1A32 0%, #5C1A32 ${String(sliderFillPct)}%, rgba(92,26,50,0.15) ${String(sliderFillPct)}%, rgba(92,26,50,0.15) 100%)`,
                   }}
                   aria-label="Meters slider"
                 />
@@ -273,11 +281,13 @@ export default function FabricDetail() {
                 {METER_PRESETS.map((p) => (
                   <button
                     key={p}
-                    onClick={() => { handlePresetClick(p); }}
+                    onClick={() => {
+                      handlePresetClick(p);
+                    }}
                     className={`px-3 py-1.5 rounded-sm border text-sm font-medium transition-colors ${
                       meters === p
-                        ? "bg-[#B8935A] border-[#B8935A] text-[#1B1512]"
-                        : "border-[#5C1A32]/20 text-[#4A413B] hover:border-[#5C1A32]"
+                        ? 'bg-[#B8935A] border-[#B8935A] text-[#1B1512]'
+                        : 'border-[#5C1A32]/20 text-[#4A413B] hover:border-[#5C1A32]'
                     }`}
                   >
                     {p}m

@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { ArrowRight, Star, MapPin, Users, Store } from "lucide-react";
+import { Link } from 'react-router-dom';
+import { ArrowRight, Star, MapPin, Users, Store } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────
 // A bespoke-tailoring identity built around the one instrument every
@@ -18,15 +18,15 @@ import { ArrowRight, Star, MapPin, Users, Store } from "lucide-react";
 //   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
-const serifItalic = { ...serif, fontStyle: "italic" as const };
+const serifItalic = { ...serif, fontStyle: 'italic' as const };
 
 // A literal tailor's tape — used as a section divider and, later, as the
 // timeline itself. Ties every break in the page back to the one object
 // that defines bespoke tailoring: the measure.
-function TapeRule({ tone = "wine" }: { tone?: "wine" | "brass" }) {
+function TapeRule({ tone = 'wine' }: { tone?: 'wine' | 'brass' }) {
   const ticks = Array.from({ length: 41 });
-  const tickColor = tone === "wine" ? "bg-[#5C1A32]/25" : "bg-[#B8935A]/50";
-  const majorColor = tone === "wine" ? "bg-[#5C1A32]/50" : "bg-[#B8935A]/80";
+  const tickColor = tone === 'wine' ? 'bg-[#5C1A32]/25' : 'bg-[#B8935A]/50';
+  const majorColor = tone === 'wine' ? 'bg-[#5C1A32]/50' : 'bg-[#B8935A]/80';
   return (
     <div className="w-full overflow-hidden" aria-hidden="true">
       <div className="max-w-5xl mx-auto px-6 flex items-end justify-between h-4">
@@ -44,62 +44,62 @@ function TapeRule({ tone = "wine" }: { tone?: "wine" | "brass" }) {
 export default function Home() {
   const steps = [
     {
-      mark: "01",
-      title: "Share Your Measure",
-      desc: "Send your sizes, or book a tailor to visit and take them by hand.",
+      mark: '01',
+      title: 'Share Your Measure',
+      desc: 'Send your sizes, or book a tailor to visit and take them by hand.',
     },
     {
-      mark: "02",
-      title: "Choose Cloth & Cut",
-      desc: "Select from the swatch library, or bring a reference of your own.",
+      mark: '02',
+      title: 'Choose Cloth & Cut',
+      desc: 'Select from the swatch library, or bring a reference of your own.',
     },
     {
-      mark: "03",
-      title: "Cut by Our Artisans",
-      desc: "Each piece is stitched and checked by hand at every stage.",
+      mark: '03',
+      title: 'Cut by Our Artisans',
+      desc: 'Each piece is stitched and checked by hand at every stage.',
     },
     {
-      mark: "04",
-      title: "Delivered, Fitted",
-      desc: "Follow the order from needle to doorstep in real time.",
+      mark: '04',
+      title: 'Delivered, Fitted',
+      desc: 'Follow the order from needle to doorstep in real time.',
     },
   ];
 
   const reviews = [
     {
-      name: "Priya S.",
-      city: "Chennai",
+      name: 'Priya S.',
+      city: 'Chennai',
       rating: 5,
-      text: "The blouse fit perfectly on the first try. Fabric quality is genuinely premium.",
+      text: 'The blouse fit perfectly on the first try. Fabric quality is genuinely premium.',
     },
     {
-      name: "Anitha R.",
-      city: "Coimbatore",
+      name: 'Anitha R.',
+      city: 'Coimbatore',
       rating: 5,
-      text: "Loved how easy it was to customize the kurti. Delivery was faster than I expected.",
+      text: 'Loved how easy it was to customize the kurti. Delivery was faster than I expected.',
     },
     {
-      name: "Divya K.",
-      city: "Bengaluru",
+      name: 'Divya K.',
+      city: 'Bengaluru',
       rating: 4,
-      text: "Great tailoring and support team. Will definitely order again for the festive season.",
+      text: 'Great tailoring and support team. Will definitely order again for the festive season.',
     },
   ];
 
   // Day-position on an 8-day tape. "day" is where each stage's marker sits.
   const stages = [
-    { label: "Order Confirmed", day: 0 },
-    { label: "Stitching in Progress", day: 1 },
-    { label: "Quality Check", day: 5 },
-    { label: "Shipped", day: 6 },
-    { label: "Delivered", day: 8 },
+    { label: 'Order Confirmed', day: 0 },
+    { label: 'Stitching in Progress', day: 1 },
+    { label: 'Quality Check', day: 5 },
+    { label: 'Shipped', day: 6 },
+    { label: 'Delivered', day: 8 },
   ];
   const TAPE_MAX = 8;
 
   const franchiseStats = [
-    { icon: <Store className="h-5 w-5" />, label: "Outlets", value: "25+" },
-    { icon: <MapPin className="h-5 w-5" />, label: "Cities", value: "12" },
-    { icon: <Users className="h-5 w-5" />, label: "Happy Partners", value: "40+" },
+    { icon: <Store className="h-5 w-5" />, label: 'Outlets', value: '25+' },
+    { icon: <MapPin className="h-5 w-5" />, label: 'Cities', value: '12' },
+    { icon: <Users className="h-5 w-5" />, label: 'Happy Partners', value: '40+' },
   ];
 
   return (
@@ -121,8 +121,8 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-[#4A413B] text-base max-w-md mx-auto mb-10 leading-relaxed">
-            Fine fabrics, precise fits, and hand-finished craftsmanship —
-            carried from our tailor's bench to your door.
+            Fine fabrics, precise fits, and hand-finished craftsmanship — carried from our tailor's
+            bench to your door.
           </p>
           <Link
             to="/custom-outfit"
@@ -150,11 +150,11 @@ export default function Home() {
               Custom Outfit
             </h3>
             <p className="text-[#F6F1E7]/70 text-sm leading-relaxed mb-8">
-              Design a blouse, kurti, or palazzo from a blank page. Share your
-              measurements and let our artisans craft the fit.
+              Design a blouse, kurti, or palazzo from a blank page. Share your measurements and let
+              our artisans craft the fit.
             </p>
             <div className="flex flex-wrap gap-2 mb-8">
-              {["Blouse", "Kurti", "Pant"].map((tag) => (
+              {['Blouse', 'Kurti', 'Pant'].map((tag) => (
                 <span
                   key={tag}
                   className="px-3 py-1 rounded-full border border-[#B8935A]/40 text-[#B8935A] text-xs font-medium"
@@ -169,10 +169,7 @@ export default function Home() {
             </span>
           </Link>
 
-          <Link
-            to="/fabrics"
-            className="group bg-[#F6F1E7] p-10 md:p-12 flex flex-col"
-          >
+          <Link to="/fabrics" className="group bg-[#F6F1E7] p-10 md:p-12 flex flex-col">
             <span className="text-[11px] font-semibold tracking-[0.25em] text-[#5C1A32] uppercase mb-6">
               The Swatch Library
             </span>
@@ -180,23 +177,19 @@ export default function Home() {
               Fabric &amp; Material
             </h3>
             <p className="text-[#4A413B] text-sm leading-relaxed mb-8">
-              Browse silks, cottons, and georgettes drawn from our own mill
-              partners. Filter by warm, cool, or neutral tone.
+              Browse silks, cottons, and georgettes drawn from our own mill partners. Filter by
+              warm, cool, or neutral tone.
             </p>
             <div className="flex items-center gap-1.5 mb-8">
-              {[
-                "bg-red-900",
-                "bg-blue-700",
-                "bg-stone-300",
-                "bg-indigo-950",
-                "bg-yellow-600",
-              ].map((c, i) => (
-                <span
-                  key={i}
-                  className={`h-6 w-4 rounded-[2px] border border-black/10 shadow-sm ${c}`}
-                  style={{ transform: `rotate(${i % 2 === 0 ? -4 : 4}deg)` }}
-                />
-              ))}
+              {['bg-red-900', 'bg-blue-700', 'bg-stone-300', 'bg-indigo-950', 'bg-yellow-600'].map(
+                (c, i) => (
+                  <span
+                    key={i}
+                    className={`h-6 w-4 rounded-[2px] border border-black/10 shadow-sm ${c}`}
+                    style={{ transform: `rotate(${String(i % 2 === 0 ? -4 : 4)}deg)` }}
+                  />
+                ),
+              )}
               <span className="text-xs text-[#4A413B]/60 ml-2">9 fabrics</span>
             </div>
             <span className="mt-auto inline-flex items-center gap-1.5 text-[#5C1A32] font-semibold text-sm group-hover:gap-2.5 transition-all">
@@ -216,29 +209,19 @@ export default function Home() {
             <span className="text-[11px] font-semibold tracking-[0.25em] text-[#5C1A32] uppercase">
               The Process
             </span>
-            <h2
-              className="text-3xl md:text-4xl text-[#1B1512] mt-3"
-              style={serif}
-            >
+            <h2 className="text-3xl md:text-4xl text-[#1B1512] mt-3" style={serif}>
               From cloth to fit
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12">
             {steps.map((step) => (
               <div key={step.mark} className="relative pl-0">
-                <span
-                  className="block text-[#B8935A] text-sm font-semibold mb-3"
-                  style={serif}
-                >
+                <span className="block text-[#B8935A] text-sm font-semibold mb-3" style={serif}>
                   {step.mark}
                 </span>
                 <div className="h-px w-8 bg-[#5C1A32]/30 mb-4" />
-                <h3 className="text-base font-semibold text-[#1B1512] mb-1.5">
-                  {step.title}
-                </h3>
-                <p className="text-sm text-[#4A413B] leading-relaxed">
-                  {step.desc}
-                </p>
+                <h3 className="text-base font-semibold text-[#1B1512] mb-1.5">{step.title}</h3>
+                <p className="text-sm text-[#4A413B] leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -254,33 +237,23 @@ export default function Home() {
             <span className="text-[11px] font-semibold tracking-[0.25em] text-[#5C1A32] uppercase">
               In Their Words
             </span>
-            <h2
-              className="text-3xl md:text-4xl text-[#1B1512] mt-3"
-              style={serif}
-            >
+            <h2 className="text-3xl md:text-4xl text-[#1B1512] mt-3" style={serif}>
               What our customers say
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {reviews.map((r) => (
               <div key={r.name} className="text-left">
-                <span
-                  className="block text-5xl text-[#B8935A] leading-none mb-2"
-                  style={serif}
-                >
+                <span className="block text-5xl text-[#B8935A] leading-none mb-2" style={serif}>
                   &ldquo;
                 </span>
-                <p className="text-[#2A211D] text-[15px] leading-relaxed mb-5 -mt-4">
-                  {r.text}
-                </p>
+                <p className="text-[#2A211D] text-[15px] leading-relaxed mb-5 -mt-4">{r.text}</p>
                 <div className="flex gap-0.5 mb-2">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
                       className={`h-3.5 w-3.5 ${
-                        i < r.rating
-                          ? "fill-[#B8935A] text-[#B8935A]"
-                          : "text-[#5C1A32]/15"
+                        i < r.rating ? 'fill-[#B8935A] text-[#B8935A]' : 'text-[#5C1A32]/15'
                       }`}
                     />
                   ))}
@@ -304,10 +277,7 @@ export default function Home() {
             <span className="text-[11px] font-semibold tracking-[0.25em] text-[#5C1A32] uppercase">
               Measured in Days, Not Guesses
             </span>
-            <h2
-              className="text-3xl md:text-4xl text-[#1B1512] mt-3"
-              style={serif}
-            >
+            <h2 className="text-3xl md:text-4xl text-[#1B1512] mt-3" style={serif}>
               How delivery works
             </h2>
           </div>
@@ -319,22 +289,23 @@ export default function Home() {
               <div
                 key={day}
                 className="absolute top-[46px] flex flex-col items-center"
-                style={{ left: `${(day / TAPE_MAX) * 100}%`, transform: "translateX(-50%)" }}
+                style={{
+                  left: `${String((day / TAPE_MAX) * 100)}%`,
+                  transform: 'translateX(-50%)',
+                }}
               >
                 <div className="w-px h-3 bg-[#5C1A32]/40" />
-                <span className="mt-1 text-[10px] tabular-nums text-[#4A413B]/50">
-                  {day}
-                </span>
+                <span className="mt-1 text-[10px] tabular-nums text-[#4A413B]/50">{day}</span>
               </div>
             ))}
-            {stages.map((stage, i) => (
+            {stages.map((stage) => (
               <div
                 key={stage.label}
                 className="absolute flex flex-col items-center"
                 style={{
-                  left: `${(stage.day / TAPE_MAX) * 100}%`,
+                  left: `${String((stage.day / TAPE_MAX) * 100)}%`,
                   top: 0,
-                  transform: "translateX(-50%)",
+                  transform: 'translateX(-50%)',
                 }}
               >
                 <div className="text-center mb-2 w-28">
@@ -354,9 +325,7 @@ export default function Home() {
               <div key={stage.label} className="flex items-center gap-4">
                 <div className="h-2.5 w-2.5 rounded-full bg-[#B8935A] shrink-0" />
                 <div>
-                  <div className="text-sm font-semibold text-[#1B1512]">
-                    {stage.label}
-                  </div>
+                  <div className="text-sm font-semibold text-[#1B1512]">{stage.label}</div>
                   <div className="text-xs text-[#4A413B]/60">Day {stage.day}</div>
                 </div>
               </div>
@@ -364,8 +333,8 @@ export default function Home() {
           </div>
 
           <p className="text-center text-xs text-[#4A413B]/50 mt-14">
-            Estimated timelines vary by outfit type and city. Live tracking
-            available from the Orders page once shipped.
+            Estimated timelines vary by outfit type and city. Live tracking available from the
+            Orders page once shipped.
           </p>
         </div>
       </section>
@@ -381,8 +350,8 @@ export default function Home() {
               Bring JoJo Flora to your city
             </h2>
             <p className="text-[#F6F1E7]/70 text-sm leading-relaxed mb-8">
-              Low investment, full training, and end-to-end business support
-              for the right partner in the right city.
+              Low investment, full training, and end-to-end business support for the right partner
+              in the right city.
             </p>
             <Link
               to="/franchise"

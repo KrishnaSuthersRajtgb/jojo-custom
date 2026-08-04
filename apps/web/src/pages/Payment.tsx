@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShieldCheck, CheckCircle2 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import type { Address } from "../context/AddressContext";
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import type { Address } from '../context/AddressContext';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx)
 //   ink      #1B1512  headings, primary text
@@ -104,7 +104,7 @@ interface RazorpayFailureResponse {
 }
 
 interface RazorpayInstance {
-  on: (event: "payment.failed", handler: (response: RazorpayFailureResponse) => void) => void;
+  on: (event: 'payment.failed', handler: (response: RazorpayFailureResponse) => void) => void;
   open: () => void;
 }
 
@@ -113,7 +113,7 @@ declare global {
     Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
   }
 }
-const RAZORPAY_KEY_ID = "rzp_test_TGQs3nWcBn0Joq"; // TODO: replace with your Razorpay key
+const RAZORPAY_KEY_ID = 'rzp_test_TGQs3nWcBn0Joq'; // TODO: replace with your Razorpay key
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -121,10 +121,14 @@ function loadRazorpayScript(): Promise<boolean> {
       resolve(true);
       return;
     }
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => { resolve(true); };
-    script.onerror = () => { resolve(false); };
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => {
+      resolve(true);
+    };
+    script.onerror = () => {
+      resolve(false);
+    };
     document.body.appendChild(script);
   });
 }
@@ -137,11 +141,11 @@ export default function Payment() {
 
   // Same per-user localStorage convention used elsewhere (measurements,
   // body type). OrderTracking.tsx reads from this same key.
-  const ordersKey = `jojo_orders_${user?.username ?? "guest"}`;
+  const ordersKey = `jojo_orders_${user?.username ?? 'guest'}`;
 
   const [scriptReady, setScriptReady] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [paid, setPaid] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
 
@@ -158,7 +162,7 @@ export default function Payment() {
 
   const saveOrder = (razorpayPaymentId: string | null) => {
     const newOrder: SavedOrder = {
-      id: razorpayPaymentId ?? `local_${Date.now()}`,
+      id: razorpayPaymentId ?? `local_${String(Date.now())}`,
       orderDetails,
       address,
       paymentId: razorpayPaymentId,
@@ -176,10 +180,10 @@ export default function Payment() {
 
   const handlePay = () => {
     if (!scriptReady) {
-      setError("Payment gateway is still loading. Please try again in a moment.");
+      setError('Payment gateway is still loading. Please try again in a moment.');
       return;
     }
-    setError("");
+    setError('');
     setProcessing(true);
 
     // NOTE: For production, create the order server-side first
@@ -189,8 +193,8 @@ export default function Payment() {
     const options: RazorpayOptions = {
       key: RAZORPAY_KEY_ID,
       amount: orderDetails.total * 100, // amount in paise
-      currency: "INR",
-      name: "JoJo Boutique",
+      currency: 'INR',
+      name: 'JoJo Boutique',
       description: `${orderDetails.fabricName} — ${orderDetails.garment}`,
       prefill: {
         name: address.fullName,
@@ -202,7 +206,7 @@ export default function Payment() {
         addressId: address.id,
       },
       theme: {
-        color: "#5C1A32", // wine — matches the site's primary accent
+        color: '#5C1A32', // wine — matches the site's primary accent
       },
       handler: (response) => {
         setPaymentId(response.razorpay_payment_id);
@@ -218,14 +222,14 @@ export default function Payment() {
     };
 
     if (!window.Razorpay) {
-      setError("Payment gateway failed to load. Please refresh and try again.");
+      setError('Payment gateway failed to load. Please refresh and try again.');
       setProcessing(false);
       return;
     }
 
-   const rzp = new window.Razorpay(options);
-    rzp.on("payment.failed", () => {
-      setError("Payment failed. Please try again.");
+    const rzp = new window.Razorpay(options);
+    rzp.on('payment.failed', () => {
+      setError('Payment failed. Please try again.');
       setProcessing(false);
     });
     rzp.open();
@@ -256,7 +260,7 @@ export default function Payment() {
             <div className="flex gap-3 justify-center">
               <Button
                 onClick={() => {
-                  void navigate("/order-tracking", {
+                  void navigate('/order-tracking', {
                     state: { orderDetails, address, paymentId },
                   });
                 }}
@@ -266,7 +270,9 @@ export default function Payment() {
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => { void navigate("/fabrics"); }}
+                onClick={() => {
+                  void navigate('/fabrics');
+                }}
                 className="text-[#1B1512] hover:bg-[#5C1A32]/5 hover:text-[#5C1A32]"
               >
                 Continue Shopping
@@ -286,9 +292,11 @@ export default function Payment() {
       <section className="w-full px-6 pt-8 pb-6">
         <div className="max-w-xl mx-auto">
           <button
-  onClick={() => { void navigate(-1); }}
-  className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors mb-4"
->
+            onClick={() => {
+              void navigate(-1);
+            }}
+            className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors mb-4"
+          >
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
@@ -317,7 +325,7 @@ export default function Payment() {
               </span>
             </div>
             <div className="mt-4 pt-4 border-t border-[#5C1A32]/10 text-sm text-[#4A413B]">
-              Deliver to: <span className="font-medium text-[#1B1512]">{address.fullName}</span>,{" "}
+              Deliver to: <span className="font-medium text-[#1B1512]">{address.fullName}</span>,{' '}
               {address.city}, {address.state} - {address.pincode}
             </div>
           </div>
@@ -334,10 +342,10 @@ export default function Payment() {
             className="w-full inline-flex items-center justify-center gap-2 rounded-sm bg-[#1B1512] text-[#F6F1E7] font-semibold py-3 hover:bg-[#5C1A32] transition-colors disabled:opacity-60"
           >
             {!scriptReady
-              ? "Loading payment gateway..."
+              ? 'Loading payment gateway...'
               : processing
-              ? "Processing..."
-              : `Pay ₹${orderDetails.total.toString()}`}
+                ? 'Processing...'
+                : `Pay ₹${orderDetails.total.toString()}`}
           </button>
         </div>
       </section>

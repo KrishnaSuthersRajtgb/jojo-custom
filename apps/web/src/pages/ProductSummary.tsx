@@ -1,5 +1,5 @@
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx / ProductAccessories.tsx)
 //   ink      #1B1512  headings, primary text, grand-total panel
@@ -46,7 +46,7 @@ interface IncomingState {
 }
 
 function formatRupees(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 export default function ProductSummary() {
@@ -55,7 +55,7 @@ export default function ProductSummary() {
   const location = useLocation();
   const state = (location.state as IncomingState | null) ?? {};
 
-  const productName = state.productName ?? productId ?? "Item";
+  const productName = state.productName ?? productId ?? 'Item';
   const selections = state.selections ?? [];
   const accessories = state.accessories ?? [];
   const accessoriesTotal = state.accessoriesTotal ?? 0;
@@ -63,7 +63,7 @@ export default function ProductSummary() {
   const grandTotal = accessoriesTotal + (fabric?.fabricTotal ?? 0);
 
   const handleProceed = () => {
-    void navigate("/order", {
+    void navigate('/order', {
       state: {
         productId,
         productName,
@@ -84,7 +84,7 @@ export default function ProductSummary() {
     <div className="w-full min-h-screen bg-[#F6F1E7] px-6 pt-16 pb-12">
       <div className="max-w-2xl mx-auto pt-10">
         <Link
-          to={productId ? `/custom-outfit/${productId}/accessories` : "/custom-outfit"}
+          to={productId ? `/custom-outfit/${productId}/accessories` : '/custom-outfit'}
           className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -106,15 +106,11 @@ export default function ProductSummary() {
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[#4A413B]">Fabric</span>
-                <span className="font-medium text-[#1B1512]">
-                  {fabric.fabricName}
-                </span>
+                <span className="font-medium text-[#1B1512]">{fabric.fabricName}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[#4A413B]">Meters</span>
-                <span className="font-medium text-[#1B1512]">
-                  {fabric.meters} m
-                </span>
+                <span className="font-medium text-[#1B1512]">{fabric.meters} m</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[#4A413B]">Price per meter</span>
@@ -123,9 +119,7 @@ export default function ProductSummary() {
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1 border-t border-[#5C1A32]/10">
-                <span className="text-[#2A211D] font-semibold">
-                  Fabric Total
-                </span>
+                <span className="text-[#2A211D] font-semibold">Fabric Total</span>
                 <span className="font-semibold text-[#5C1A32]">
                   {formatRupees(fabric.fabricTotal)}
                 </span>
@@ -142,12 +136,12 @@ export default function ProductSummary() {
             <div className="space-y-2">
               {selections.map((sel, idx) => (
                 <div
-                  key={`${sel.sectionLabel}-${idx}`}
+                  key={`${sel.sectionLabel}-${String(idx)}`}
                   className="flex items-center justify-between text-sm"
                 >
                   <span className="text-[#4A413B]">{sel.sectionLabel}</span>
                   <span className="font-medium text-[#1B1512]">
-                    {sel.subOptionLabel ?? sel.optionLabel ?? "—"}
+                    {sel.subOptionLabel ?? sel.optionLabel ?? '—'}
                   </span>
                 </div>
               ))}
@@ -162,14 +156,9 @@ export default function ProductSummary() {
           {accessories.length > 0 ? (
             <div className="space-y-2">
               {accessories.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-center justify-between text-sm"
-                >
+                <div key={a.id} className="flex items-center justify-between text-sm">
                   <span className="text-[#2A211D]">{a.label}</span>
-                  <span className="font-medium text-[#5C1A32]">
-                    +{formatRupees(a.price)}
-                  </span>
+                  <span className="font-medium text-[#5C1A32]">+{formatRupees(a.price)}</span>
                 </div>
               ))}
             </div>
@@ -179,9 +168,7 @@ export default function ProductSummary() {
         </div>
 
         <div className="rounded-sm bg-[#1B1512] text-[#F6F1E7] p-6 mb-10 flex items-center justify-between">
-          <span className="font-semibold">
-            {fabric ? "Grand Total" : "Tailoring Total"}
-          </span>
+          <span className="font-semibold">{fabric ? 'Grand Total' : 'Tailoring Total'}</span>
           <span className="text-2xl font-bold" style={serif}>
             {formatRupees(grandTotal)}
           </span>

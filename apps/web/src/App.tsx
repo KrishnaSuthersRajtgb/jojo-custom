@@ -16,17 +16,16 @@ import Profile from './pages/Profile';
 import Order from './pages/Order';
 import Payment from './pages/Payment';
 import OrderTracking from './pages/OrderTracking';
-import CustomOutfit from './pages/Customoutfit';
+import CustomOutfit from './pages/CustomOutfit';
 import ProductStyle from './pages/ProductStyle';
 import ProductAccessories from './pages/ProductAccessories';
 import ProductSummary from './pages/ProductSummary';
-import Franchise from "./pages/Franchise";
+import Franchise from './pages/Franchise';
 import Footer from './components/Footer';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminDashboard from './pages/admin/AdminDashboard';
 
-
-import ScrollToTop from "./components/ScrollToTop";
+import ScrollToTop from './components/ScrollToTop';
 function AppContent() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -41,18 +40,18 @@ function AppContent() {
   const navbarUser = user ? { name: user.username, email: user.email } : null;
 
   return (
-  <div className="min-h-screen bg-white flex flex-col">
-    <ScrollToTop />
-    <Navbar
-      user={navbarUser}
-      onSignIn={() => {
-        void navigate('/signup');
-      }}
-      onLogin={() => {
-        void navigate('/login');
-      }}
-      onLogout={handleLogout}
-    />
+    <div className="min-h-screen bg-white flex flex-col">
+      <ScrollToTop />
+      <Navbar
+        user={navbarUser}
+        onSignIn={() => {
+          void navigate('/signup');
+        }}
+        onLogin={() => {
+          void navigate('/login');
+        }}
+        onLogout={handleLogout}
+      />
       {/* pt-16 offsets the now-fixed Navbar (h-16) so content isn't hidden underneath it */}
       <div className="flex-1 flex flex-col lg:flex-row pt-16">
         <main className="flex-1 min-w-0">

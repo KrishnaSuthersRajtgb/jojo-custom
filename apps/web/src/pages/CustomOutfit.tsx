@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Shirt,
   Layers,
@@ -10,7 +10,7 @@ import {
   Package,
   ArrowRight,
   Check,
-} from "lucide-react";
+} from 'lucide-react';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx)
 //   ink      #1B1512  headings, primary text, selected-card background
@@ -48,51 +48,51 @@ interface CustomOutfitState {
 
 const PRODUCTS: Product[] = [
   {
-    id: "blouse",
-    name: "Blouse",
-    description: "Fitted or designer-back blouses, tailored to your size.",
+    id: 'blouse',
+    name: 'Blouse',
+    description: 'Fitted or designer-back blouses, tailored to your size.',
     icon: <Shirt className="h-6 w-6" />,
   },
   {
-    id: "chudidhar",
-    name: "Chudidhar",
-    description: "Classic or Anarkali-style sets stitched to measure.",
+    id: 'chudidhar',
+    name: 'Chudidhar',
+    description: 'Classic or Anarkali-style sets stitched to measure.',
     icon: <Layers className="h-6 w-6" />,
   },
   {
-    id: "frocks",
-    name: "Frocks",
-    description: "Everyday and party frocks in your choice of fabric.",
+    id: 'frocks',
+    name: 'Frocks',
+    description: 'Everyday and party frocks in your choice of fabric.',
     icon: <Sparkles className="h-6 w-6" />,
   },
   {
-    id: "lehanga",
-    name: "Lehanga",
-    description: "Festive lehangas with custom embroidery options.",
+    id: 'lehanga',
+    name: 'Lehanga',
+    description: 'Festive lehangas with custom embroidery options.',
     icon: <Crown className="h-6 w-6" />,
   },
   {
-    id: "ready-to-wear-saree",
-    name: "Ready to Wear Saree",
-    description: "Pre-stitched sarees, ready in your exact size.",
+    id: 'ready-to-wear-saree',
+    name: 'Ready to Wear Saree',
+    description: 'Pre-stitched sarees, ready in your exact size.',
     icon: <PackageCheck className="h-6 w-6" />,
   },
   {
-    id: "pant",
-    name: "Pant",
-    description: "Palazzos, straight pants, and more, made to fit.",
+    id: 'pant',
+    name: 'Pant',
+    description: 'Palazzos, straight pants, and more, made to fit.',
     icon: <Ruler className="h-6 w-6" />,
   },
   {
-    id: "over-coat",
-    name: "Over Coat",
-    description: "Layered over-coats tailored for a sharp silhouette.",
+    id: 'over-coat',
+    name: 'Over Coat',
+    description: 'Layered over-coats tailored for a sharp silhouette.',
     icon: <Package className="h-6 w-6" />,
   },
 ];
 
 function formatRupees(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 export default function CustomOutfit() {
@@ -122,18 +122,16 @@ export default function CustomOutfit() {
             Customize Your Outfit
           </h1>
           <p className="text-[#4A413B] max-w-xl mx-auto">
-            Pick what you'd like to have tailored. You can add your
-            measurements and fabric choice in the next step.
+            Pick what you'd like to have tailored. You can add your measurements and fabric choice
+            in the next step.
           </p>
         </div>
 
         {fabric && (
           <div className="mb-8 max-w-xl mx-auto rounded-sm border border-[#5C1A32]/15 bg-white px-5 py-3 flex items-center justify-between text-sm">
             <span className="text-[#4A413B]">
-              Fabric selected:{" "}
-              <span className="font-semibold text-[#1B1512]">
-                {fabric.fabricName}
-              </span>
+              Fabric selected:{' '}
+              <span className="font-semibold text-[#1B1512]">{fabric.fabricName}</span>
             </span>
             <span className="font-semibold text-[#5C1A32]">
               {fabric.meters}m · {formatRupees(fabric.fabricTotal)}
@@ -148,12 +146,14 @@ export default function CustomOutfit() {
               <button
                 key={product.id}
                 type="button"
-                onClick={() => setSelectedId(product.id)}
+                onClick={() => {
+                  setSelectedId(product.id);
+                }}
                 aria-pressed={isSelected}
                 className={`group relative text-left rounded-sm p-6 flex flex-col transition-all border ${
                   isSelected
-                    ? "bg-[#1B1512] border-transparent text-[#F6F1E7] shadow-md"
-                    : "bg-white border-[#5C1A32]/12 hover:shadow-md hover:border-[#5C1A32]/30 text-[#1B1512]"
+                    ? 'bg-[#1B1512] border-transparent text-[#F6F1E7] shadow-md'
+                    : 'bg-white border-[#5C1A32]/12 hover:shadow-md hover:border-[#5C1A32]/30 text-[#1B1512]'
                 }`}
               >
                 {isSelected && (
@@ -163,19 +163,15 @@ export default function CustomOutfit() {
                 )}
                 <div
                   className={`h-12 w-12 rounded-sm flex items-center justify-center mb-4 ${
-                    isSelected
-                      ? "bg-[#F6F1E7]/15 text-[#B8935A]"
-                      : "bg-[#5C1A32]/8 text-[#5C1A32]"
+                    isSelected ? 'bg-[#F6F1E7]/15 text-[#B8935A]' : 'bg-[#5C1A32]/8 text-[#5C1A32]'
                   }`}
                 >
                   {product.icon}
                 </div>
-                <h3 className="text-base font-semibold mb-1">
-                  {product.name}
-                </h3>
+                <h3 className="text-base font-semibold mb-1">{product.name}</h3>
                 <p
                   className={`text-xs leading-relaxed ${
-                    isSelected ? "text-[#F6F1E7]/75" : "text-[#4A413B]"
+                    isSelected ? 'text-[#F6F1E7]/75' : 'text-[#4A413B]'
                   }`}
                 >
                   {product.description}
@@ -192,13 +188,13 @@ export default function CustomOutfit() {
             disabled={!selectedProduct}
             className={`inline-flex items-center gap-2 font-semibold text-sm px-6 py-3 rounded-full transition-colors ${
               selectedProduct
-                ? "bg-[#1B1512] text-[#F6F1E7] hover:bg-[#5C1A32]"
-                : "bg-[#5C1A32]/10 text-[#4A413B]/50 cursor-not-allowed"
+                ? 'bg-[#1B1512] text-[#F6F1E7] hover:bg-[#5C1A32]'
+                : 'bg-[#5C1A32]/10 text-[#4A413B]/50 cursor-not-allowed'
             }`}
           >
             {selectedProduct
               ? `Continue with ${selectedProduct.name}`
-              : "Select an item to continue"}
+              : 'Select an item to continue'}
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>

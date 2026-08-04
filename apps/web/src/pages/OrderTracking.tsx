@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { CheckCircle2, Clock, Package, ArrowLeft, Ruler, Receipt, User } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import type { Address } from "../context/AddressContext";
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CheckCircle2, Clock, Package, ArrowLeft, Ruler, Receipt, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import type { Address } from '../context/AddressContext';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx)
 //   ink      #1B1512  headings, primary text
@@ -51,44 +51,44 @@ interface OrderDetails {
 // duplicated here (not imported) since those files export components,
 // not the label map, and this page shouldn't depend on their internals.
 const BODY_TYPE_LABELS: Record<string, string> = {
-  invertedTriangle: "The Inverted Triangle",
-  column: "The Column",
-  rectangle: "The Rectangle",
-  apple: "The Apple",
-  pear: "The Pear",
-  hourglass: "The Hour Glass",
+  invertedTriangle: 'The Inverted Triangle',
+  column: 'The Column',
+  rectangle: 'The Rectangle',
+  apple: 'The Apple',
+  pear: 'The Pear',
+  hourglass: 'The Hour Glass',
 };
 
 // Fulfilment stage of an order, set by the admin dashboard
 // (AdminDashboard.tsx writes this same field into the saved order).
 // Orders saved before this field existed won't have it, so we fall back
 // to "placed" wherever it's read.
-type OrderStatus = "placed" | "packed" | "dispatched" | "delivered";
+type OrderStatus = 'placed' | 'packed' | 'dispatched' | 'delivered';
 
-const STATUS_ORDER: OrderStatus[] = ["placed", "packed", "dispatched", "delivered"];
+const STATUS_ORDER: OrderStatus[] = ['placed', 'packed', 'dispatched', 'delivered'];
 
 // Static copy for each stage of the timeline. The live "done / current /
 // pending" state is computed from the order's status, not hardcoded here.
 const TIMELINE_STEP_INFO: { title: string; dayLabel: string; description: string }[] = [
   {
-    title: "Order Placed",
-    dayLabel: "Today",
-    description: "Payment confirmed",
+    title: 'Order Placed',
+    dayLabel: 'Today',
+    description: 'Payment confirmed',
   },
   {
-    title: "Packed & Ready",
-    dayLabel: "Day 1",
-    description: "Fabric packed for shipment",
+    title: 'Packed & Ready',
+    dayLabel: 'Day 1',
+    description: 'Fabric packed for shipment',
   },
   {
-    title: "Dispatched",
-    dayLabel: "Day 2–3",
-    description: "On its way to you",
+    title: 'Dispatched',
+    dayLabel: 'Day 2–3',
+    description: 'On its way to you',
   },
   {
-    title: "Delivered",
-    dayLabel: "Day 4–5",
-    description: "Arrived at your doorstep",
+    title: 'Delivered',
+    dayLabel: 'Day 4–5',
+    description: 'Arrived at your doorstep',
   },
 ];
 
@@ -110,7 +110,7 @@ interface SavedOrder {
   status?: OrderStatus;
 }
 
-type StepStatus = "done" | "current" | "pending";
+type StepStatus = 'done' | 'current' | 'pending';
 
 interface TimelineStep {
   title: string;
@@ -123,33 +123,33 @@ interface TimelineStep {
 // the order (defaulting to "placed" for orders saved before admin status
 // tracking existed).
 function buildTimelineSteps(status: OrderStatus | undefined): TimelineStep[] {
-  const currentIndex = STATUS_ORDER.indexOf(status ?? "placed");
+  const currentIndex = STATUS_ORDER.indexOf(status ?? 'placed');
   // Once the order has reached the final stage (Delivered), that step is
   // complete, not "in progress" — there's nothing left to progress to.
   const isFinalStage = currentIndex === STATUS_ORDER.length - 1;
   return TIMELINE_STEP_INFO.map((info, index) => {
     let stepStatus: StepStatus;
     if (index < currentIndex || (index === currentIndex && isFinalStage)) {
-      stepStatus = "done";
+      stepStatus = 'done';
     } else if (index === currentIndex) {
-      stepStatus = "current";
+      stepStatus = 'current';
     } else {
-      stepStatus = "pending";
+      stepStatus = 'pending';
     }
     return { ...info, status: stepStatus };
   });
 }
 
 function formatRupees(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
+    return new Date(iso).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
     });
   } catch {
     return iso;
@@ -166,20 +166,25 @@ export default function OrderTracking() {
   const freshOrder = location.state as OrderTrackingState | null;
 
   // Same key Payment.tsx writes to.
-  const ordersKey = `jojo_orders_${user?.username ?? "guest"}`;
+  const ordersKey = `jojo_orders_${user?.username ?? 'guest'}`;
   const [savedOrders, setSavedOrders] = useState<SavedOrder[]>([]);
 
   // Which order's timeline is currently shown. Starts as the fresh
   // post-payment order if there is one; otherwise null, which shows the
   // My Orders list first.
   const [activeOrder, setActiveOrder] = useState<OrderTrackingState | SavedOrder | null>(
-    freshOrder
+    freshOrder,
   );
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(ordersKey);
-      setSavedOrders(raw ? (JSON.parse(raw) as SavedOrder[]) : []);
+      if (!raw) {
+        setSavedOrders([]);
+        return;
+      }
+      const parsed: unknown = JSON.parse(raw);
+      setSavedOrders(Array.isArray(parsed) ? (parsed as SavedOrder[]) : []);
     } catch {
       setSavedOrders([]);
     }
@@ -200,9 +205,7 @@ export default function OrderTracking() {
                 My Orders
               </h1>
             </div>
-            <p className="text-[#4A413B]">
-              Your past orders and their payment status.
-            </p>
+            <p className="text-[#4A413B]">Your past orders and their payment status.</p>
           </div>
         </section>
 
@@ -210,11 +213,11 @@ export default function OrderTracking() {
           <div className="max-w-xl mx-auto space-y-4">
             {savedOrders.length === 0 ? (
               <div className="bg-white rounded-sm border border-[#5C1A32]/12 shadow-sm p-8 text-center">
-                <p className="text-[#4A413B] mb-4">
-                  You haven't placed any orders yet.
-                </p>
+                <p className="text-[#4A413B] mb-4">You haven't placed any orders yet.</p>
                 <button
-                  onClick={() => { void navigate("/fabrics"); }}
+                  onClick={() => {
+                    void navigate('/fabrics');
+                  }}
                   className="inline-flex items-center justify-center gap-2 rounded-sm bg-[#1B1512] text-[#F6F1E7] font-semibold px-5 py-2.5 hover:bg-[#5C1A32] transition-colors"
                 >
                   Browse Fabrics
@@ -224,7 +227,9 @@ export default function OrderTracking() {
               savedOrders.map((order) => (
                 <button
                   key={order.id}
-                  onClick={() => setActiveOrder(order)}
+                  onClick={() => {
+                    setActiveOrder(order);
+                  }}
                   className="w-full text-left bg-white rounded-sm border border-[#5C1A32]/12 shadow-sm p-5 hover:border-[#5C1A32]/40 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -251,9 +256,7 @@ export default function OrderTracking() {
                     ) : (
                       <>
                         <Clock className="h-4 w-4 text-amber-500" />
-                        <span className="text-xs font-medium text-amber-600">
-                          Payment pending
-                        </span>
+                        <span className="text-xs font-medium text-amber-600">Payment pending</span>
                       </>
                     )}
                     {order.orderDetails.measurementValues &&
@@ -287,7 +290,9 @@ export default function OrderTracking() {
         <div className="max-w-4xl mx-auto">
           {cameFromList && (
             <button
-              onClick={() => setActiveOrder(null)}
+              onClick={() => {
+                setActiveOrder(null);
+              }}
               className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors mb-4"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -313,14 +318,15 @@ export default function OrderTracking() {
               )}
             </div>
             <p className="text-sm text-[#4A413B] mb-6">
-              {orderDetails.fabricName} · {orderDetails.garment} · {formatRupees(orderDetails.total)}
+              {orderDetails.fabricName} · {orderDetails.garment} ·{' '}
+              {formatRupees(orderDetails.total)}
             </p>
 
             <ol>
               {timelineSteps.map((step, index) => {
                 const isLast = index === timelineSteps.length - 1;
-                const isDone = step.status === "done";
-                const isCurrent = step.status === "current";
+                const isDone = step.status === 'done';
+                const isCurrent = step.status === 'current';
 
                 return (
                   <li key={step.title} className="relative pl-0">
@@ -329,12 +335,12 @@ export default function OrderTracking() {
                       <div className="flex flex-col items-center">
                         <div
                           className={
-                            "h-9 w-9 rounded-full flex items-center justify-center shrink-0 " +
+                            'h-9 w-9 rounded-full flex items-center justify-center shrink-0 ' +
                             (isDone
-                              ? "bg-[#1B1512]"
+                              ? 'bg-[#1B1512]'
                               : isCurrent
-                              ? "border-2 border-[#5C1A32] bg-white"
-                              : "border-2 border-[#5C1A32]/15 bg-white")
+                                ? 'border-2 border-[#5C1A32] bg-white'
+                                : 'border-2 border-[#5C1A32]/15 bg-white')
                           }
                         >
                           {isDone ? (
@@ -342,8 +348,8 @@ export default function OrderTracking() {
                           ) : (
                             <div
                               className={
-                                "h-2.5 w-2.5 rounded-full " +
-                                (isCurrent ? "bg-[#5C1A32]" : "bg-[#5C1A32]/15")
+                                'h-2.5 w-2.5 rounded-full ' +
+                                (isCurrent ? 'bg-[#5C1A32]' : 'bg-[#5C1A32]/15')
                               }
                             />
                           )}
@@ -351,21 +357,20 @@ export default function OrderTracking() {
                         {!isLast && (
                           <div
                             className={
-                              "w-0.5 flex-1 min-h-[2.5rem] " +
-                              (isDone ? "bg-[#1B1512]" : "bg-[#5C1A32]/15")
+                              'w-0.5 flex-1 min-h-[2.5rem] ' +
+                              (isDone ? 'bg-[#1B1512]' : 'bg-[#5C1A32]/15')
                             }
                           />
                         )}
                       </div>
 
                       {/* Text content */}
-                      <div className={isLast ? "pb-0" : "pb-8"}>
+                      <div className={isLast ? 'pb-0' : 'pb-8'}>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
                             className={
-                              (isDone || isCurrent
-                                ? "text-[#1B1512]"
-                                : "text-[#4A413B]") + " font-semibold"
+                              (isDone || isCurrent ? 'text-[#1B1512]' : 'text-[#4A413B]') +
+                              ' font-semibold'
                             }
                             style={serif}
                           >
@@ -380,9 +385,7 @@ export default function OrderTracking() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-[#4A413B] mt-1">
-                          {step.description}
-                        </p>
+                        <p className="text-sm text-[#4A413B] mt-1">{step.description}</p>
                       </div>
                     </div>
                   </li>
@@ -410,12 +413,12 @@ export default function OrderTracking() {
                 <div className="space-y-1.5">
                   {orderDetails.selections.map((sel, idx) => (
                     <div
-                      key={`${sel.sectionLabel}-${idx}`}
+                      key={`${sel.sectionLabel}-${String(idx)}`}
                       className="flex items-center justify-between text-sm"
                     >
                       <span className="text-[#4A413B]">{sel.sectionLabel}</span>
                       <span className="font-medium text-[#1B1512]">
-                        {sel.subOptionLabel ?? sel.optionLabel ?? "—"}
+                        {sel.subOptionLabel ?? sel.optionLabel ?? '—'}
                       </span>
                     </div>
                   ))}
@@ -449,7 +452,7 @@ export default function OrderTracking() {
 
               <div className="flex items-center justify-between py-2 border-b border-[#5C1A32]/10">
                 <span className="text-sm text-[#4A413B]">
-                  {orderDetails.fabricName} ({orderDetails.meters}m ×{" "}
+                  {orderDetails.fabricName} ({orderDetails.meters}m ×{' '}
                   {formatRupees(orderDetails.pricePerMeter)})
                 </span>
                 <span className="text-sm font-semibold text-[#1B1512]">
@@ -497,13 +500,11 @@ export default function OrderTracking() {
                 <div className="p-6 space-y-3 max-h-[28rem] overflow-y-auto">
                   {Object.entries(orderDetails.measurementValues).map(([label, value], idx) => (
                     <div key={label} className="flex items-center gap-3">
-                      <span className="w-5 text-xs font-semibold text-[#B8935A]">
-                        {idx + 1}
-                      </span>
+                      <span className="w-5 text-xs font-semibold text-[#B8935A]">{idx + 1}</span>
                       <span className="flex-1 text-sm text-[#2A211D]">{label}</span>
                       <div className="flex items-center gap-1">
                         <span className="w-14 rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-center text-[#1B1512] font-medium">
-                          {value && value.trim() !== "" ? value : "0.0"}
+                          {value && value.trim() !== '' ? value : '0.0'}
                         </span>
                         <span className="text-xs text-[#4A413B]/60">in</span>
                       </div>
@@ -519,14 +520,18 @@ export default function OrderTracking() {
         <div className="max-w-4xl mx-auto flex gap-3">
           {cameFromList && (
             <button
-              onClick={() => setActiveOrder(null)}
+              onClick={() => {
+                setActiveOrder(null);
+              }}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-sm border border-[#5C1A32] text-[#5C1A32] font-semibold py-3 hover:bg-[#5C1A32]/5 transition-colors"
             >
               Back to My Orders
             </button>
           )}
           <button
-            onClick={() => { void navigate("/"); }}
+            onClick={() => {
+              void navigate('/');
+            }}
             className="flex-1 inline-flex items-center justify-center gap-2 rounded-sm bg-[#1B1512] text-[#F6F1E7] font-semibold py-3 hover:bg-[#5C1A32] transition-colors"
           >
             Back to Home

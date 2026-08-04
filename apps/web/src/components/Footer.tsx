@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
-import { Instagram, Facebook, Mail, Phone, MapPin } from "lucide-react";
+import { Link } from 'react-router-dom';
+import { Mail, Phone, MapPin } from 'lucide-react';
+import { FaInstagram, FaFacebook } from 'react-icons/fa';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx) ──────────────────────────
 //   ink      #1B1512  headings, dark surfaces
@@ -25,23 +26,22 @@ export default function Footer() {
             </span>
           </div>
           <p className="text-sm text-[#4A413B] leading-relaxed">
-            Custom-tailored fabrics and outfits, made to your measurements —
-            from fabric to finish.
+            Custom-tailored fabrics and outfits, made to your measurements — from fabric to finish.
           </p>
           <div className="flex items-center gap-3 mt-4">
             <a
-              href="#"
+              href="https://www.instagram.com/jojotailoringstudio?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
               aria-label="Instagram"
               className="h-8 w-8 rounded-full border border-[#5C1A32]/20 flex items-center justify-center text-[#4A413B] hover:text-[#5C1A32] hover:border-[#5C1A32] transition-colors"
             >
-              <Instagram className="h-4 w-4" />
+              <FaInstagram className="h-4 w-4" />
             </a>
             <a
               href="#"
               aria-label="Facebook"
               className="h-8 w-8 rounded-full border border-[#5C1A32]/20 flex items-center justify-center text-[#4A413B] hover:text-[#5C1A32] hover:border-[#5C1A32] transition-colors"
             >
-              <Facebook className="h-4 w-4" />
+              <FaFacebook className="h-4 w-4" />
             </a>
           </div>
         </div>
@@ -58,17 +58,26 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/custom-outfit" className="text-[#4A413B] hover:text-[#5C1A32] transition-colors">
+              <Link
+                to="/custom-outfit"
+                className="text-[#4A413B] hover:text-[#5C1A32] transition-colors"
+              >
                 Customize to JOJO
               </Link>
             </li>
             <li>
-              <Link to="/order-tracking" className="text-[#4A413B] hover:text-[#5C1A32] transition-colors">
+              <Link
+                to="/order-tracking"
+                className="text-[#4A413B] hover:text-[#5C1A32] transition-colors"
+              >
                 My Orders
               </Link>
             </li>
             <li>
-              <Link to="/addresses" className="text-[#4A413B] hover:text-[#5C1A32] transition-colors">
+              <Link
+                to="/addresses"
+                className="text-[#4A413B] hover:text-[#5C1A32] transition-colors"
+              >
                 My Addresses
               </Link>
             </li>
@@ -87,7 +96,10 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/measurements" className="text-[#4A413B] hover:text-[#5C1A32] transition-colors">
+              <Link
+                to="/measurements"
+                className="text-[#4A413B] hover:text-[#5C1A32] transition-colors"
+              >
                 My Measurements
               </Link>
             </li>
@@ -112,17 +124,20 @@ export default function Footer() {
           <ul className="space-y-3 text-sm">
             <li className="flex items-start gap-2 text-[#4A413B]">
               <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-[#B8935A]" />
-              Bhavani, Erode District, Tamil Nadu
+              No 3 Erode main road near seethakalyana mandapam, Gobichettipalaiyam 638476.
             </li>
             <li className="flex items-center gap-2 text-[#4A413B]">
               <Phone className="h-4 w-4 shrink-0 text-[#B8935A]" />
-              <a href="tel:+910000000000" className="hover:text-[#5C1A32] transition-colors">
-                +91 00000 00000
+              <a href="tel:+91 95973 00773" className="hover:text-[#5C1A32] transition-colors">
+                +91 95973 00773
               </a>
             </li>
             <li className="flex items-center gap-2 text-[#4A413B]">
               <Mail className="h-4 w-4 shrink-0 text-[#B8935A]" />
-              <a href="mailto:hello@jojoflora.com" className="hover:text-[#5C1A32] transition-colors">
+              <a
+                href="mailto:hello@jojoflora.com"
+                className="hover:text-[#5C1A32] transition-colors"
+              >
                 hello@jojoflora.com
               </a>
             </li>
@@ -133,14 +148,10 @@ export default function Footer() {
       {/* Bottom bar */}
       <div className="border-t border-[#5C1A32]/15">
         <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-[#4A413B]/60">
-            © {year} JoJo Flora. All rights reserved.
-          </p>
+          <p className="text-xs text-[#4A413B]/60">© {year} JoJo Flora. All rights reserved.</p>
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-[#B8935A]" />
-            <p className="text-xs text-[#4A413B]/60">
-              Tailored with care, one stitch at a time.
-            </p>
+            <p className="text-xs text-[#4A413B]/60">Tailored with care, one stitch at a time.</p>
           </div>
         </div>
       </div>

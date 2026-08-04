@@ -2,7 +2,7 @@ interface MeasurementPoint {
   /** Label shown next to the dashed guide line, e.g. "Bust", "Waist", "Hip", "Seat". */
   label: string;
   /** The value currently typed into that field (already parsed to a number), if any. */
-  value?: number;
+  value?: number | undefined;
   /** Typical reference value (in inches) used to scale the silhouette around. */
   baseline: number;
 }

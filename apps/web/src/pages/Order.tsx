@@ -95,17 +95,17 @@ interface NormalizedOrder {
   fabricName: string;
   tone: string;
   garment: string;
-  garmentLabel?: string;
+  garmentLabel?: string | undefined;
   meters: number;
   pricePerMeter: number;
   fabricTotal: number;
-  productName?: string;
-  selections?: CustomSelection[] | null;
+  productName?: string | undefined;
+  selections?: CustomSelection[] | null | undefined;
   accessories: CustomAccessory[];
   accessoriesTotal: number;
   total: number;
-  measurementValues?: Record<string, string> | null;
-  bodyType?: string | null;
+  measurementValues?: Record<string, string> | null | undefined;
+  bodyType?: string | null | undefined;
 }
 
 function normalizeOrder(

@@ -580,8 +580,8 @@ export default function ProductStyle() {
 
     const resolvedSelections = config.sections.map((section) => {
       const sel = selections[section.id];
-      const option = section.options.find((o) => o.id === sel.optionId) ?? null;
-      const subOption = option?.subOptions?.find((s) => s.id === sel.subOptionId) ?? null;
+      const option = section.options.find((o) => o.id === sel?.optionId) ?? null;
+      const subOption = option?.subOptions?.find((s) => s.id === sel?.subOptionId) ?? null;
       return {
         sectionId: section.id,
         sectionLabel: section.label,

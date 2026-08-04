@@ -63,8 +63,7 @@ const EMPTY_FORM: FranchiseFormState = {
 
 const INVESTMENT_BANDS = ['₹5L – ₹10L', '₹10L – ₹25L', '₹25L – ₹50L', '₹50L+'];
 
-type FormErrors = Partial<Record<keyof FranchiseFormState, string>>;
-
+type FormErrors = Partial<Record<keyof FranchiseFormState, string | undefined>>;
 export default function Franchise() {
   const navigate = useNavigate();
 

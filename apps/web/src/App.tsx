@@ -24,6 +24,7 @@ import Franchise from './pages/Franchise';
 import Footer from './components/Footer';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import ColorWheel from './components/ColorWheel';
 
 import ScrollToTop from './components/ScrollToTop';
 function AppContent() {
@@ -81,12 +82,20 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/payment" element={<Payment />} />
+            <Route
+              path="/payment"
+              element={
+                <ProtectedRoute>
+                  <Payment />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/custom-outfit" element={<CustomOutfit />} />
             <Route path="/custom-outfit/:productId" element={<ProductStyle />} />
             <Route path="/custom-outfit/:productId/accessories" element={<ProductAccessories />} />
             <Route path="/custom-outfit/:productId/summary" element={<ProductSummary />} />
             <Route path="/franchise" element={<Franchise />} />
+            <Route path="/color-wheel" element={<ColorWheel />} />
             <Route
               path="/admin/orders"
               element={

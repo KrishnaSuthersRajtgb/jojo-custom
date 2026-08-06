@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Star, MapPin, Users, Store } from 'lucide-react';
-
 // ── Design tokens ─────────────────────────────────────────────────────────
 // A bespoke-tailoring identity built around the one instrument every
 // custom-fit garment starts with: the measuring tape. Ink, aged brass, and
@@ -283,21 +282,58 @@ export default function Home() {
           </div>
 
           {/* Desktop: stages pinned along an actual tape, at their day mark */}
+          {/* Desktop: stages pinned along an actual tape, at their day mark */}
           <div className="hidden md:block relative pt-10 pb-2">
-            <div className="absolute left-0 right-0 top-[52px] h-px bg-[#5C1A32]/25" />
-            {Array.from({ length: TAPE_MAX + 1 }).map((_, day) => (
-              <div
-                key={day}
-                className="absolute top-[46px] flex flex-col items-center"
-                style={{
-                  left: `${String((day / TAPE_MAX) * 100)}%`,
-                  transform: 'translateX(-50%)',
-                }}
-              >
-                <div className="w-px h-3 bg-[#5C1A32]/40" />
-                <span className="mt-1 text-[10px] tabular-nums text-[#4A413B]/50">{day}</span>
-              </div>
-            ))}
+            <svg
+              className="absolute left-0 right-0 top-[52px] w-full h-3 overflow-visible"
+              aria-hidden="true"
+            >
+              <defs>
+                <marker
+                  id="tapeArrowHead"
+                  markerWidth="8"
+                  markerHeight="8"
+                  refX="6"
+                  refY="4"
+                  orient="auto"
+                >
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#5C1A32" fillOpacity="0.5" />
+                </marker>
+              </defs>
+              <line
+                x1="0"
+                y1="0.5"
+                x2="100%"
+                y2="0.5"
+                stroke="#5C1A32"
+                strokeOpacity="0.25"
+                strokeWidth="1"
+                markerEnd="url(#tapeArrowHead)"
+              />
+            </svg>
+            {Array.from({ length: TAPE_MAX + 1 }).map((_, day) => {
+              // Days that already have a named stage don't need a "Processing" label —
+              // only fill in the gaps between stages so the tape doesn't look empty.
+              const hasStage = stages.some((s) => s.day === day);
+              return (
+                <div
+                  key={day}
+                  className="absolute top-[46px] flex flex-col items-center"
+                  style={{
+                    left: `${String((day / TAPE_MAX) * 100)}%`,
+                    transform: 'translateX(-50%)',
+                  }}
+                >
+                  {!hasStage && (
+                    <span className="absolute -top-[38px] text-[10px] font-medium tracking-wide text-[#4A413B]/40 whitespace-nowrap">
+                      Processing
+                    </span>
+                  )}
+                  <div className="w-px h-3 bg-[#5C1A32]/40" />
+                  <span className="mt-1 text-[10px] tabular-nums text-[#4A413B]/50">{day}</span>
+                </div>
+              );
+            })}
             {stages.map((stage) => (
               <div
                 key={stage.label}

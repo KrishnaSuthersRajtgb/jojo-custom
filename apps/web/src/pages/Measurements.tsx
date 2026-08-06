@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { Ruler, Save, CheckCircle2 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import { MEASUREMENTS_UPDATED_EVENT } from "../components/MeasurementSidebar";
-import BodyTypeSelector from "../components/BodyTypeSelector";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Ruler, Save, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { MEASUREMENTS_UPDATED_EVENT } from '../components/MeasurementSidebar';
+import BodyTypeSelector from '../components/BodyTypeSelector';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx / ProductAccessories.tsx / ProductSummary.tsx / Address.tsx)
 //   ink      #1B1512  headings, primary text
@@ -21,62 +22,63 @@ interface FieldDef {
 }
 
 const BLOUSE_FIELDS: FieldDef[] = [
-  { key: "height", label: "Height" },
-  { key: "upperChest", label: "Upper Chest" },
-  { key: "centerChest", label: "Center Chest" },
-  { key: "waistRound", label: "Waist Round" },
-  { key: "sleeveLength", label: "Sleeve Length" },
-  { key: "sleeveRound", label: "Sleeve Round" },
-  { key: "midHand", label: "Mid Hand" },
-  { key: "armRound", label: "Arm Round" },
-  { key: "frontNeck", label: "Front Neck" },
-  { key: "backNeck", label: "Back Neck" },
-  { key: "fullShoulder", label: "Full Shoulder" },
-  { key: "shoulderWidth", label: "Shoulder Width" },
-  { key: "centerDot", label: "Center Dot" },
+  { key: 'height', label: 'Height' },
+  { key: 'upperChest', label: 'Upper Chest' },
+  { key: 'centerChest', label: 'Center Chest' },
+  { key: 'waistRound', label: 'Waist Round' },
+  { key: 'sleeveLength', label: 'Sleeve Length' },
+  { key: 'sleeveRound', label: 'Sleeve Round' },
+  { key: 'midHand', label: 'Mid Hand' },
+  { key: 'armRound', label: 'Arm Round' },
+  { key: 'frontNeck', label: 'Front Neck' },
+  { key: 'backNeck', label: 'Back Neck' },
+  { key: 'fullShoulder', label: 'Full Shoulder' },
+  { key: 'shoulderWidth', label: 'Shoulder Width' },
+  { key: 'centerDot', label: 'Center Dot' },
 ];
 
 const CHUDI_FIELDS: FieldDef[] = [
-  { key: "height", label: "Height" },
-  { key: "chest", label: "Chest" },
-  { key: "waistHeight", label: "Waist Height" },
-  { key: "waistRound", label: "Waist Round" },
-  { key: "sleeveLength", label: "Sleeve Length" },
-  { key: "sleeveRound", label: "Sleeve Round" },
-  { key: "midHand", label: "Mid Hand" },
-  { key: "armRound", label: "Arm Round" },
-  { key: "frontNeck", label: "Front Neck" },
-  { key: "backNeck", label: "Back Neck" },
-  { key: "fullShoulder", label: "Full Shoulder" },
-  { key: "shoulderWidth", label: "Shoulder Width" },
-  { key: "seatLoose", label: "Seat Loose" },
-  { key: "slitOpenFTop", label: "Slit Open f Top" },
+  { key: 'height', label: 'Height' },
+  { key: 'chest', label: 'Chest' },
+  { key: 'waistHeight', label: 'Waist Height' },
+  { key: 'waistRound', label: 'Waist Round' },
+  { key: 'sleeveLength', label: 'Sleeve Length' },
+  { key: 'sleeveRound', label: 'Sleeve Round' },
+  { key: 'midHand', label: 'Mid Hand' },
+  { key: 'armRound', label: 'Arm Round' },
+  { key: 'frontNeck', label: 'Front Neck' },
+  { key: 'backNeck', label: 'Back Neck' },
+  { key: 'fullShoulder', label: 'Full Shoulder' },
+  { key: 'shoulderWidth', label: 'Shoulder Width' },
+  { key: 'seatLoose', label: 'Seat Loose' },
+  { key: 'slitOpenFTop', label: 'Slit Open f Top' },
 ];
 
 const PANT_FIELDS: FieldDef[] = [
-  { key: "height", label: "Height" },
-  { key: "hipRound", label: "Hip Round" },
-  { key: "seatRound", label: "Seat Round" },
-  { key: "kneeRound", label: "Knee Round" },
-  { key: "thighRound", label: "Thigh Round" },
-  { key: "legRound", label: "Leg Round" },
-  { key: "croch", label: "Croch" },
+  { key: 'height', label: 'Height' },
+  { key: 'hipRound', label: 'Hip Round' },
+  { key: 'seatRound', label: 'Seat Round' },
+  { key: 'kneeRound', label: 'Knee Round' },
+  { key: 'thighRound', label: 'Thigh Round' },
+  { key: 'legRound', label: 'Leg Round' },
+  { key: 'croch', label: 'Croch' },
 ];
 
 const SECTIONS: { title: string; storageSuffix: string; fields: FieldDef[] }[] = [
-  { title: "Blouse", storageSuffix: "blouse", fields: BLOUSE_FIELDS },
-  { title: "Chudi", storageSuffix: "chudi", fields: CHUDI_FIELDS },
-  { title: "Pant", storageSuffix: "pant", fields: PANT_FIELDS },
+  { title: 'Blouse', storageSuffix: 'blouse', fields: BLOUSE_FIELDS },
+  { title: 'Chudi', storageSuffix: 'chudi', fields: CHUDI_FIELDS },
+  { title: 'Pant', storageSuffix: 'pant', fields: PANT_FIELDS },
 ];
 
 function emptyValues(fields: FieldDef[]): MeasurementValues {
-  return Object.fromEntries(fields.map((f) => [f.key, ""]));
+  return Object.fromEntries(fields.map((f) => [f.key, '']));
 }
 
 export default function MeasurementPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const storageKey = `jojo_measurements_${user?.username ?? "guest"}`;
+  const storageKey = `jojo_measurements_${user?.username ?? 'guest'}`;
 
   const [values, setValues] = useState<Record<string, MeasurementValues>>(() => ({
     blouse: emptyValues(BLOUSE_FIELDS),
@@ -85,15 +87,15 @@ export default function MeasurementPage() {
   }));
   const [saved, setSaved] = useState(false);
 
- useEffect(() => {
-  const raw = localStorage.getItem(storageKey);
-  if (raw) {
-    setValues(JSON.parse(raw) as Record<string, MeasurementValues>);
-  }
-}, [storageKey]);
+  useEffect(() => {
+    const raw = localStorage.getItem(storageKey);
+    if (raw) {
+      setValues(JSON.parse(raw) as Record<string, MeasurementValues>);
+    }
+  }, [storageKey]);
 
   const handleChange = (section: string, fieldKey: string, val: string) => {
-    if (val !== "" && !/^\d*\.?\d*$/.test(val)) return;
+    if (val !== '' && !/^\d*\.?\d*$/.test(val)) return;
     setValues((prev) => ({
       ...prev,
       [section]: { ...prev[section], [fieldKey]: val },
@@ -106,6 +108,10 @@ export default function MeasurementPage() {
     setSaved(true);
     // Let the persistent sidebar (mounted in App.tsx) know it should re-read localStorage.
     window.dispatchEvent(new Event(MEASUREMENTS_UPDATED_EVENT));
+    // Brief pause so the "Saved" confirmation is visible before leaving the page.
+    setTimeout(() => {
+      void navigate('/');
+    }, 800);
   };
 
   return (
@@ -122,7 +128,7 @@ export default function MeasurementPage() {
             </h1>
           </div>
           <p className="text-[#4A413B]">
-            Welcome{user ? `, ${user.username}` : ""} — enter your measurements in inches
+            Welcome{user ? `, ${user.username}` : ''} — enter your measurements in inches
           </p>
         </div>
       </section>
@@ -145,20 +151,16 @@ export default function MeasurementPage() {
                 <div className="p-4 space-y-3">
                   {section.fields.map((field, idx) => (
                     <div key={field.key} className="flex items-center gap-3">
-                      <span className="w-5 text-xs font-semibold text-[#B8935A]">
-                        {idx + 1}
-                      </span>
-                      <label className="flex-1 text-sm text-[#2A211D]">
-                        {field.label}
-                      </label>
+                      <span className="w-5 text-xs font-semibold text-[#B8935A]">{idx + 1}</span>
+                      <label className="flex-1 text-sm text-[#2A211D]">{field.label}</label>
                       <div className="flex items-center gap-1">
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={values[section.storageSuffix]?.[field.key] ?? ""}
-                          onChange={(e) =>
-                            { handleChange(section.storageSuffix, field.key, e.target.value); }
-                          }
+                          value={values[section.storageSuffix]?.[field.key] ?? ''}
+                          onChange={(e) => {
+                            handleChange(section.storageSuffix, field.key, e.target.value);
+                          }}
                           className="w-16 rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-[#1B1512] text-center focus:outline-none focus:ring-2 focus:ring-[#5C1A32]/40 focus:border-[#5C1A32]"
                           placeholder="0.0"
                         />

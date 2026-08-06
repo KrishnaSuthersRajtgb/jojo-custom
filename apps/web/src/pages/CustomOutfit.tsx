@@ -105,6 +105,10 @@ export default function CustomOutfit() {
   const selectedProduct = PRODUCTS.find((p) => p.id === selectedId) ?? null;
 
   const handleContinue = () => {
+    if (!fabric) {
+      void navigate('/fabrics');
+      return;
+    }
     if (!selectedProduct) return;
     void navigate(`/custom-outfit/${selectedProduct.id}`, {
       state: { productName: selectedProduct.name, fabric },
@@ -185,16 +189,18 @@ export default function CustomOutfit() {
           <button
             type="button"
             onClick={handleContinue}
-            disabled={!selectedProduct}
+            disabled={!fabric ? false : !selectedProduct}
             className={`inline-flex items-center gap-2 font-semibold text-sm px-6 py-3 rounded-full transition-colors ${
-              selectedProduct
+              !fabric || selectedProduct
                 ? 'bg-[#1B1512] text-[#F6F1E7] hover:bg-[#5C1A32]'
                 : 'bg-[#5C1A32]/10 text-[#4A413B]/50 cursor-not-allowed'
             }`}
           >
-            {selectedProduct
-              ? `Continue with ${selectedProduct.name}`
-              : 'Select an item to continue'}
+            {!fabric
+              ? 'Select a fabric first'
+              : selectedProduct
+                ? `Continue with ${selectedProduct.name}`
+                : 'Select an item to continue'}
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>

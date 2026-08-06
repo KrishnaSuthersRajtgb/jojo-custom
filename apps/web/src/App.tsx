@@ -95,7 +95,16 @@ function AppContent() {
             <Route path="/custom-outfit/:productId/accessories" element={<ProductAccessories />} />
             <Route path="/custom-outfit/:productId/summary" element={<ProductSummary />} />
             <Route path="/franchise" element={<Franchise />} />
-            <Route path="/color-wheel" element={<ColorWheel />} />
+            <Route
+              path="/color-wheel"
+              element={
+                <ColorWheel
+                  onSelect={(hex) => {
+                    console.log('Selected color:', hex);
+                  }}
+                />
+              }
+            />
             <Route
               path="/admin/orders"
               element={

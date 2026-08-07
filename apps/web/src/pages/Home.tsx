@@ -153,7 +153,15 @@ export default function Home() {
               our artisans craft the fit.
             </p>
             <div className="flex flex-wrap gap-2 mb-8">
-              {['Blouse', 'Kurti', 'Pant'].map((tag) => (
+              {[
+                'Blouse',
+                'Kurti',
+                'Pant',
+                'Frocks',
+                'Lehanga',
+                'Ready to wear saree',
+                'Over coat',
+              ].map((tag) => (
                 <span
                   key={tag}
                   className="px-3 py-1 rounded-full border border-[#B8935A]/40 text-[#B8935A] text-xs font-medium"

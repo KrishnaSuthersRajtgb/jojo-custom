@@ -26,6 +26,15 @@ interface AccessoryEntry {
   price: number;
 }
 
+// Reference photo forwarded from ProductStyle.tsx all the way through
+// ProductAccessories.tsx / ProductSummary.tsx / Order.tsx. Carried
+// through here untouched — saveOrder() below persists it as part of
+// orderDetails, so AdminOrders.tsx/OrderTracking.tsx can display it.
+interface ReferenceImage {
+  dataUrl: string;
+  fileName: string;
+}
+
 interface OrderDetails {
   fabricId: string;
   fabricName: string;
@@ -44,6 +53,7 @@ interface OrderDetails {
   accessoriesTotal?: number;
   measurementValues?: Record<string, string> | null;
   bodyType?: string | null;
+  referenceImage?: ReferenceImage | null;
 }
 
 interface PaymentState {

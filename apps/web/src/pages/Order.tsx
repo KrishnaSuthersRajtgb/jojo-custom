@@ -66,6 +66,15 @@ interface CustomSelection {
   subOptionLabel: string | null;
 }
 
+// Reference photo forwarded from ProductStyle.tsx -> ProductAccessories.tsx
+// -> ProductSummary.tsx. Carried through here and on to Payment.tsx so it
+// ends up on the saved order for AdminOrders.tsx/OrderTracking.tsx to
+// display.
+interface CustomReferenceImage {
+  dataUrl: string;
+  fileName: string;
+}
+
 interface CustomOutfitOrderState {
   productId?: string;
   productName?: string;
@@ -74,6 +83,7 @@ interface CustomOutfitOrderState {
   accessories?: CustomAccessory[];
   accessoriesTotal?: number;
   fabric?: CustomFabric | null;
+  referenceImage?: CustomReferenceImage | null;
   grandTotal?: number;
 }
 
@@ -106,6 +116,7 @@ interface NormalizedOrder {
   total: number;
   measurementValues?: Record<string, string> | null | undefined;
   bodyType?: string | null | undefined;
+  referenceImage?: CustomReferenceImage | null | undefined;
 }
 
 function normalizeOrder(
@@ -157,6 +168,7 @@ function normalizeOrder(
     // BodyTypeSelector.tsx use, below.
     measurementValues: custom.measurementValues,
     bodyType,
+    referenceImage: custom.referenceImage,
   };
 }
 

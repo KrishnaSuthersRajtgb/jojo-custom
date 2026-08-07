@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Clock, Package, ArrowLeft, Ruler, Receipt, User } from 'lucide-react';
+import {
+  CheckCircle2,
+  Clock,
+  Package,
+  ArrowLeft,
+  Ruler,
+  Receipt,
+  User,
+  ImagePlus,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Address } from '../context/AddressContext';
 
@@ -27,6 +36,14 @@ interface AccessoryEntry {
   price: number;
 }
 
+// Reference photo carried through from ProductStyle.tsx all the way to
+// the saved order via ProductAccessories.tsx / ProductSummary.tsx /
+// Order.tsx / Payment.tsx.
+interface ReferenceImage {
+  dataUrl: string;
+  fileName: string;
+}
+
 interface OrderDetails {
   fabricId: string;
   fabricName: string;
@@ -45,6 +62,7 @@ interface OrderDetails {
   accessoriesTotal?: number;
   measurementValues?: Record<string, string> | null;
   bodyType?: string | null;
+  referenceImage?: ReferenceImage | null;
 }
 
 // Mirrors the labels in BodyTypeSelector.tsx / MeasurementSidebar.tsx —
@@ -397,12 +415,12 @@ export default function OrderTracking() {
       </section>
 
       <section className="w-full px-6 pb-6">
-        {/* Two columns: order info (style, body type, invoice) on the
-            left, size details — the longest section — pinned to the
-            right so it gets its own column instead of stretching the
-            page length underneath everything else. */}
+        {/* Two columns: order info (style, body type, reference photo,
+            invoice) on the left, size details — the longest section —
+            pinned to the right so it gets its own column instead of
+            stretching the page length underneath everything else. */}
         <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-          {/* Left column: style + body type + invoice */}
+          {/* Left column: style + body type + reference photo + invoice */}
           <div className="space-y-5">
             {/* Style selected — only present for "Customize to JOJO" orders */}
             {orderDetails.selections && orderDetails.selections.length > 0 && (
@@ -438,6 +456,24 @@ export default function OrderTracking() {
                 <span className="inline-flex items-center text-sm font-semibold text-[#5C1A32] bg-[#5C1A32]/8 rounded-full px-3 py-1.5">
                   {BODY_TYPE_LABELS[orderDetails.bodyType] ?? orderDetails.bodyType}
                 </span>
+              </div>
+            )}
+
+            {/* Reference photo — only present if the client uploaded one
+                on the style page. */}
+            {orderDetails.referenceImage && (
+              <div className="bg-white rounded-sm border border-[#5C1A32]/12 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <ImagePlus className="h-4 w-4 text-[#B8935A]" />
+                  <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
+                    Reference Photo
+                  </h2>
+                </div>
+                <img
+                  src={orderDetails.referenceImage.dataUrl}
+                  alt="Reference upload"
+                  className="h-32 w-32 rounded-sm object-cover border border-[#5C1A32]/10"
+                />
               </div>
             )}
 

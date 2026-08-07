@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ImagePlus } from 'lucide-react';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx / ProductAccessories.tsx)
 //   ink      #1B1512  headings, primary text, grand-total panel
@@ -36,6 +36,14 @@ interface IncomingFabric {
   fabricTotal: number;
 }
 
+// Reference photo forwarded from ProductStyle.tsx -> ProductAccessories.tsx
+// -> here. Carried through untouched and passed on to Order/Payment so it
+// ends up on the saved order for AdminOrders/OrderTracking to display.
+interface IncomingReferenceImage {
+  dataUrl: string;
+  fileName: string;
+}
+
 interface IncomingState {
   productName?: string;
   selections?: SelectionEntry[] | null;
@@ -43,6 +51,7 @@ interface IncomingState {
   accessories?: AccessoryEntry[];
   accessoriesTotal?: number;
   fabric?: IncomingFabric;
+  referenceImage?: IncomingReferenceImage | null;
 }
 
 function formatRupees(amount: number): string {
@@ -60,6 +69,7 @@ export default function ProductSummary() {
   const accessories = state.accessories ?? [];
   const accessoriesTotal = state.accessoriesTotal ?? 0;
   const fabric = state.fabric ?? null;
+  const referenceImage = state.referenceImage ?? null;
   const grandTotal = accessoriesTotal + (fabric?.fabricTotal ?? 0);
 
   const handleProceed = () => {
@@ -72,6 +82,7 @@ export default function ProductSummary() {
         accessories,
         accessoriesTotal,
         fabric,
+        referenceImage,
         grandTotal,
       },
     });
@@ -145,6 +156,28 @@ export default function ProductSummary() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Reference photo — only present if the client uploaded one on
+            the style page. Carried through unchanged into /order state so
+            it lands on the saved order for AdminOrders/OrderTracking. */}
+        {referenceImage && (
+          <div className="rounded-sm bg-white border border-[#5C1A32]/12 shadow-sm p-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <ImagePlus className="h-4 w-4 text-[#B8935A]" />
+              <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
+                Reference Photo
+              </h2>
+            </div>
+            <div className="flex items-center gap-4">
+              <img
+                src={referenceImage.dataUrl}
+                alt="Reference upload preview"
+                className="h-20 w-20 rounded-sm object-cover border border-[#5C1A32]/10 shrink-0"
+              />
+              <p className="text-sm text-[#4A413B] truncate">{referenceImage.fileName}</p>
             </div>
           </div>
         )}

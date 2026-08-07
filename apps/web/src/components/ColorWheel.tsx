@@ -28,7 +28,10 @@ export default function ColorWheel({
 }: ColorWheelProps) {
   const wheelRef = useRef<HTMLDivElement | null>(null);
   const [markerPos, setMarkerPos] = useState<{ x: number; y: number } | null>(null);
-  const [hovering, setHovering] = useState(false);
+  // Tracks whether the mouse/touch button is actively held down on the
+  // wheel. Color only updates while this is true — a plain hover with no
+  // button pressed leaves the current selection untouched.
+  const [isDragging, setIsDragging] = useState(false);
 
   const computeAndEmit = useCallback(
     (clientX: number, clientY: number) => {
@@ -67,26 +70,50 @@ export default function ColorWheel({
     <div className="flex flex-col items-center gap-3">
       <div
         ref={wheelRef}
-        // Hover is the primary trigger — moving the mouse over the wheel
-        // filters live. onClick is kept too, purely so touch/tap devices
-        // (which have no hover) can still pick a color.
-        onMouseMove={(e) => {
-          setHovering(true);
+        // Color only changes while the button is held down (mousedown ->
+        // move -> mouseup), or on a single click/tap. A plain hover with no
+        // button pressed does NOT change the selection anymore.
+        onMouseDown={(e) => {
+          setIsDragging(true);
           computeAndEmit(e.clientX, e.clientY);
+        }}
+        onMouseMove={(e) => {
+          if (!isDragging) return;
+          computeAndEmit(e.clientX, e.clientY);
+        }}
+        onMouseUp={() => {
+          setIsDragging(false);
         }}
         onMouseLeave={() => {
-          setHovering(false);
+          setIsDragging(false);
         }}
-        onClick={(e) => {
-          computeAndEmit(e.clientX, e.clientY);
+        onTouchStart={(e) => {
+          setIsDragging(true);
+          const touch = e.touches[0];
+          if (touch) {
+            computeAndEmit(touch.clientX, touch.clientY);
+          }
+        }}
+        onTouchMove={(e) => {
+          if (!isDragging) return;
+          const touch = e.touches[0];
+          if (touch) {
+            computeAndEmit(touch.clientX, touch.clientY);
+          }
+        }}
+        onTouchEnd={() => {
+          setIsDragging(false);
         }}
         role="button"
         tabIndex={0}
-        aria-label="Hover to pick a custom color from the wheel"
+        aria-label="Click or drag to pick a custom color from the wheel"
         className="relative rounded-full cursor-crosshair select-none"
         style={{
           width: size,
           height: size,
+          // Prevents the page from scrolling while dragging a finger
+          // across the wheel on touch devices.
+          touchAction: 'none',
           background: `conic-gradient(from 0deg,
             #ff0000, #ff8000, #ffff00, #80ff00,
             #00ff00, #00ff80, #00ffff, #0080ff,
@@ -105,13 +132,13 @@ export default function ColorWheel({
         />
         <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-black/10 pointer-events-none" />
 
-        {markerPos && (hovering || selectedHex) && (
+        {markerPos && selectedHex && (
           <span
             className="absolute h-3.5 w-3.5 rounded-full border-2 border-white shadow pointer-events-none -translate-x-1/2 -translate-y-1/2"
             style={{
               left: markerPos.x,
               top: markerPos.y,
-              backgroundColor: selectedHex ?? undefined,
+              backgroundColor: selectedHex,
             }}
           />
         )}
@@ -136,7 +163,7 @@ export default function ColorWheel({
             )}
           </>
         ) : (
-          <span className="text-[#4A413B]/40">Hover to preview a color</span>
+          <span className="text-[#4A413B]/40">Click to pick a color</span>
         )}
       </div>
     </div>

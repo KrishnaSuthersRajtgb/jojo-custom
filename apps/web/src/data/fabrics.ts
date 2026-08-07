@@ -10950,7 +10950,7 @@ export const GARMENT_TYPES: GarmentType[] = [
   { id: 'chudidhar', label: 'Chudidhar', defaultMeters: 2.5 },
   { id: 'frocks', label: 'Frocks', defaultMeters: 3 },
   { id: 'lehanga', label: 'Lehanga', defaultMeters: 6 },
-  { id: 'rts-saree', label: 'Ready to Wear Saree', defaultMeters: 6 },
+  { id: 'ready-to-wear-saree', label: 'Ready to Wear Saree', defaultMeters: 6 },
   { id: 'pant', label: 'Pant', defaultMeters: 1.5 },
-  { id: 'overcoat', label: 'Over Coat', defaultMeters: 3.5 },
+  { id: 'over-coat', label: 'Over Coat', defaultMeters: 3.5 },
 ];

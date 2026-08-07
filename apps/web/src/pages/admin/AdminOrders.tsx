@@ -8,6 +8,7 @@ import {
   Clock,
   ChevronDown,
   ShieldCheck,
+  ImagePlus,
 } from 'lucide-react';
 import type { Address } from '../../context/AddressContext';
 
@@ -24,6 +25,13 @@ interface AccessoryEntry {
   id: string;
   label: string;
   price: number;
+}
+
+// Reference photo carried through from ProductStyle.tsx all the way to
+// the saved order via Order.tsx / Payment.tsx.
+interface ReferenceImage {
+  dataUrl: string;
+  fileName: string;
 }
 
 interface OrderDetails {
@@ -44,6 +52,7 @@ interface OrderDetails {
   accessoriesTotal?: number;
   measurementValues?: Record<string, string> | null;
   bodyType?: string | null;
+  referenceImage?: ReferenceImage | null;
 }
 
 // Same shape Payment.tsx writes under jojo_orders_<username>.
@@ -236,7 +245,7 @@ export default function AdminOrders() {
 
                   {isOpen && (
                     <div className="border-t border-[#5C1A32]/10 px-5 py-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      {/* Left: delivery, style, body type, invoice */}
+                      {/* Left: delivery, style, body type, reference photo, invoice */}
                       <div className="space-y-4">
                         <div>
                           <h3 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase mb-2">
@@ -281,6 +290,24 @@ export default function AdminOrders() {
                             <span className="inline-flex items-center text-sm font-semibold text-[#5C1A32] bg-[#5C1A32]/5 border border-[#5C1A32]/15 rounded-full px-3 py-1.5">
                               {BODY_TYPE_LABELS[d.bodyType] ?? d.bodyType}
                             </span>
+                          </div>
+                        )}
+
+                        {/* Reference photo — only present if the client
+                            uploaded one on the style page. */}
+                        {d.referenceImage && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <ImagePlus className="h-3.5 w-3.5 text-[#5C1A32]" />
+                              <h3 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
+                                Reference Photo
+                              </h3>
+                            </div>
+                            <img
+                              src={d.referenceImage.dataUrl}
+                              alt="Reference upload"
+                              className="h-24 w-24 rounded-sm object-cover border border-[#5C1A32]/10"
+                            />
                           </div>
                         )}
 

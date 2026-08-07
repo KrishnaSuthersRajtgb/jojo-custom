@@ -57,6 +57,15 @@ interface IncomingFabric {
   fabricTotal: number;
 }
 
+// Reference photo forwarded from ProductStyle.tsx. Carried through here
+// untouched and passed on to ProductSummary.tsx -> Order.tsx ->
+// Payment.tsx, so it ends up on the saved order for
+// AdminOrders.tsx/OrderTracking.tsx to display.
+interface IncomingReferenceImage {
+  dataUrl: string;
+  fileName: string;
+}
+
 // Whatever ProductStyle.tsx passed forward via router state — carried
 // through here and on to the price summary page unchanged.
 interface IncomingState {
@@ -64,6 +73,7 @@ interface IncomingState {
   selections?: unknown;
   measurementValues?: Record<string, string>;
   fabric?: IncomingFabric;
+  referenceImage?: IncomingReferenceImage | null;
 }
 
 function formatRupees(amount: number): string {
@@ -76,6 +86,7 @@ export default function ProductAccessories() {
   const location = useLocation();
   const incoming = (location.state as IncomingState | null) ?? {};
   const fabric = incoming.fabric ?? null;
+  const referenceImage = incoming.referenceImage ?? null;
 
   const accessories = productId ? PRODUCT_ACCESSORIES[productId] : undefined;
   const productName = incoming.productName ?? productId ?? 'Item';
@@ -117,6 +128,7 @@ export default function ProductAccessories() {
         accessories: selectedAccessories,
         accessoriesTotal: accessoriesOnlyTotal,
         fabric,
+        referenceImage,
       },
     });
   };

@@ -8,7 +8,12 @@ import MannequinPreview, {
   type SleeveStyle,
   type Silhouette,
 } from '../components/MannequinPreview';
-import { MEASUREMENT_SECTIONS, PRODUCT_TO_SECTION, emptyValues } from '../config/measurementFields';
+import {
+  MEASUREMENT_SECTIONS,
+  PRODUCT_TO_SECTION,
+  emptyValues,
+  type MeasurementSection,
+} from '../config/measurementFields';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx)
 //   ink      #1B1512  headings, primary text, selected-option fills
@@ -27,12 +32,20 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 interface StyleSubOption {
   id: string;
   label: string;
+  // Optional per-suboption reference photo shown in the style preview
+  // panel. Falls back to the parent option's image (or the shared
+  // OPTION_REFERENCE_IMAGES map below) when omitted.
+  referenceImageUrl?: string;
 }
 
 interface StyleOption {
   id: string;
   label: string;
   subOptions?: StyleSubOption[];
+  // Optional reference photo shown in the style preview panel when this
+  // option is selected. Prefer filling in OPTION_REFERENCE_IMAGES below
+  // instead — keeps image sourcing in one place.
+  referenceImageUrl?: string;
 }
 
 interface StyleSection {
@@ -76,6 +89,62 @@ interface IncomingStyleState {
 interface ReferenceImage {
   dataUrl: string;
   fileName: string;
+}
+
+// ---------------------------------------------------------------------
+// Style-option reference photos, shown in the preview panel next to each
+// section's options as the user clicks between them.
+//
+// Key format: `${productId}:${sectionId}:${optionId}` (or
+// `${productId}:${sectionId}:${subOptionId}` for sub-options).
+//
+// Fill these in with your OWN licensed/shot photos — either a hosted
+// URL or a local path like "/references/blouse/darted.jpg". Anything
+// left out automatically falls back to a generated placeholder image
+// (see buildPlaceholderImageUrl below) so the panel always shows
+// *something* real the instant an option is clicked — nothing breaks,
+// and swapping in a real photo later is just adding a line here.
+// Do not hotlink photos scraped from retailer/blog sites; you don't
+// have redistribution rights to those and the links tend to rot.
+// ---------------------------------------------------------------------
+const OPTION_REFERENCE_IMAGES: Record<string, string> = {
+  // 'blouse:style:darted': '/references/blouse/darted.jpg',
+  // 'blouse:style:2-dart': '/references/blouse/darted-2.jpg',
+  // 'blouse:style:princess-cut': '/references/blouse/princess-cut.jpg',
+  // 'blouse:style:katori-cut': '/references/blouse/katori-cut.jpg',
+  // 'chudidhar:kurta-type:anarkali': '/references/chudidhar/anarkali.jpg',
+  // ...add the rest as photos become available
+};
+
+// Generates a labeled placeholder image (bone background, wine text —
+// matches the page's design tokens) for any option that doesn't have a
+// real photo yet. Purely a stand-in so the preview panel always renders
+// a real image on click; swap OPTION_REFERENCE_IMAGES (or an option's
+// own referenceImageUrl) to a real photo whenever one's ready and it
+// takes priority over this automatically.
+function buildPlaceholderImageUrl(label: string): string {
+  const text = encodeURIComponent(label);
+  return `https://placehold.co/480x640/F6F1E7/5C1A32?text=${text}&font=roboto`;
+}
+
+function resolveReferenceImage(
+  productId: string,
+  section: StyleSection,
+  sel: SectionSelection | undefined,
+): { url: string; label: string } | null {
+  if (!sel) return null;
+  const option = section.options.find((o) => o.id === sel.optionId);
+  if (!option) return null;
+  const subOption = option.subOptions?.find((s) => s.id === sel.subOptionId);
+  const target = subOption ?? option;
+
+  const key = `${productId}:${section.id}:${target.id}`;
+  const url =
+    OPTION_REFERENCE_IMAGES[key] ??
+    target.referenceImageUrl ??
+    buildPlaceholderImageUrl(target.label);
+
+  return { url, label: target.label };
 }
 
 // Add each product's style sections here as you send them over.
@@ -157,8 +226,19 @@ const PRODUCT_STYLES: Record<string, ProductStyleConfig> = {
     sections: [
       {
         id: 'style',
-        label: 'Style',
-        options: [{ id: 'customized', label: 'Customized Design' }],
+        label: 'Frock Style',
+        options: [
+          { id: 'a-line', label: 'A-Line Frock' },
+          { id: 'anarkali', label: 'Anarkali Frock' },
+          { id: 'fit-flare', label: 'Fit & Flare Dress' },
+          { id: 'maxi', label: 'Maxi Dress' },
+          { id: 'midi', label: 'Midi Dress' },
+          { id: 'shirt-dress', label: 'Shirt Dress' },
+          { id: 'wrap-dress', label: 'Wrap Dress' },
+          { id: 'tiered', label: 'Tiered Dress' },
+          { id: 'bodycon', label: 'Bodycon Dress' },
+          { id: 'skater', label: 'Skater Dress' },
+        ],
       },
     ],
   },
@@ -167,8 +247,19 @@ const PRODUCT_STYLES: Record<string, ProductStyleConfig> = {
     sections: [
       {
         id: 'style',
-        label: 'Style',
-        options: [{ id: 'customized', label: 'Customized Design' }],
+        label: 'Lehenga Style',
+        options: [
+          { id: 'a-line', label: 'A-Line Lehenga' },
+          { id: 'circular-flared', label: 'Circular (Flared) Lehenga' },
+          { id: 'mermaid-fishtail', label: 'Mermaid (Fishtail) Lehenga' },
+          { id: 'panelled', label: 'Panelled Lehenga' },
+          { id: 'straight-cut', label: 'Straight-Cut Lehenga' },
+          { id: 'jacket', label: 'Jacket Lehenga' },
+          { id: 'sharara', label: 'Sharara Lehenga' },
+          { id: 'ruffle', label: 'Ruffle Lehenga' },
+          { id: 'cape', label: 'Cape Lehenga' },
+          { id: 'indo-western', label: 'Indo-Western Lehenga' },
+        ],
       },
     ],
   },
@@ -177,8 +268,19 @@ const PRODUCT_STYLES: Record<string, ProductStyleConfig> = {
     sections: [
       {
         id: 'style',
-        label: 'Style',
-        options: [{ id: 'customized', label: 'Customized Design' }],
+        label: 'Saree Style',
+        options: [
+          { id: 'pre-stitched', label: 'Pre-Stitched Saree' },
+          { id: 'ready-pleated', label: 'Ready Pleated Saree' },
+          { id: 'one-minute', label: 'One-Minute Saree' },
+          { id: 'pant-style', label: 'Pant Style Saree' },
+          { id: 'dhoti-style', label: 'Dhoti Style Saree' },
+          { id: 'gown', label: 'Gown Saree' },
+          { id: 'lehenga-saree', label: 'Lehenga Saree' },
+          { id: 'ruffle', label: 'Ruffle Saree' },
+          { id: 'belted', label: 'Belted Saree' },
+          { id: 'cape', label: 'Cape Saree' },
+        ],
       },
     ],
   },
@@ -210,8 +312,19 @@ const PRODUCT_STYLES: Record<string, ProductStyleConfig> = {
     sections: [
       {
         id: 'style',
-        label: 'Style',
-        options: [{ id: 'customized', label: 'Customized Design' }],
+        label: 'Coat Style',
+        options: [
+          { id: 'trench', label: 'Trench Coat' },
+          { id: 'wool-overcoat', label: 'Wool Overcoat' },
+          { id: 'longline', label: 'Longline Coat' },
+          { id: 'double-breasted', label: 'Double-Breasted Coat' },
+          { id: 'single-breasted', label: 'Single-Breasted Coat' },
+          { id: 'peacoat', label: 'Peacoat' },
+          { id: 'wrap', label: 'Wrap Coat' },
+          { id: 'belted', label: 'Belted Coat' },
+          { id: 'teddy', label: 'Teddy Coat' },
+          { id: 'faux-fur', label: 'Faux Fur Coat' },
+        ],
       },
     ],
   },
@@ -350,6 +463,27 @@ function buildStyleVisual(
   return {};
 }
 
+function ReferenceImagePanel({ image }: { image: { url: string; label: string } | null }) {
+  return (
+    <div className="lg:w-64 shrink-0 rounded-sm border border-[#5C1A32]/12 bg-white overflow-hidden flex flex-col">
+      <div className="aspect-[3/4] bg-[#F6F1E7] flex items-center justify-center overflow-hidden">
+        {image ? (
+          <img src={image.url} alt={image.label} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-xs text-[#4A413B]/40 px-6 text-center">
+            Select a style to see a reference photo
+          </span>
+        )}
+      </div>
+      {image ? (
+        <p className="text-xs font-medium text-[#1B1512] text-center py-2 px-2 truncate">
+          {image.label}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ProductStyle() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
@@ -358,9 +492,20 @@ export default function ProductStyle() {
   const fabric = (location.state as IncomingStyleState | null)?.fabric ?? null;
 
   const config = productId ? PRODUCT_STYLES[productId] : undefined;
-  const measurementSuffix = productId ? PRODUCT_TO_SECTION[productId] : undefined;
-  const measurementSection = measurementSuffix
-    ? MEASUREMENT_SECTIONS.find((s) => s.storageSuffix === measurementSuffix)
+  // Most products map to a single measurement section (a plain string in
+  // PRODUCT_TO_SECTION). A product that needs two sections' worth of
+  // fields (e.g. Ready to Wear Saree needing both Blouse and Chudi
+  // measurements) maps to a 2-item array instead — primarySuffix/
+  // secondarySuffix below just unpack whichever shape is present.
+  const rawSectionSuffixes = productId ? PRODUCT_TO_SECTION[productId] : undefined;
+  const [primarySuffix, secondarySuffix] = Array.isArray(rawSectionSuffixes)
+    ? rawSectionSuffixes
+    : [rawSectionSuffixes, undefined];
+  const measurementSection = primarySuffix
+    ? MEASUREMENT_SECTIONS.find((s) => s.storageSuffix === primarySuffix)
+    : undefined;
+  const secondaryMeasurementSection = secondarySuffix
+    ? MEASUREMENT_SECTIONS.find((s) => s.storageSuffix === secondarySuffix)
     : undefined;
 
   const [selections, setSelections] = useState<Record<string, SectionSelection>>({});
@@ -368,6 +513,9 @@ export default function ProductStyle() {
   const [measurementValues, setMeasurementValues] = useState<Record<string, string>>(() =>
     measurementSection ? emptyValues(measurementSection.fields) : {},
   );
+  const [secondaryMeasurementValues, setSecondaryMeasurementValues] = useState<
+    Record<string, string>
+  >(() => (secondaryMeasurementSection ? emptyValues(secondaryMeasurementSection.fields) : {}));
   const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
   const [referenceImageError, setReferenceImageError] = useState<string | null>(null);
 
@@ -396,6 +544,33 @@ export default function ProductStyle() {
     setMeasurementValues(emptyValues(measurementSection.fields));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [measurementSection?.storageSuffix, user?.username]);
+
+  // Same as above, but for the second measurement section on products
+  // that need two (currently only Ready to Wear Saree: Blouse + Chudi).
+  // No-op for every other product since secondaryMeasurementSection is
+  // undefined for them.
+  useEffect(() => {
+    if (!secondaryMeasurementSection) {
+      setSecondaryMeasurementValues({});
+      return;
+    }
+    const measurementsKey = `jojo_measurements_${user?.username ?? 'guest'}`;
+    const raw = localStorage.getItem(measurementsKey);
+    if (raw) {
+      try {
+        const all = JSON.parse(raw) as Record<string, Record<string, string>>;
+        setSecondaryMeasurementValues({
+          ...emptyValues(secondaryMeasurementSection.fields),
+          ...(all[secondaryMeasurementSection.storageSuffix] ?? {}),
+        });
+        return;
+      } catch {
+        // fall through to reset below
+      }
+    }
+    setSecondaryMeasurementValues(emptyValues(secondaryMeasurementSection.fields));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondaryMeasurementSection?.storageSuffix, user?.username]);
 
   // Load this product's own saved reference image (if any), keyed by
   // productId so Blouse/Chudidhar/etc. each keep their own photo,
@@ -467,11 +642,15 @@ export default function ProductStyle() {
     }));
   };
 
-  // Shared by every keystroke and by handleContinue: merges this
-  // product's measurement values into the shared storage object (other
-  // products' saved values are left untouched) and notifies the sidebar.
-  const persistMeasurements = (nextValues: Record<string, string>) => {
-    if (!measurementSection) return;
+  // Merges a section's measurement values into the shared storage object
+  // (other sections'/products' saved values are left untouched) and
+  // notifies the sidebar. Used for both the primary section and (when
+  // present) the secondary section below.
+  const persistMeasurementsFor = (
+    section: MeasurementSection | undefined,
+    nextValues: Record<string, string>,
+  ) => {
+    if (!section) return;
     const measurementsKey = `jojo_measurements_${user?.username ?? 'guest'}`;
     const raw = localStorage.getItem(measurementsKey);
     let all: Record<string, Record<string, string>> = {};
@@ -480,9 +659,16 @@ export default function ProductStyle() {
     } catch {
       all = {};
     }
-    all[measurementSection.storageSuffix] = nextValues;
+    all[section.storageSuffix] = nextValues;
     localStorage.setItem(measurementsKey, JSON.stringify(all));
     window.dispatchEvent(new Event(MEASUREMENTS_UPDATED_EVENT));
+  };
+
+  // Shared by every keystroke and by handleContinue: merges this
+  // product's measurement values into the shared storage object (other
+  // products' saved values are left untouched) and notifies the sidebar.
+  const persistMeasurements = (nextValues: Record<string, string>) => {
+    persistMeasurementsFor(measurementSection, nextValues);
   };
 
   const handleMeasurementChange = (key: string, value: string) => {
@@ -492,6 +678,16 @@ export default function ProductStyle() {
       // MannequinPreview below) reflect changes live, not just after
       // "Continue to Accessories".
       persistMeasurements(next);
+      return next;
+    });
+  };
+
+  // Same as handleMeasurementChange, but for the second measurement
+  // section on products that need two (Ready to Wear Saree today).
+  const handleSecondaryMeasurementChange = (key: string, value: string) => {
+    setSecondaryMeasurementValues((prev) => {
+      const next = { ...prev, [key]: value };
+      persistMeasurementsFor(secondaryMeasurementSection, next);
       return next;
     });
   };
@@ -577,6 +773,9 @@ export default function ProductStyle() {
     // shared measurements object the sidebar reads from — the other
     // products' saved values are left untouched.
     persistMeasurements(measurementValues);
+    if (secondaryMeasurementSection) {
+      persistMeasurementsFor(secondaryMeasurementSection, secondaryMeasurementValues);
+    }
 
     const resolvedSelections = config.sections.map((section) => {
       const sel = selections[section.id];
@@ -598,6 +797,12 @@ export default function ProductStyle() {
         productName: config.name,
         selections: resolvedSelections,
         measurementValues,
+        // Only populated for products with a second measurement section
+        // (Ready to Wear Saree today); undefined for everything else,
+        // same as before this field existed.
+        secondaryMeasurementValues: secondaryMeasurementSection
+          ? secondaryMeasurementValues
+          : undefined,
         referenceImage,
         fabric,
       },
@@ -635,6 +840,7 @@ export default function ProductStyle() {
           {config.sections.map((section) => {
             const sel: SectionSelection | undefined = selections[section.id];
             const usesAccordion = sectionHasSubOptions(section);
+            const referenceImage = resolveReferenceImage(productId, section, sel);
 
             return (
               <div key={section.id}>
@@ -642,109 +848,115 @@ export default function ProductStyle() {
                   {section.label}
                 </h2>
 
-                {usesAccordion ? (
-                  <div className="flex flex-col gap-3">
-                    {section.options.map((option) => {
-                      const isSelected = option.id === sel?.optionId;
-                      const isExpanded = option.id === expanded[section.id];
-                      const isOnlySelectedAsParent =
-                        isSelected && option.subOptions?.length && !sel.subOptionId;
+                <div className="flex flex-col lg:flex-row gap-6">
+                  <div className="flex-1 min-w-0">
+                    {usesAccordion ? (
+                      <div className="flex flex-col gap-3">
+                        {section.options.map((option) => {
+                          const isSelected = option.id === sel?.optionId;
+                          const isExpanded = option.id === expanded[section.id];
+                          const isOnlySelectedAsParent =
+                            isSelected && option.subOptions?.length && !sel.subOptionId;
 
-                      return (
-                        <div
-                          key={option.id}
-                          className={`rounded-sm border transition-colors ${
-                            isSelected
-                              ? 'border-[#5C1A32]'
-                              : 'border-[#5C1A32]/12 hover:border-[#5C1A32]/30'
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleOptionClick(section, option);
-                            }}
-                            aria-pressed={isSelected && !option.subOptions?.length}
-                            className={`w-full flex items-center justify-between gap-3 px-5 py-4 rounded-sm text-left ${
-                              isSelected && !option.subOptions?.length
-                                ? 'bg-[#5C1A32] text-[#F6F1E7]'
-                                : 'bg-white text-[#1B1512]'
-                            }`}
-                          >
-                            <span className="flex items-center gap-2 font-medium text-sm">
-                              {isSelected && !option.subOptions?.length && (
-                                <Check className="h-4 w-4" />
-                              )}
-                              {option.label}
-                              {isOnlySelectedAsParent && (
-                                <span className="text-xs font-normal text-[#5C1A32]/70">
-                                  (select an option below)
-                                </span>
-                              )}
-                            </span>
-                            {option.subOptions?.length ? (
-                              <ChevronDown
-                                className={`h-4 w-4 text-[#4A413B]/50 transition-transform ${
-                                  isExpanded ? 'rotate-180' : ''
+                          return (
+                            <div
+                              key={option.id}
+                              className={`rounded-sm border transition-colors ${
+                                isSelected
+                                  ? 'border-[#5C1A32]'
+                                  : 'border-[#5C1A32]/12 hover:border-[#5C1A32]/30'
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleOptionClick(section, option);
+                                }}
+                                aria-pressed={isSelected && !option.subOptions?.length}
+                                className={`w-full flex items-center justify-between gap-3 px-5 py-4 rounded-sm text-left ${
+                                  isSelected && !option.subOptions?.length
+                                    ? 'bg-[#5C1A32] text-[#F6F1E7]'
+                                    : 'bg-white text-[#1B1512]'
                                 }`}
-                              />
-                            ) : null}
-                          </button>
-
-                          {option.subOptions?.length && isExpanded ? (
-                            <div className="flex flex-col gap-2 px-5 pb-4">
-                              {option.subOptions.map((sub) => {
-                                const isSubSelected = sub.id === sel?.subOptionId;
-                                return (
-                                  <button
-                                    key={sub.id}
-                                    type="button"
-                                    onClick={() => {
-                                      handleSubOptionClick(section, option, sub);
-                                    }}
-                                    aria-pressed={isSubSelected}
-                                    className={`flex items-center gap-2 text-left text-sm px-4 py-2.5 rounded-sm border ${
-                                      isSubSelected
-                                        ? 'bg-[#5C1A32]/8 border-[#5C1A32] text-[#5C1A32] font-semibold'
-                                        : 'bg-white border-[#5C1A32]/12 text-[#4A413B] hover:border-[#5C1A32]/30'
+                              >
+                                <span className="flex items-center gap-2 font-medium text-sm">
+                                  {isSelected && !option.subOptions?.length && (
+                                    <Check className="h-4 w-4" />
+                                  )}
+                                  {option.label}
+                                  {isOnlySelectedAsParent && (
+                                    <span className="text-xs font-normal text-[#5C1A32]/70">
+                                      (select an option below)
+                                    </span>
+                                  )}
+                                </span>
+                                {option.subOptions?.length ? (
+                                  <ChevronDown
+                                    className={`h-4 w-4 text-[#4A413B]/50 transition-transform ${
+                                      isExpanded ? 'rotate-180' : ''
                                     }`}
-                                  >
-                                    {isSubSelected && <Check className="h-3.5 w-3.5" />}
-                                    {sub.label}
-                                  </button>
-                                );
-                              })}
+                                  />
+                                ) : null}
+                              </button>
+
+                              {option.subOptions?.length && isExpanded ? (
+                                <div className="flex flex-col gap-2 px-5 pb-4">
+                                  {option.subOptions.map((sub) => {
+                                    const isSubSelected = sub.id === sel?.subOptionId;
+                                    return (
+                                      <button
+                                        key={sub.id}
+                                        type="button"
+                                        onClick={() => {
+                                          handleSubOptionClick(section, option, sub);
+                                        }}
+                                        aria-pressed={isSubSelected}
+                                        className={`flex items-center gap-2 text-left text-sm px-4 py-2.5 rounded-sm border ${
+                                          isSubSelected
+                                            ? 'bg-[#5C1A32]/8 border-[#5C1A32] text-[#5C1A32] font-semibold'
+                                            : 'bg-white border-[#5C1A32]/12 text-[#4A413B] hover:border-[#5C1A32]/30'
+                                        }`}
+                                      >
+                                        {isSubSelected && <Check className="h-3.5 w-3.5" />}
+                                        {sub.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
                             </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {section.options.map((option) => {
+                          const isSelected = option.id === sel?.optionId;
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => {
+                                handleOptionClick(section, option);
+                              }}
+                              aria-pressed={isSelected}
+                              className={`flex items-center gap-2 text-left text-sm px-4 py-3 rounded-sm border transition-colors ${
+                                isSelected
+                                  ? 'bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7] font-semibold'
+                                  : 'bg-white border-[#5C1A32]/12 text-[#2A211D] hover:border-[#5C1A32]/30'
+                              }`}
+                            >
+                              {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                              <span>{option.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {section.options.map((option) => {
-                      const isSelected = option.id === sel?.optionId;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => {
-                            handleOptionClick(section, option);
-                          }}
-                          aria-pressed={isSelected}
-                          className={`flex items-center gap-2 text-left text-sm px-4 py-3 rounded-sm border transition-colors ${
-                            isSelected
-                              ? 'bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7] font-semibold'
-                              : 'bg-white border-[#5C1A32]/12 text-[#2A211D] hover:border-[#5C1A32]/30'
-                          }`}
-                        >
-                          {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
-                          <span>{option.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+
+                  <ReferenceImagePanel image={referenceImage} />
+                </div>
               </div>
             );
           })}
@@ -792,6 +1004,56 @@ export default function ProductStyle() {
                     title={`${config.name} Preview`}
                     {...previewMeasurements}
                     {...styleVisual}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Second measurement section, only rendered for products that
+              need two (Ready to Wear Saree needs both Blouse and Chudi
+              measurements). Mirrors the block above; no effect on any
+              product with just one section. */}
+          {secondaryMeasurementSection ? (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Ruler className="h-4 w-4 text-[#B8935A]" />
+                <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
+                  {secondaryMeasurementSection.title} Measurements
+                </h2>
+              </div>
+              <div className="flex flex-col lg:flex-row gap-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 flex-1">
+                  {secondaryMeasurementSection.fields.map((field, idx) => (
+                    <label key={field.key} className="flex flex-col gap-1.5">
+                      <span className="text-xs text-[#4A413B]">
+                        {idx + 1}. {field.label}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.1"
+                          inputMode="decimal"
+                          placeholder="0.0"
+                          value={secondaryMeasurementValues[field.key] ?? ''}
+                          onChange={(e) => {
+                            handleSecondaryMeasurementChange(field.key, e.target.value);
+                          }}
+                          className="w-full rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-[#1B1512] focus:outline-none focus:border-[#5C1A32] bg-white"
+                        />
+                        <span className="text-xs text-[#4A413B]/60 shrink-0">in</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="lg:w-64 shrink-0">
+                  <MannequinPreview
+                    title={`${secondaryMeasurementSection.title} Preview`}
+                    {...buildPreviewMeasurements(
+                      secondaryMeasurementSection.storageSuffix,
+                      secondaryMeasurementValues,
+                    )}
                   />
                 </div>
               </div>

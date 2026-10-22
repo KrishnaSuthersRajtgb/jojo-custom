@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { orderApi } from '../services';
 import type { Address } from '../context/AddressContext';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx)
@@ -123,7 +124,8 @@ declare global {
     Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
   }
 }
-const RAZORPAY_KEY_ID = 'rzp_test_TGQs3nWcBn0Joq'; // TODO: replace with your Razorpay key
+const RAZORPAY_KEY_ID =
+  (import.meta.env['VITE_RAZORPAY_KEY_ID'] as string | undefined) ?? 'rzp_test_TShOXEXBo0Y5oK';
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -186,6 +188,18 @@ export default function Payment() {
       // Non-critical — if storage fails, the live tracking view still
       // works via router state; it just won't reappear under My Orders.
     }
+
+    // Also persist order to backend database
+    orderApi
+      .create({
+        id: newOrder.id,
+        orderDetails,
+        address,
+        paymentId: razorpayPaymentId,
+      })
+      .catch(() => {
+        // Local order was already saved
+      });
   };
 
   const handlePay = () => {

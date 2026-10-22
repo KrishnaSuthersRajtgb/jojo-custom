@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { authApi } from '../services';
 
 export interface SignupPayload {
   username: string;
@@ -18,6 +19,7 @@ export interface AuthUser {
   email: string;
   gender: string;
   phoneNumber: string;
+  role?: string;
 }
 
 export interface UpdateProfilePayload {
@@ -28,7 +30,7 @@ export interface UpdateProfilePayload {
 }
 
 interface StoredUser extends AuthUser {
-  password: string;
+  password?: string;
 }
 
 interface AuthContextValue {
@@ -42,23 +44,25 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const USERS_KEY = "jojo_users";
-const SESSION_KEY = "jojo_session_user";
+const USERS_KEY = 'jojo_users';
+const SESSION_KEY = 'jojo_session_user';
 
-// Small typed wrapper so JSON.parse's `any` never leaks past this point.
-// Small typed wrapper so JSON.parse's `any` never leaks past this point.
 function safeJsonParse(raw: string | null): unknown {
   if (!raw) return null;
   return JSON.parse(raw) as unknown;
 }
 
 function toSafeUser(stored: StoredUser): AuthUser {
-  return {
+  const safe: AuthUser = {
     username: stored.username,
     email: stored.email,
     gender: stored.gender,
     phoneNumber: stored.phoneNumber,
   };
+  if (stored.role) {
+    safe.role = stored.role;
+  }
+  return safe;
 }
 
 function getStoredUsers(): StoredUser[] {
@@ -73,43 +77,97 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-  const storedUser = safeJsonParse(localStorage.getItem(SESSION_KEY)) as AuthUser | null;
-  if (storedUser) setUser(storedUser);
-  setLoading(false);
-}, []);
+  useEffect(() => {
+    const storedUser = safeJsonParse(localStorage.getItem(SESSION_KEY)) as AuthUser | null;
+    if (storedUser) setUser(storedUser);
+    setLoading(false);
+
+    // Refresh profile from backend if session exists
+    if (storedUser) {
+      void authApi
+        .getMe()
+        .then((res) => {
+          const freshUser: AuthUser = {
+            username: res.data.username,
+            email: res.data.email,
+            gender: res.data.gender,
+            phoneNumber: res.data.phoneNumber,
+          };
+          if (res.data.role) {
+            freshUser.role = res.data.role;
+          }
+          setUser(freshUser);
+          localStorage.setItem(SESSION_KEY, JSON.stringify(freshUser));
+        })
+        .catch(() => {
+          // If network error, retain local session user
+        });
+    }
+  }, []);
 
   const signup = async (payload: SignupPayload) => {
-    // No real async work yet (localStorage is synchronous) — this will
-    // become a real API call later, so we keep the async signature.
-    await Promise.resolve();
+    try {
+      // 1. Call backend API
+      await authApi.signup(payload);
+      // Also cache locally for offline support
+      const users = getStoredUsers();
+      if (!users.some((u) => u.username.toLowerCase() === payload.username.toLowerCase())) {
+        users.push({ ...payload });
+        saveStoredUsers(users);
+      }
+      return;
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      // If error is a validation or conflict error from backend, rethrow it directly
+      if (
+        !errorMsg.toLowerCase().includes('failed to fetch') &&
+        !errorMsg.toLowerCase().includes('network')
+      ) {
+        throw new Error(errorMsg);
+      }
+    }
 
+    // 2. Offline / local fallback
     const users = getStoredUsers();
-
     if (users.some((u) => u.username.toLowerCase() === payload.username.toLowerCase())) {
-      throw new Error("Username is already taken.");
+      throw new Error('Username is already taken.');
     }
     if (users.some((u) => u.email.toLowerCase() === payload.email.toLowerCase())) {
-      throw new Error("An account with this email already exists.");
+      throw new Error('An account with this email already exists.');
     }
 
     users.push({ ...payload });
     saveStoredUsers(users);
-    // Signup does not auto-login — user is sent to the login page.
   };
 
   const login = async (payload: LoginPayload) => {
-    await Promise.resolve();
+    try {
+      // 1. Call backend API
+      const res = await authApi.login(payload);
+      const safeUser = toSafeUser(res.data.user);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(safeUser));
+      setUser(safeUser);
+      return;
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      // If server responded with 401 or invalid credentials, rethrow
+      if (
+        !errorMsg.toLowerCase().includes('failed to fetch') &&
+        !errorMsg.toLowerCase().includes('network')
+      ) {
+        throw new Error(errorMsg);
+      }
+    }
 
+    // 2. Offline / local fallback
     const users = getStoredUsers();
     const match = users.find(
       (u) =>
-        u.email.toLowerCase() === payload.email.toLowerCase() &&
-        u.password === payload.password
+        u.email.toLowerCase() === payload.email.toLowerCase() && u.password === payload.password,
     );
 
     if (!match) {
-      throw new Error("Invalid email or password.");
+      throw new Error('Invalid email or password.');
     }
 
     const safeUser = toSafeUser(match);
@@ -118,36 +176,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    authApi.logout();
     localStorage.removeItem(SESSION_KEY);
     setUser(null);
   };
 
   const updateProfile = async (payload: UpdateProfilePayload) => {
-    await Promise.resolve();
+    if (!user) throw new Error('You must be logged in to update your profile.');
 
-    if (!user) throw new Error("You must be logged in to update your profile.");
+    try {
+      // 1. Call backend API
+      const res = await authApi.updateProfile(payload);
+      const safeUser = toSafeUser(res.data);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(safeUser));
+      setUser(safeUser);
+      return;
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      if (
+        !errorMsg.toLowerCase().includes('failed to fetch') &&
+        !errorMsg.toLowerCase().includes('network')
+      ) {
+        throw new Error(errorMsg);
+      }
+    }
 
+    // 2. Offline / local fallback
     const users = getStoredUsers();
-    const currentIndex = users.findIndex(
-      (u) => u.email.toLowerCase() === user.email.toLowerCase()
-    );
+    const currentIndex = users.findIndex((u) => u.email.toLowerCase() === user.email.toLowerCase());
     const currentUser = users[currentIndex];
-    if (currentIndex === -1 || !currentUser) throw new Error("Account not found.");
-    
+    if (currentIndex === -1 || !currentUser) throw new Error('Account not found.');
 
-    // Block switching to a username/email already used by a different account.
     const usernameTaken = users.some(
-      (u, i) =>
-        i !== currentIndex && u.username.toLowerCase() === payload.username.toLowerCase()
+      (u, i) => i !== currentIndex && u.username.toLowerCase() === payload.username.toLowerCase(),
     );
-    if (usernameTaken) throw new Error("Username is already taken.");
+    if (usernameTaken) throw new Error('Username is already taken.');
 
     const emailTaken = users.some(
-      (u, i) => i !== currentIndex && u.email.toLowerCase() === payload.email.toLowerCase()
+      (u, i) => i !== currentIndex && u.email.toLowerCase() === payload.email.toLowerCase(),
     );
-    if (emailTaken) throw new Error("An account with this email already exists.");
+    if (emailTaken) throw new Error('An account with this email already exists.');
 
-const updated: StoredUser = { ...currentUser, ...payload };    users[currentIndex] = updated;
+    const updated: StoredUser = { ...currentUser, ...payload };
+    users[currentIndex] = updated;
     saveStoredUsers(users);
 
     const safeUser = toSafeUser(updated);
@@ -164,6 +235,6 @@ const updated: StoredUser = { ...currentUser, ...payload };    users[currentInde
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
   return ctx;
 }

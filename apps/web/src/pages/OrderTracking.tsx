@@ -11,6 +11,7 @@ import {
   ImagePlus,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { orderApi } from '../services';
 import type { Address } from '../context/AddressContext';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx)
@@ -197,16 +198,34 @@ export default function OrderTracking() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(ordersKey);
-      if (!raw) {
-        setSavedOrders([]);
-        return;
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        setSavedOrders(Array.isArray(parsed) ? (parsed as SavedOrder[]) : []);
       }
-      const parsed: unknown = JSON.parse(raw);
-      setSavedOrders(Array.isArray(parsed) ? (parsed as SavedOrder[]) : []);
     } catch {
       setSavedOrders([]);
     }
-  }, [ordersKey]);
+
+    orderApi
+      .getUserOrders(user?.username)
+      .then((res) => {
+        if (res.data.length > 0) {
+          const mapped: SavedOrder[] = res.data.map((o) => ({
+            id: o.id,
+            orderDetails: o.orderDetails as unknown as OrderDetails,
+            address: o.address as unknown as Address,
+            paymentId: o.paymentId,
+            placedAt: o.placedAt,
+            status: o.status as OrderStatus,
+          }));
+          setSavedOrders(mapped);
+          localStorage.setItem(ordersKey, JSON.stringify(mapped));
+        }
+      })
+      .catch(() => {
+        // Keep cached orders on failure
+      });
+  }, [ordersKey, user]);
 
   // --- My Orders list (no order currently selected) ---------------------
   if (!activeOrder) {

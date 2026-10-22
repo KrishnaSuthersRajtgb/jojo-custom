@@ -1,2 +1,3 @@
-export { errorHandler } from './errorHandler.js';
-export { validate } from './validate.middleware.js';
+export * from './errorHandler.js';
+export * from './validate.middleware.js';
+export * from './auth.middleware.js';

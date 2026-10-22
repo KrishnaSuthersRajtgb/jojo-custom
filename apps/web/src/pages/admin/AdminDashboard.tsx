@@ -16,6 +16,7 @@ import {
   ImagePlus,
 } from 'lucide-react';
 import type { Address } from '../../context/AddressContext';
+import { orderApi } from '../../services';
 // ── Design tokens (same family as Home.jsx) ────────────────────────────────
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
@@ -210,6 +211,26 @@ export default function AdminDashboard() {
     const { rows, malformedKeys } = loadAllOrders();
     setOrders(rows);
     setMalformedKeys(malformedKeys);
+
+    orderApi
+      .getAll()
+      .then((res) => {
+        if (res.data.length > 0) {
+          const mapped: AdminOrderRow[] = res.data.map((o) => ({
+            id: o.id,
+            username: o.username,
+            orderDetails: o.orderDetails as unknown as OrderDetails,
+            address: o.address as unknown as Address,
+            paymentId: o.paymentId,
+            placedAt: o.placedAt,
+            status: (o.status as OrderStatus | undefined) ?? 'placed',
+          }));
+          setOrders(mapped);
+        }
+      })
+      .catch(() => {
+        // Fall back to localStorage
+      });
   }, []);
 
   const uniqueCustomers = useMemo(() => new Set(orders.map((o) => o.username)).size, [orders]);
@@ -220,11 +241,14 @@ export default function AdminDashboard() {
   );
 
   const handleStatusChange = (order: AdminOrderRow, status: OrderStatus) => {
-    const ok = persistOrderStatus(order.username, order.id, status);
-    if (!ok) return;
+    persistOrderStatus(order.username, order.id, status);
     setOrders((prev) =>
       prev.map((o) => (o.id === order.id && o.username === order.username ? { ...o, status } : o)),
     );
+
+    orderApi.updateStatus(order.id, status).catch(() => {
+      // Local status was updated
+    });
   };
 
   const filteredOrders = useMemo(() => {

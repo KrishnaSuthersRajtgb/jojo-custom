@@ -11,6 +11,7 @@ import {
   ImagePlus,
 } from 'lucide-react';
 import type { Address } from '../../context/AddressContext';
+import { orderApi } from '../../services';
 
 // ── Design tokens (same family as Home.jsx) ────────────────────────────────
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
@@ -139,6 +140,25 @@ export default function AdminOrders() {
 
   useEffect(() => {
     setOrders(loadAllOrders());
+
+    orderApi
+      .getAll()
+      .then((res) => {
+        if (res.data.length > 0) {
+          const mapped: AdminOrderRow[] = res.data.map((o) => ({
+            id: o.id,
+            username: o.username,
+            orderDetails: o.orderDetails as unknown as OrderDetails,
+            address: o.address as unknown as Address,
+            paymentId: o.paymentId,
+            placedAt: o.placedAt,
+          }));
+          setOrders(mapped);
+        }
+      })
+      .catch(() => {
+        // Fall back to localStorage
+      });
   }, []);
 
   const totalRevenue = orders

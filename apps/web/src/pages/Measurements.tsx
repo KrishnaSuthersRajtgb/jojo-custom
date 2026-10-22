@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ruler, Save, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { measurementApi } from '../services';
 import { MEASUREMENTS_UPDATED_EVENT } from '../components/MeasurementSidebar';
 import BodyTypeSelector from '../components/BodyTypeSelector';
 
@@ -92,7 +93,36 @@ export default function MeasurementPage() {
     if (raw) {
       setValues(JSON.parse(raw) as Record<string, MeasurementValues>);
     }
-  }, [storageKey]);
+
+    if (user) {
+      measurementApi
+        .get()
+        .then((res) => {
+          if (
+            Object.keys(res.data.blouse).length > 0 ||
+            Object.keys(res.data.chudi).length > 0 ||
+            Object.keys(res.data.pant).length > 0
+          ) {
+            setValues({
+              blouse: { ...emptyValues(BLOUSE_FIELDS), ...res.data.blouse },
+              chudi: { ...emptyValues(CHUDI_FIELDS), ...res.data.chudi },
+              pant: { ...emptyValues(PANT_FIELDS), ...res.data.pant },
+            });
+            localStorage.setItem(
+              storageKey,
+              JSON.stringify({
+                blouse: res.data.blouse,
+                chudi: res.data.chudi,
+                pant: res.data.pant,
+              }),
+            );
+          }
+        })
+        .catch(() => {
+          // Keep local values on failure
+        });
+    }
+  }, [storageKey, user]);
 
   const handleChange = (section: string, fieldKey: string, val: string) => {
     if (val !== '' && !/^\d*\.?\d*$/.test(val)) return;
@@ -105,6 +135,17 @@ export default function MeasurementPage() {
 
   const handleSave = () => {
     localStorage.setItem(storageKey, JSON.stringify(values));
+    if (user) {
+      measurementApi
+        .save({
+          blouse: values['blouse'] ?? {},
+          chudi: values['chudi'] ?? {},
+          pant: values['pant'] ?? {},
+        })
+        .catch(() => {
+          // Keep saved locally on error
+        });
+    }
     setSaved(true);
     // Let the persistent sidebar (mounted in App.tsx) know it should re-read localStorage.
     window.dispatchEvent(new Event(MEASUREMENTS_UPDATED_EVENT));

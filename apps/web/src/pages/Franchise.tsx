@@ -12,6 +12,7 @@ import {
   Boxes,
   CheckCircle2,
 } from 'lucide-react';
+import { franchiseApi } from '../services';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / FabricDetail.tsx) ───────
 //   ink      #1B1512  headings, dark panel background
@@ -166,11 +167,14 @@ export default function Franchise() {
     if (Object.keys(validation).length > 0) return;
 
     setSubmitting(true);
-    // TODO: wire to actual franchise-lead endpoint (e.g. POST /api/franchise-leads)
-    console.log('Franchise application:', form);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setSubmitting(false);
-    setSubmitted(true);
+    try {
+      await franchiseApi.submit(form);
+    } catch (err) {
+      console.error('Franchise submission error:', err);
+    } finally {
+      setSubmitting(false);
+      setSubmitted(true);
+    }
   };
 
   if (submitted) {

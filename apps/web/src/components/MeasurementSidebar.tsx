@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Ruler, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Ruler, ChevronDown, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { BODY_TYPE_UPDATED_EVENT } from './BodyTypeSelector';
 import {
@@ -96,17 +97,18 @@ function BodyTypeIcon({ type, active }: { type: BodyType; active: boolean }) {
 // pages' component trees.
 export const MEASUREMENTS_UPDATED_EVENT = 'jojo-measurements-updated';
 
-// Tailwind's lg breakpoint (1024px) — used to pick the initial collapse
-// state per device: open by default on desktop (matches prior
-// behavior), closed by default on mobile (opens as an overlay drawer
-// when tapped, like a typical mobile panel).
-const LG_BREAKPOINT = 1024;
-
 export default function MeasurementSidebar() {
+  const location = useLocation();
   const { user } = useAuth();
+
+  // Hide entirely on admin, auth, and payment pages to preserve pristine layout & alignment
+  const isHiddenRoute =
+    location.pathname.startsWith('/admin') ||
+    location.pathname === '/login' ||
+    location.pathname === '/signup' ||
+    location.pathname === '/payment';
+
   const storageKey = `jojo_measurements_${user?.username ?? 'guest'}`;
-  // Same key BodyTypeSelector.tsx reads/writes — selecting here or on
-  // the Measurements page keeps both in sync via BODY_TYPE_UPDATED_EVENT.
   const bodyTypeKey = `jojo_bodytype_${user?.username ?? 'guest'}`;
 
   const [values, setValues] = useState<Record<string, MeasurementValues>>(() => ({
@@ -116,18 +118,10 @@ export default function MeasurementSidebar() {
   }));
   const [bodyType, setBodyType] = useState<BodyType | null>(null);
 
-  // Whole-panel collapse. On lg+ this behaves as before: an in-flow
-  // sticky column that animates width. Below lg it now renders as a
-  // fixed overlay drawer (with a backdrop) that slides in from the
-  // right, so opening it doesn't push the page content down.
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth < LG_BREAKPOINT;
-  });
+  // Overlay drawer state: closed by default on all screens so page content is perfectly centered
+  const [collapsed, setCollapsed] = useState<boolean>(true);
 
-  // Per-section (Blouse / Chudi / Pant) expand-collapse state, toggled
-  // via the down/up chevron on each section's header. All start open so
-  // existing behavior — everything visible — is unchanged by default.
+  // Per-section (Blouse / Chudi / Pant) expand-collapse state
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(MEASUREMENT_SECTIONS.map((s) => [s.storageSuffix, true])),
   );
@@ -182,21 +176,19 @@ export default function MeasurementSidebar() {
     };
   }, [bodyTypeKey]);
 
-  // Same write pattern as BodyTypeSelector.tsx's handleSelect: persist,
-  // update local state, and notify any other listeners (including
-  // BodyTypeSelector itself if it's mounted elsewhere).
   const handleSelectBodyType = (type: BodyType) => {
     setBodyType(type);
     localStorage.setItem(bodyTypeKey, type);
     window.dispatchEvent(new Event(BODY_TYPE_UPDATED_EVENT));
   };
 
+  if (isHiddenRoute) {
+    return null;
+  }
+
   return (
     <>
-      {/* Toggle handle — always visible, fixed so it stays put while
-          scrolling. On lg+ it tracks the panel's left edge (width-based
-          collapse); below lg it sits near the screen edge and opens the
-          overlay drawer instead. */}
+      {/* Haute Couture Floating Measurement Drawer Tab */}
       <button
         type="button"
         onClick={() => {
@@ -204,38 +196,48 @@ export default function MeasurementSidebar() {
         }}
         aria-label={collapsed ? 'Show measurements panel' : 'Hide measurements panel'}
         aria-expanded={!collapsed}
-        // z-[65] — above Navbar.tsx's z-[60] so this stays clickable on
-        // desktop regardless of stacking order; below its dropdown's
-        // z-[70] (a dropdown, when open, should still cover this).
-        className={`flex fixed top-24 z-[65] h-8 w-8 items-center justify-center rounded-full bg-[#F6F1E7] border border-[#5C1A32]/25 shadow-md text-[#5C1A32] hover:bg-[#5C1A32]/5 transition-[right] duration-300 right-2 pointer-events-auto ${
-          !collapsed ? 'lg:right-[calc(320px-12px)]' : 'lg:right-2'
-        }`}
+        className="fixed top-36 right-0 z-[65] bg-[#1B1512] hover:bg-[#5C1A32] text-[#F6F1E7] border-l border-y border-[#B8935A]/50 rounded-l-md shadow-2xl px-2 py-3.5 flex flex-col items-center gap-2 cursor-pointer transition-all duration-300 group"
       >
-        {collapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        <Ruler className="h-4 w-4 text-[#B8935A] group-hover:rotate-12 transition-transform" />
+        <span className="text-[9px] font-semibold tracking-[0.22em] uppercase  text-[#E8DFC8]">
+          Fittings
+        </span>
       </button>
 
-      {/* Backdrop — mobile/tablet only, shown while the drawer is open.
-          Tapping it closes the panel, same as the arrow. */}
+      {/* Dim backdrop when drawer is open */}
       {!collapsed && (
         <div
           onClick={() => {
             setCollapsed(true);
           }}
           aria-hidden="true"
-          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          className="fixed inset-0 z-[68] bg-black/40 backdrop-blur-xs transition-opacity duration-300"
         />
       )}
 
+      {/* Slide-out Overlay Drawer - Does NOT affect main page flex layout */}
       <aside
-        className={`bg-[#F6F1E7] overflow-y-auto transition-transform duration-300 ease-in-out
-          fixed top-16 right-0 bottom-0 z-40 w-[85%] max-w-sm shadow-xl
-          ${collapsed ? 'translate-x-full' : 'translate-x-0'}
-          lg:static lg:z-auto lg:shadow-none lg:translate-x-0 lg:top-0 lg:right-auto lg:bottom-auto
-          lg:max-w-none lg:shrink-0 lg:sticky lg:h-screen lg:overflow-x-hidden
-          lg:transition-[width] lg:duration-300
-          ${collapsed ? 'lg:w-0 lg:border-l-0' : 'lg:w-[320px] lg:border-l border-[#5C1A32]/12'}
-        `}
+        className={`fixed top-0 right-0 bottom-0 z-[70] w-[340px] max-w-[90vw] bg-[#FAF7F2] shadow-2xl overflow-y-auto border-l border-[#5C1A32]/15 transition-transform duration-300 ease-in-out ${
+          collapsed ? 'translate-x-full pointer-events-none' : 'translate-x-0 pointer-events-auto'
+        }`}
       >
+        {/* Drawer Header */}
+        <div className="sticky top-0 z-10 bg-[#FAF7F2]/95 backdrop-blur-md px-5 py-4 border-b border-[#5C1A32]/10 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Ruler className="h-4 w-4 text-[#5C1A32]" />
+            <h3 className="text-xs font-semibold tracking-[0.18em] uppercase text-[#1B1512]">
+              Couture Measurements
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            className="p-1.5 text-[#1B1512]/60 hover:text-[#5C1A32] rounded-full hover:bg-[#5C1A32]/5 transition-colors"
+            aria-label="Close drawer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
         <div className="w-full lg:w-[320px] px-4 py-6">
           <div className="flex items-center gap-2 mb-4">
             <Ruler className="h-4 w-4 text-[#5C1A32]" />

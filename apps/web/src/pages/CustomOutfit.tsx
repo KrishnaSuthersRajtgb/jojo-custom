@@ -116,11 +116,8 @@ export default function CustomOutfit() {
   };
 
   return (
-    // pt-16 clears the fixed h-16 Navbar; min-h-screen keeps the bone
-    // background filling the viewport instead of showing white below
-    // shorter content.
-    <div className="w-full min-h-screen bg-[#F6F1E7] px-6 pt-16 pb-12">
-      <div className="max-w-5xl mx-auto pt-10">
+    <div className="w-full min-h-screen bg-[#FAF7F2] px-6 py-8">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-10 text-center">
           <h1 className="text-3xl md:text-4xl text-[#1B1512] mb-2" style={serif}>
             Customize Your Outfit

@@ -28,3 +28,8 @@ orderRouter.get('/:id', (req, res) => {
 orderRouter.patch('/:id/status', (req, res) => {
   void orderController.updateOrderStatus(req, res);
 });
+
+// Amazon-style Tax Invoice download (PDF or HTML)
+orderRouter.get('/:id/invoice', (req, res) => {
+  void orderController.downloadInvoice(req, res);
+});

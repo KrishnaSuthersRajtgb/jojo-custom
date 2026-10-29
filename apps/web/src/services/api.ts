@@ -231,6 +231,8 @@ export interface OrderItem {
   paymentStatus: string;
   status: string;
   placedAt: string;
+  trackingNumber?: string;
+  courier?: string;
 }
 
 export const orderApi = {
@@ -265,10 +267,15 @@ export const orderApi = {
     });
   },
 
-  updateStatus: async (id: string, status: string): Promise<{ data: OrderItem }> => {
+  updateStatus: async (
+    id: string,
+    status?: string,
+    trackingNumber?: string,
+    courier?: string,
+  ): Promise<{ data: OrderItem }> => {
     return request<{ data: OrderItem }>(`/api/orders/${id}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, trackingNumber, courier }),
     });
   },
 };
@@ -304,5 +311,239 @@ export const healthApi = {
     return request<{ data: { status: string; database?: string } }>('/health', {
       method: 'GET',
     });
+  },
+};
+
+// ── Pricing APIs ──────────────────────────────────────────────────────────
+export interface AccessoryItem {
+  id: string;
+  label: string;
+  price: number;
+  active: boolean;
+  category?: string;
+  description?: string;
+}
+
+export interface CustomFabricPayload {
+  name: string;
+  tone: 'warm' | 'cool' | 'neutral';
+  hex: string;
+  material: string;
+  pricePerMeter: number;
+  description: string;
+  width?: string;
+  care?: string;
+}
+
+export interface CustomFabricItem extends CustomFabricPayload {
+  id: string;
+}
+
+export interface PricingData {
+  fabricPrices: Record<string, number>;
+  accessories: AccessoryItem[];
+  customFabrics?: CustomFabricItem[];
+  updatedAt?: string;
+}
+
+export const pricingApi = {
+  get: async (): Promise<{ data: PricingData }> => {
+    return request<{ data: PricingData }>('/api/pricing', {
+      method: 'GET',
+    });
+  },
+
+  addFabric: async (
+    fabric: CustomFabricPayload,
+  ): Promise<{ message: string; data: CustomFabricItem }> => {
+    return request<{ message: string; data: CustomFabricItem }>('/api/pricing/fabrics/new', {
+      method: 'POST',
+      body: JSON.stringify(fabric),
+    });
+  },
+
+  updateFabricPrices: async (payload: {
+    fabricId?: string;
+    pricePerMeter?: number;
+    fabricPrices?: Record<string, number>;
+  }): Promise<{ message: string; data: { fabricPrices: Record<string, number> } }> => {
+    return request<{ message: string; data: { fabricPrices: Record<string, number> } }>(
+      '/api/pricing/fabrics',
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  updateAccessories: async (
+    accessories: AccessoryItem[],
+  ): Promise<{ message: string; data: { accessories: AccessoryItem[] } }> => {
+    return request<{ message: string; data: { accessories: AccessoryItem[] } }>(
+      '/api/pricing/accessories',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ accessories }),
+      },
+    );
+  },
+
+  reset: async (): Promise<{ message: string; data: PricingData }> => {
+    return request<{ message: string; data: PricingData }>('/api/pricing/reset', {
+      method: 'POST',
+    });
+  },
+};
+
+// ── Failed Payments & Cron APIs ───────────────────────────────────────────
+export interface CronRunStats {
+  timestamp: string;
+  scannedCount: number;
+  expiredPendingCount: number;
+  totalFailedOrders: number;
+  durationMs: number;
+  message: string;
+}
+
+export interface CronStatusData {
+  active: boolean;
+  intervalMinutes: number;
+  isRunning: boolean;
+  lastRun: CronRunStats | null;
+  history: CronRunStats[];
+  counts: {
+    failed: number;
+    pending: number;
+  };
+}
+
+export const cronApi = {
+  getStatus: async (): Promise<{ data: CronStatusData }> => {
+    return request<{ data: CronStatusData }>('/api/cron/failed-payments/status', {
+      method: 'GET',
+    });
+  },
+
+  runJob: async (): Promise<{ message: string; data: CronRunStats }> => {
+    return request<{ message: string; data: CronRunStats }>('/api/cron/failed-payments/run', {
+      method: 'POST',
+    });
+  },
+
+  getFailedOrders: async (): Promise<{ data: OrderItem[] }> => {
+    return request<{ data: OrderItem[] }>('/api/cron/failed-orders', {
+      method: 'GET',
+    });
+  },
+
+  recordFailure: async (payload: {
+    id?: string;
+    orderDetails?: unknown;
+    address?: unknown;
+    reason?: string;
+    errorCode?: string;
+  }): Promise<{ message: string; data: unknown }> => {
+    return request<{ message: string; data: unknown }>('/api/cron/record-failure', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+};
+
+// ── User Management APIs ──────────────────────────────────────────────────
+export interface RegisteredUser {
+  _id: string;
+  username: string;
+  email: string;
+  gender: string;
+  phoneNumber: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const userApi = {
+  getAll: async (): Promise<{ data: RegisteredUser[] }> => {
+    return request<{ data: RegisteredUser[] }>('/api/auth/users');
+  },
+  deleteUser: async (id: string): Promise<{ message: string }> => {
+    return request<{ message: string }>(`/api/auth/users/${id}`, { method: 'DELETE' });
+  },
+  updateRole: async (payload: {
+    email?: string;
+    userId?: string;
+    role: 'user' | 'staff' | 'admin';
+  }): Promise<{ data: RegisteredUser; message: string }> => {
+    return request<{ data: RegisteredUser; message: string }>('/api/auth/role', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+};
+
+// ── Review APIs ───────────────────────────────────────────────────────────
+export interface ReviewItem {
+  _id: string;
+  username: string;
+  userId?: string;
+  orderId?: string;
+  fabricId?: string;
+  fabricName?: string;
+  garment?: string;
+  rating: number;
+  title: string;
+  comment: string;
+  verifiedPurchase: boolean;
+  status: 'approved' | 'pending' | 'flagged';
+  createdAt: string;
+}
+
+export interface ReviewStats {
+  count: number;
+  average: number;
+}
+
+export const reviewApi = {
+  getReviews: async (params?: {
+    fabricId?: string;
+    orderId?: string;
+    limit?: number;
+  }): Promise<{ data: ReviewItem[]; stats?: ReviewStats }> => {
+    return request<{ data: ReviewItem[]; stats?: ReviewStats }>(
+      '/api/reviews',
+      params ? { params } : {},
+    );
+  },
+
+  getAdminReviews: async (): Promise<{ data: ReviewItem[] }> => {
+    return request<{ data: ReviewItem[] }>('/api/reviews/admin');
+  },
+  createReview: async (payload: {
+    username: string;
+    userId?: string;
+    orderId?: string;
+    fabricId?: string;
+    fabricName?: string;
+    garment?: string;
+    rating: number;
+    title: string;
+    comment: string;
+  }): Promise<{ data: ReviewItem }> => {
+    return request<{ data: ReviewItem }>('/api/reviews', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateStatus: async (
+    id: string,
+    status: 'approved' | 'pending' | 'flagged',
+  ): Promise<{ data: ReviewItem }> => {
+    return request<{ data: ReviewItem }>(`/api/reviews/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+  deleteReview: async (id: string): Promise<{ message: string }> => {
+    return request<{ message: string }>(`/api/reviews/${id}`, { method: 'DELETE' });
   },
 };

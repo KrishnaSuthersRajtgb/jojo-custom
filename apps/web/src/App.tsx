@@ -1,6 +1,8 @@
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AddressProvider } from './context/AddressContext';
+import { pricingService } from './services/pricingService';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import MeasurementSidebar from './components/MeasurementSidebar';
@@ -29,12 +31,19 @@ import ColorWheel from './components/ColorWheel';
 import ScrollToTop from './components/ScrollToTop';
 function AppContent() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
+
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   const handleLogout = () => {
     logout();
     void navigate('/login');
   };
+
+  useEffect(() => {
+    void pricingService.init();
+  }, []);
 
   // Navbar expects { name, email, avatarUrl? } — our AuthUser stores "username",
   // so map it here rather than changing Navbar.tsx or AuthContext.tsx.
@@ -43,19 +52,21 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <ScrollToTop />
-      <Navbar
-        user={navbarUser}
-        onSignIn={() => {
-          void navigate('/signup');
-        }}
-        onLogin={() => {
-          void navigate('/login');
-        }}
-        onLogout={handleLogout}
-      />
-      {/* pt-16 offsets the now-fixed Navbar (h-16) so content isn't hidden underneath it */}
-      <div className="flex-1 flex flex-col lg:flex-row pt-16">
-        <main className="flex-1 min-w-0">
+      {!isAdminRoute && (
+        <Navbar
+          user={navbarUser}
+          onSignIn={() => {
+            void navigate('/signup');
+          }}
+          onLogin={() => {
+            void navigate('/login');
+          }}
+          onLogout={handleLogout}
+        />
+      )}
+      {/* pt-28 offsets the fixed luxury top bar + navbar so storefront content is not hidden; admin routes use pt-0 */}
+      <div className={`flex-1 flex flex-col w-full ${isAdminRoute ? 'pt-0' : 'pt-28'}`}>
+        <main className="flex-1 min-w-0 w-full">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/fabrics" element={<Fabrics />} />
@@ -108,7 +119,7 @@ function AppContent() {
             <Route
               path="/admin/orders"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <AdminOrders />
                 </ProtectedRoute>
               }
@@ -116,16 +127,16 @@ function AppContent() {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <AdminDashboard />
                 </ProtectedRoute>
               }
             />
           </Routes>
         </main>
-        <MeasurementSidebar />
+        {!isAdminRoute && <MeasurementSidebar />}
       </div>
-      <Footer />
+      {!isAdminRoute && <Footer />}
     </div>
   );
 }

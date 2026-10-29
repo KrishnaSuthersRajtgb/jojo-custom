@@ -27,3 +27,15 @@ authRouter.get('/profile', authenticate, (req, res) => {
 authRouter.put('/profile', authenticate, (req, res) => {
   void authController.updateProfile(req, res);
 });
+
+authRouter.get('/users', (req, res) => {
+  void authController.getAllUsers(req, res);
+});
+
+authRouter.patch('/role', (req, res) => {
+  void authController.updateRole(req, res);
+});
+
+authRouter.delete('/users/:id', (req, res) => {
+  void authController.deleteUser(req, res);
+});

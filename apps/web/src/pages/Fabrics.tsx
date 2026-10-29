@@ -1,16 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TONES, MATERIALS, FABRICS, type Tone } from '../data/fabrics';
+import { type Tone } from '../data/fabrics';
 import ColorWheel from '../components/ColorWheel';
+import { SlidersHorizontal, X, Search, RotateCcw } from 'lucide-react';
+import { pricingService, PRICING_UPDATED_EVENT } from '../services/pricingService';
 
-// Same tokens as Home.tsx — ink / wine / brass / bone, Fraunces + Inter.
-// See Home.tsx for the full token comment and the Google Fonts link to
-// add once to index.html.
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
-// --- Custom color matching helpers -----------------------------------
-// How close (in RGB Euclidean distance, max ~441) a fabric's hex must be
-// to the hovered wheel color to count as a match. Lower = stricter.
+// How close (in RGB Euclidean distance) a fabric's hex must be to the hovered wheel color
 const CUSTOM_COLOR_MATCH_THRESHOLD = 90;
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -26,487 +23,537 @@ function colorDistance(hexA: string, hexB: string): number {
   const [r2, g2, b2] = hexToRgb(hexB);
   return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
 }
-// -----------------------------------------------------------------------
 
-// Small chevron used on every collapsible section header.
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      className={`h-4 w-4 text-[#4A413B]/50 transition-transform shrink-0 ${
-        open ? 'rotate-180' : ''
-      }`}
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M5 7.5 10 12.5 15 7.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-// Master toggle icon for the whole filter panel — three straight lines,
-// no rotation/morphing, just a static hamburger.
-function Hamburger() {
-  return (
-    <svg
-      className="h-5 w-5 text-[#1B1512]"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M3 5h14M3 10h14M3 15h14" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-// Close (X) icon shown inside the mobile drawer header.
-function CloseIcon() {
-  return (
-    <svg
-      className="h-5 w-5 text-[#1B1512]"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${
-        checked ? 'bg-[#5C1A32]' : 'bg-[#5C1A32]/15'
-      }`}
-    >
-      <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
-          checked ? 'translate-x-[18px]' : 'translate-x-[3px]'
-        }`}
-      />
-    </button>
-  );
-}
+// Popular material quick filters matching the mockup pills
+const POPULAR_MATERIALS = [
+  'Silk',
+  'Georgette',
+  'Cotton',
+  'Linen',
+  'Khadi',
+  'Chanderi',
+  'Raw Silk',
+  'Poplin',
+  'Crepe',
+  'Chiffon',
+];
 
 export default function Fabrics() {
   const navigate = useNavigate();
-  const [selectedTones, setSelectedTones] = useState<Tone[]>([]);
-  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
-
-  // Custom color filter — the wheel is always visible inline under the
-  // tone swatches (no button, no popover). Hovering over it sets
-  // customColor live; moving off keeps the last hovered color until
-  // "Clear" is pressed.
+  const [selectedTone, setSelectedTone] = useState<Tone | 'all'>('all');
+  const [selectedMaterial, setSelectedMaterial] = useState<string>('all');
   const [customColor, setCustomColor] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showColorWheel, setShowColorWheel] = useState(false);
+  const [fabricsList, setFabricsList] = useState(() => pricingService.getAllFabrics());
+  const [, setPriceTick] = useState(0);
 
-  // Each filter group opens/closes independently via its own down-chevron,
-  // instead of one all-or-nothing "Filters" toggle. Both start open so the
-  // page reads the same as before on first load.
-  const [toneOpen, setToneOpen] = useState(true);
-  const [materialOpen, setMaterialOpen] = useState(true);
+  useEffect(() => {
+    const handlePriceUpdate = () => {
+      setFabricsList(pricingService.getAllFabrics());
+      setPriceTick((t) => t + 1);
+    };
+    if (typeof pricingService.refreshFromApi === 'function') {
+      pricingService
+        .refreshFromApi()
+        .then(() => {
+          setFabricsList(pricingService.getAllFabrics());
+        })
+        .catch(() => {
+          /* offline fallback */
+        });
+    }
+    window.addEventListener(PRICING_UPDATED_EVENT, handlePriceUpdate);
+    window.addEventListener('storage', handlePriceUpdate);
+    return () => {
+      window.removeEventListener(PRICING_UPDATED_EVENT, handlePriceUpdate);
+      window.removeEventListener('storage', handlePriceUpdate);
+    };
+  }, []);
 
-  // Master toggle for the filter panel. On mobile (<lg) this drives a
-  // slide-in drawer from the left, like the reference hamburger menu —
-  // closed by default there. On desktop (lg+) the panel is always a static
-  // sidebar, so this flag has no visual effect above the lg breakpoint.
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const toggleTone = (tone: Tone) => {
-    setSelectedTones((prev) =>
-      prev.includes(tone) ? prev.filter((t) => t !== tone) : [...prev, tone],
-    );
-  };
-
-  const clearTones = () => {
-    setSelectedTones([]);
-  };
-
-  const toggleMaterial = (material: string) => {
-    setSelectedMaterials((prev) =>
-      prev.includes(material) ? prev.filter((m) => m !== material) : [...prev, material],
-    );
-  };
-
-  const clearMaterials = () => {
-    setSelectedMaterials([]);
-  };
-
+  // Filter fabrics based on tone, material, custom color, and search query
   const filteredFabrics = useMemo(() => {
-    return FABRICS.filter((f) => {
-      const toneMatch = selectedTones.length === 0 || selectedTones.includes(f.tone);
+    return fabricsList.filter((f) => {
+      const toneMatch = selectedTone === 'all' || f.tone === selectedTone;
       const materialMatch =
-        selectedMaterials.length === 0 || selectedMaterials.includes(f.material);
+        selectedMaterial === 'all' ||
+        f.material.toLowerCase() === selectedMaterial.toLowerCase() ||
+        f.name.toLowerCase().includes(selectedMaterial.toLowerCase());
       const colorMatch =
         !customColor || colorDistance(f.hex, customColor) <= CUSTOM_COLOR_MATCH_THRESHOLD;
-      return toneMatch && materialMatch && colorMatch;
+      const searchMatch =
+        !searchQuery.trim() ||
+        f.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+        f.material.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+        f.id.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      return toneMatch && materialMatch && colorMatch && searchMatch;
     });
-  }, [selectedTones, selectedMaterials, customColor]);
+  }, [fabricsList, selectedTone, selectedMaterial, customColor, searchQuery]);
 
-  const activeFilterCount = selectedTones.length + selectedMaterials.length + (customColor ? 1 : 0);
+  const searchSuggestions = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const matchedIds = new Set(filteredFabrics.map((f) => f.id));
+    const firstMatched = filteredFabrics[0];
+    const targetTone = firstMatched?.tone;
+    const targetMaterial = firstMatched?.material;
 
-  // Shared body for the filter panel — same JSX rendered inside the static
-  // desktop sidebar and the mobile slide-in drawer, so filter logic and
-  // markup never diverge between breakpoints.
-  const filterPanelBody = (
-    <>
-      {/* Tone filter — independent accordion */}
-      <div className="border-b border-[#5C1A32]/10">
-        <button
-          type="button"
-          onClick={() => {
-            setToneOpen((prev) => !prev);
-          }}
-          aria-expanded={toneOpen}
-          className="w-full flex items-center justify-between px-5 py-4"
-        >
-          <span className="text-[11px] font-semibold tracking-[0.15em] text-[#4A413B]/70 uppercase">
-            Color Tone
-          </span>
-          <div className="flex items-center gap-2">
-            {selectedTones.length > 0 && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearTones();
-                }}
-                role="button"
-                tabIndex={0}
-                className="text-xs text-[#5C1A32] hover:underline"
-              >
-                Clear
-              </span>
-            )}
-            <Chevron open={toneOpen} />
-          </div>
-        </button>
-
-        {toneOpen && (
-          <div className="px-5 pb-5">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={clearTones}
-                aria-pressed={selectedTones.length === 0}
-                className={`flex items-center gap-2 border px-3 py-2 text-sm transition-colors flex-1 min-w-[45%] justify-center ${
-                  selectedTones.length === 0
-                    ? 'border-[#5C1A32] bg-[#5C1A32]/5 text-[#5C1A32] font-semibold'
-                    : 'border-[#5C1A32]/15 text-[#4A413B] hover:border-[#5C1A32]'
-                }`}
-              >
-                All Tones
-              </button>
-              {TONES.map((t) => {
-                const checked = selectedTones.includes(t.key);
-                return (
-                  <button
-                    key={t.key}
-                    onClick={() => {
-                      toggleTone(t.key);
-                    }}
-                    aria-pressed={checked}
-                    className={`flex items-center gap-2 border px-3 py-2 text-sm transition-colors flex-1 min-w-[45%] ${
-                      checked
-                        ? 'border-[#5C1A32] bg-[#5C1A32]/5 text-[#5C1A32] font-semibold'
-                        : 'border-[#5C1A32]/15 text-[#4A413B] hover:border-[#5C1A32]'
-                    }`}
-                  >
-                    <span className="flex -space-x-1 shrink-0">
-                      {t.swatches.map((c, i) => (
-                        <span
-                          key={i}
-                          className="h-3.5 w-3.5 rounded-full border border-white"
-                          style={{ backgroundColor: c }}
-                        />
-                      ))}
-                    </span>
-                    {t.label}
-                    {checked && <span className="ml-auto text-[#5C1A32]">✓</span>}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Color wheel — shown directly, no button/popover. Hovering
-                over it filters live; the swatch/hex readout and Clear link
-                sit underneath it. */}
-            <div className="mt-4 pt-4 border-t border-[#5C1A32]/10 flex flex-col items-center">
-              <ColorWheel
-                selectedHex={customColor}
-                onSelect={(hex) => {
-                  setCustomColor(hex);
-                }}
-                onClear={() => {
-                  setCustomColor(null);
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Material filter — independent accordion */}
-      <div>
-        <button
-          type="button"
-          onClick={() => {
-            setMaterialOpen((prev) => !prev);
-          }}
-          aria-expanded={materialOpen}
-          className="w-full flex items-center justify-between px-5 py-4"
-        >
-          <span className="text-[11px] font-semibold tracking-[0.15em] text-[#4A413B]/70 uppercase">
-            Material
-          </span>
-          <div className="flex items-center gap-2">
-            {selectedMaterials.length > 0 && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearMaterials();
-                }}
-                role="button"
-                tabIndex={0}
-                className="text-xs text-[#5C1A32] hover:underline"
-              >
-                Clear
-              </span>
-            )}
-            <Chevron open={materialOpen} />
-          </div>
-        </button>
-
-        {materialOpen && (
-          <div className="px-5 pb-5">
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-x-3 gap-y-3 max-h-72 overflow-y-auto pr-1">
-              {MATERIALS.map((material) => {
-                const checked = selectedMaterials.includes(material);
-                return (
-                  <div
-                    key={material}
-                    className="flex items-center justify-between gap-2 text-sm text-[#2A211D]"
-                  >
-                    <span className="truncate">{material}</span>
-                    <Toggle
-                      checked={checked}
-                      onChange={() => {
-                        toggleMaterial(material);
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {activeFilterCount > 0 && (
-        <div className="p-5 pt-0">
-          <button
-            onClick={() => {
-              clearTones();
-              clearMaterials();
-              setCustomColor(null);
-            }}
-            className="w-full text-center text-sm font-semibold text-[#5C1A32] border border-[#5C1A32]/30 py-2 hover:bg-[#5C1A32]/5 transition-colors"
-          >
-            Clear all filters
-          </button>
-        </div>
-      )}
-    </>
-  );
+    return fabricsList
+      .filter((f) => !matchedIds.has(f.id))
+      .sort((a, b) => {
+        if (targetTone && a.tone === targetTone && b.tone !== targetTone) return -1;
+        if (targetTone && b.tone === targetTone && a.tone !== targetTone) return 1;
+        if (targetMaterial && a.material === targetMaterial && b.material !== targetMaterial)
+          return -1;
+        return 0;
+      })
+      .slice(0, 10);
+  }, [searchQuery, filteredFabrics, fabricsList]);
 
   return (
-    <div className="w-full bg-[#F6F1E7] min-h-screen">
-      {/* Sticky under the navbar — stays put while the grid/filters scroll beneath it */}
-      <section className="w-full px-6 pt-10 pb-6 sticky top-16 z-30 bg-[#F6F1E7] border-b border-[#5C1A32]/10">
-        <div className="max-w-6xl mx-auto">
-          <span className="inline-block text-[11px] font-semibold tracking-[0.25em] text-[#5C1A32] uppercase mb-3">
-            The Swatch Library
-          </span>
-          <h1 className="text-4xl text-[#1B1512] mb-2" style={serif}>
-            Fabric &amp; Material
-          </h1>
-          <p className="text-[#4A413B] text-sm">
-            Filter by color tone and material to find your cloth.
-          </p>
+    <div className="w-full bg-[#FAF7F2] text-[#1B1512] min-h-screen">
+      {/* ---------------- 1. DARK WOOD SWATCH HERO (From Mockup input_file_4.png) ---------------- */}
+      <section className="relative w-full min-h-[380px] sm:min-h-[460px] bg-[#13100E] flex items-center overflow-hidden">
+        {/* Background Image: swatches on dark walnut wood with tailor shears & chalk */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="/images/fabric-swatches.jpg"
+            alt="Hand-selected fabric swatches on artisan bench"
+            className="w-full h-full object-cover object-center opacity-45 brightness-75 scale-105"
+          />
+          {/* Subtle gradient vignette */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#13100E] via-[#13100E]/40 to-[#13100E]/70" />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-16 sm:py-20 w-full">
+          <div className="max-w-2xl space-y-4">
+            <span className="text-[11px] font-semibold tracking-[0.28em] text-[#B8935A] uppercase block">
+              THE SWATCH LIBRARY
+            </span>
+
+            <h1
+              className="text-white text-4xl sm:text-5xl md:text-6xl font-normal leading-[1.08] tracking-tight"
+              style={serif}
+            >
+              Cloth with <br />
+              <span className="italic text-[#EFE4D2]">a lineage.</span>
+            </h1>
+
+            <p className="text-[#FAF7F2]/80 text-sm sm:text-base leading-relaxed font-light pt-2">
+              Silks from Kanchipuram, cottons from Chanderi, georgettes from Surat — every fabric
+              chosen by hand.
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="w-full px-6 pb-16 pt-8">
-        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8 items-start">
-          {/* --- Mobile: hamburger bar that opens the slide-in drawer --- */}
-          <div className="w-full lg:hidden bg-white border border-[#5C1A32]/12">
-            <div className="flex items-center justify-between p-5">
-              <h2 className="text-xs font-semibold tracking-[0.15em] uppercase text-[#1B1512]">
-                Filters
-              </h2>
-              <div className="flex items-center gap-3">
-                {activeFilterCount > 0 && (
-                  <span className="text-xs font-medium bg-[#5C1A32]/10 text-[#5C1A32] rounded-full px-2.5 py-1">
-                    {activeFilterCount} active
-                  </span>
+      {/* ---------------- 2. MAIN BROWSE SECTION WITH VERTICAL SIDEBAR ---------------- */}
+      <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          {/* =============================================================== */}
+          {/* VERTICAL CURATION SIDEBAR (Scrollable & Responsive)            */}
+          {/* =============================================================== */}
+          <aside className="w-full lg:w-72 shrink-0 bg-white border border-[#5C1A32]/12 rounded-xl p-4 sm:p-5 shadow-xs lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] overflow-y-auto space-y-5">
+            {/* Sidebar Title & Results Badge */}
+            <div className="border-b border-[#5C1A32]/10 pb-3.5 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase tracking-[0.25em] text-[#B8935A] font-semibold block">
+                  ATELIER ARCHIVE
+                </span>
+                <h2 className="text-lg font-normal text-[#1B1512]" style={serif}>
+                  Filter Fabrics
+                </h2>
+              </div>
+              <span className="px-2.5 py-1 bg-[#5C1A32]/5 border border-[#5C1A32]/15 rounded text-[11px] font-semibold text-[#5C1A32]">
+                {filteredFabrics.length}
+              </span>
+            </div>
+
+            {/* Quick Search */}
+            <div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#544B45]/50" />
+                <input
+                  type="text"
+                  placeholder="Search weave or color..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 bg-[#FAF7F2] border border-[#5C1A32]/15 rounded-lg text-xs placeholder:text-[#544B45]/50 text-[#1B1512] focus:outline-none focus:border-[#5C1A32]"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFiltersOpen(true);
-                  }}
-                  aria-expanded={filtersOpen}
-                  aria-label="Open filters"
-                  className="p-1"
-                >
-                  <Hamburger />
-                </button>
               </div>
             </div>
-          </div>
 
-          {/* --- Mobile: dark backdrop behind the drawer, tap to close --- */}
-          <div
-            onClick={() => {
-              setFiltersOpen(false);
-            }}
-            className={`lg:hidden fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ${
-              filtersOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-            aria-hidden="true"
-          />
+            {/* Section 1: Color Palette Tones (Compact 2x2 Grid) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-[#A89F95]">
+                  COLOR PALETTE
+                </span>
+                {selectedTone !== 'all' && (
+                  <button
+                    onClick={() => setSelectedTone('all')}
+                    className="text-[10px] text-[#5C1A32] hover:underline font-semibold"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { id: 'all', label: 'All', desc: `${fabricsList.length}`, dots: [] },
+                  { id: 'warm', label: 'Warm', desc: 'Reds/Golds', dots: ['#7A1F2B', '#B5822A'] },
+                  { id: 'cool', label: 'Cool', desc: 'Blues/Teals', dots: ['#2C5F8A', '#3A7CA5'] },
+                  {
+                    id: 'neutral',
+                    label: 'Neutral',
+                    desc: 'Beiges/Grays',
+                    dots: ['#EFE9DF', '#CFC6BC'],
+                  },
+                ].map((item) => {
+                  const active = selectedTone === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedTone(item.id as Tone | 'all')}
+                      className={`text-left p-2 rounded-lg border transition-all flex flex-col justify-between ${
+                        active
+                          ? 'bg-[#5C1A32]/8 border-[#5C1A32] text-[#5C1A32] shadow-2xs font-semibold'
+                          : 'bg-white border-[#5C1A32]/10 hover:border-[#5C1A32]/30 text-[#1B1512]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-semibold">{item.label}</span>
+                        {item.dots.length > 0 && (
+                          <div className="flex items-center -space-x-1">
+                            {item.dots.map((dot, idx) => (
+                              <span
+                                key={idx}
+                                className="h-2 w-2 rounded-full border border-white"
+                                style={{ backgroundColor: dot }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-[#544B45]/70 mt-0.5">{item.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-          {/* --- Mobile: drawer itself, slides in from the left --- */}
-          <div
-            className={`lg:hidden fixed top-0 left-0 h-full w-[80%] max-w-xs bg-white z-50 shadow-xl transform transition-transform duration-300 ease-out overflow-y-auto ${
-              filtersOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Filters"
-          >
-            <div className="flex items-center justify-between p-5 border-b border-[#5C1A32]/10">
-              <h2 className="text-xs font-semibold tracking-[0.15em] uppercase text-[#1B1512]">
-                Filters
-              </h2>
+            {/* Section 2: Material Weaves (Vertical List with Scrollbar) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-[#A89F95]">
+                  WEAVE & MATERIAL
+                </span>
+                {selectedMaterial !== 'all' && (
+                  <button
+                    onClick={() => setSelectedMaterial('all')}
+                    className="text-[10px] text-[#5C1A32] hover:underline font-semibold"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedMaterial('all')}
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-all flex items-center justify-between ${
+                    selectedMaterial === 'all'
+                      ? 'bg-[#1B1512] text-[#FAF7F2] font-semibold shadow-2xs'
+                      : 'hover:bg-[#FAF7F2] text-[#1B1512]'
+                  }`}
+                >
+                  <span>All Weaves</span>
+                  <span className="text-[10px] opacity-70">{fabricsList.length}</span>
+                </button>
+                {POPULAR_MATERIALS.map((mat) => {
+                  const active = selectedMaterial.toLowerCase() === mat.toLowerCase();
+                  const count = fabricsList.filter(
+                    (f) =>
+                      f.material.toLowerCase() === mat.toLowerCase() ||
+                      f.name.toLowerCase().includes(mat.toLowerCase()),
+                  ).length;
+                  return (
+                    <button
+                      key={mat}
+                      type="button"
+                      onClick={() => setSelectedMaterial(active ? 'all' : mat)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center justify-between ${
+                        active
+                          ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-2xs'
+                          : 'hover:bg-[#FAF7F2] text-[#1B1512]'
+                      }`}
+                    >
+                      <span>{mat}</span>
+                      <span
+                        className={`text-[10px] ${
+                          active ? 'text-[#FAF7F2]/80' : 'text-[#544B45]/60'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Section 3: Precision Color Wheel Toggle */}
+            <div className="border-t border-[#5C1A32]/10 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowColorWheel((prev) => !prev)}
+                className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-xs font-semibold uppercase tracking-wider transition-all ${
+                  showColorWheel || customColor
+                    ? 'bg-[#5C1A32]/10 border-[#5C1A32] text-[#5C1A32]'
+                    : 'bg-white border-[#5C1A32]/20 hover:border-[#5C1A32]/50 text-[#1B1512]'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-3.5 w-3.5 text-[#B8935A]" />
+                  <span>{customColor ? 'Custom Color Active' : 'Precision Color Wheel'}</span>
+                </div>
+                {customColor && (
+                  <span
+                    className="h-3.5 w-3.5 rounded-full border border-white shadow-2xs"
+                    style={{ backgroundColor: customColor }}
+                  />
+                )}
+              </button>
+
+              {/* Color Wheel Panel */}
+              {showColorWheel && (
+                <div className="mt-3 p-3 bg-[#FAF7F2] border border-[#5C1A32]/15 rounded-lg flex flex-col items-center relative animate-fadeIn">
+                  <button
+                    type="button"
+                    onClick={() => setShowColorWheel(false)}
+                    className="absolute top-2 right-2 p-1 text-[#544B45] hover:text-[#1B1512]"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <span className="text-[9px] font-semibold tracking-[0.2em] text-[#5C1A32] uppercase mb-2">
+                    SPECTRAL PICKER
+                  </span>
+                  <ColorWheel
+                    selectedHex={customColor}
+                    onSelect={(hex) => setCustomColor(hex)}
+                    onClear={() => setCustomColor(null)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Reset All Filters button if active */}
+            {(selectedTone !== 'all' ||
+              selectedMaterial !== 'all' ||
+              customColor !== null ||
+              searchQuery !== '') && (
               <button
                 type="button"
                 onClick={() => {
-                  setFiltersOpen(false);
+                  setSelectedTone('all');
+                  setSelectedMaterial('all');
+                  setCustomColor(null);
+                  setSearchQuery('');
                 }}
-                aria-label="Close filters"
-                className="p-1"
+                className="w-full py-2.5 text-xs font-semibold text-[#5C1A32] hover:bg-[#5C1A32]/5 border border-[#5C1A32]/20 rounded-lg transition-colors flex items-center justify-center gap-1.5"
               >
-                <CloseIcon />
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset All Filters</span>
               </button>
-            </div>
-            {filterPanelBody}
-          </div>
+            )}
+          </aside>
 
-          {/* --- Desktop: static sidebar, always visible, unchanged behavior --- */}
-          <aside className="hidden lg:block w-72 shrink-0 lg:sticky lg:top-[calc(4rem+10rem)]">
-            <div className="bg-white border border-[#5C1A32]/12">
-              <div className="flex items-center justify-between p-5 border-b border-[#5C1A32]/10">
-                <h2 className="text-xs font-semibold tracking-[0.15em] uppercase text-[#1B1512]">
-                  Filters
-                </h2>
-                {activeFilterCount > 0 && (
-                  <span className="text-xs font-medium bg-[#5C1A32]/10 text-[#5C1A32] rounded-full px-2.5 py-1">
-                    {activeFilterCount} active
+          {/* =============================================================== */}
+          {/* RIGHT MAIN CATALOG GRID                                         */}
+          {/* =============================================================== */}
+          <div className="flex-1 min-w-0 space-y-6">
+            {/* Top Toolbar */}
+            <div className="bg-white border border-[#5C1A32]/12 rounded-xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs text-[#544B45]">
+                <span className="font-semibold text-[#1B1512]">Showing:</span>
+                <span className="font-semibold text-[#5C1A32]">
+                  {filteredFabrics.length} of {fabricsList.length} swatches
+                </span>
+                {selectedMaterial !== 'all' && (
+                  <span className="px-2 py-0.5 bg-[#5C1A32]/10 text-[#5C1A32] rounded text-[11px] font-medium">
+                    Weave: {selectedMaterial}
+                  </span>
+                )}
+                {selectedTone !== 'all' && (
+                  <span className="px-2 py-0.5 bg-[#B8935A]/15 text-[#8E6D38] rounded text-[11px] font-medium capitalize">
+                    Tone: {selectedTone}
                   </span>
                 )}
               </div>
-              {filterPanelBody}
+
+              <div className="text-xs text-[#544B45]/70 italic hidden sm:block">
+                Direct mill curation & bespoke master tailoring
+              </div>
             </div>
-          </aside>
 
-          {/* Product grid */}
-          <div className="flex-1 min-w-0 w-full">
-            <p className="text-sm text-[#4A413B]/70 mb-6">
-              {filteredFabrics.length} fabric
-              {filteredFabrics.length !== 1 ? 's' : ''} found
-            </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-6">
+            {/* High-Couture Fabric Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
               {filteredFabrics.map((fabric) => (
                 <button
                   key={fabric.id}
                   onClick={() => {
                     void navigate(`/fabrics/${fabric.tone}/${fabric.id}`);
                   }}
-                  className="group text-left bg-white border border-[#5C1A32]/10 hover:border-[#B8935A]/50 hover:shadow-[0_18px_36px_-18px_rgba(27,21,18,0.35)] transition-all duration-300 overflow-hidden"
+                  className="group text-left bg-white border border-[#5C1A32]/12 hover:border-[#B8935A] hover:shadow-[0_20px_40px_-15px_rgba(27,21,18,0.25)] transition-all duration-300 overflow-hidden flex flex-col rounded-lg"
                 >
-                  {/* Swatch mounted with a bone-colored mat, like a real
-                      fabric sample card, instead of a full-bleed tile. */}
-                  <div className="p-3 pb-0">
-                    <div className="relative h-40 w-full overflow-hidden">
-                      <div
-                        className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                        style={{ backgroundColor: fabric.hex }}
-                      />
-                      {/* subtle inner shade so flat colors read as fabric, not paint */}
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            'linear-gradient(160deg, rgba(255,255,255,0.16) 0%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.16) 100%)',
-                        }}
-                      />
-                      {/* fine inner frame, like a mounted swatch under glass */}
-                      <div className="absolute inset-0 ring-1 ring-inset ring-white/25" />
-                      {/* refined tone marker — a small dot + letterspaced label, no heavy badge */}
-                      <div className="absolute top-4 left-4 flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-white/95 ring-1 ring-black/10" />
-                        <span className="text-[9px] font-semibold tracking-[0.22em] uppercase text-white/95 [text-shadow:0_1px_3px_rgba(0,0,0,0.35)]">
-                          {fabric.tone}
-                        </span>
-                      </div>
+                  {/* Swatch Canvas Preview */}
+                  <div className="relative aspect-square w-full overflow-hidden bg-[#EFE9DF]">
+                    <div
+                      className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-105"
+                      style={{ backgroundColor: fabric.hex }}
+                    />
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.15) 100%)',
+                      }}
+                    />
+                    <div className="absolute inset-0 ring-1 ring-inset ring-white/20 pointer-events-none" />
+
+                    {/* Tone badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-0.5 bg-[#1B1512]/60 backdrop-blur-sm rounded">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#B8935A]" />
+                      <span className="text-[9px] font-semibold tracking-[0.2em] uppercase text-white">
+                        {fabric.tone}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Card details */}
-                  <div className="px-6 pt-5 pb-6">
-                    <div className="text-[17px] leading-snug text-[#1B1512] mb-1.5" style={serif}>
-                      {fabric.name}
+                  {/* Swatch Details */}
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3
+                        className="text-base font-normal text-[#1B1512] group-hover:text-[#5C1A32] transition-colors line-clamp-1"
+                        style={serif}
+                      >
+                        {fabric.name}
+                      </h3>
+                      <p className="text-xs text-[#544B45] line-clamp-2 mt-1 font-light leading-relaxed">
+                        {fabric.description}
+                      </p>
                     </div>
-                    <p className="text-xs text-[#4A413B]/60 leading-relaxed mb-4 line-clamp-2">
-                      {fabric.description}
-                    </p>
 
-                    {/* brass hairline, in place of the old material chip's
-                        block background — a quieter, more premium divider */}
-                    <div className="h-px bg-gradient-to-r from-[#B8935A]/60 via-[#5C1A32]/10 to-transparent mb-4" />
-
-                    <div className="flex items-end justify-between gap-2">
-                      <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[#B8935A]">
+                    <div className="pt-3.5 mt-3 border-t border-[#5C1A32]/10 flex items-end justify-between">
+                      <span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[#B8935A]">
                         {fabric.material}
                       </span>
-                      <span className="text-right leading-none">
-                        <span
-                          className="block text-base font-semibold text-[#5C1A32]"
-                          style={serif}
-                        >
-                          ₹{fabric.pricePerMeter}
+                      <div className="text-right">
+                        <span className="block text-sm font-semibold text-[#5C1A32]" style={serif}>
+                          ₹{pricingService.getFabricPrice(fabric.id, fabric.pricePerMeter)}
                         </span>
-                        <span className="block text-[9px] tracking-[0.1em] uppercase text-[#4A413B]/40 mt-1">
+                        <span className="block text-[9px] tracking-wider uppercase text-[#544B45]/60">
                           per metre
                         </span>
-                      </span>
+                      </div>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
 
+            {/* 10 Related Fabric Suggestions when searching */}
+            {searchQuery.trim() && searchSuggestions.length > 0 && (
+              <div className="pt-8 border-t border-[#5C1A32]/15 mt-8 space-y-4">
+                <div className="flex items-end justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-[#B8935A] block">
+                      RELATED WEAVE SUGGESTIONS
+                    </span>
+                    <h3 className="text-xl font-normal text-[#1B1512]" style={serif}>
+                      10 Related Fabrics You May Like
+                    </h3>
+                    <p className="text-xs text-[#544B45]">
+                      Hand-matched swatches complementary to your search for "{searchQuery}".
+                    </p>
+                  </div>
+                  <span className="text-xs text-[#5C1A32] font-semibold">10 recommendations</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+                  {searchSuggestions.map((sug) => {
+                    const price = pricingService.getFabricPrice(sug.id, sug.pricePerMeter);
+                    return (
+                      <button
+                        key={sug.id}
+                        onClick={() => navigate(`/fabrics/${sug.tone}/${sug.id}`)}
+                        className="group text-left bg-white border border-[#5C1A32]/12 hover:border-[#5C1A32] hover:shadow-md transition-all rounded-lg overflow-hidden flex flex-col"
+                      >
+                        <div
+                          className="relative aspect-square w-full"
+                          style={{ backgroundColor: sug.hex }}
+                        >
+                          <span className="absolute top-2 left-2 text-[8px] font-bold uppercase tracking-wider bg-black/60 text-white px-1.5 py-0.5 rounded">
+                            {sug.tone}
+                          </span>
+                        </div>
+                        <div className="p-2.5 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div
+                              className="text-xs font-semibold text-[#1B1512] group-hover:text-[#5C1A32] truncate"
+                              style={serif}
+                            >
+                              {sug.name}
+                            </div>
+                            <div className="text-[10px] text-[#8A7968]">{sug.material}</div>
+                          </div>
+                          <div className="pt-2 mt-1 border-t border-[#5C1A32]/10 flex items-center justify-between">
+                            <span className="text-xs font-bold text-[#5C1A32] font-mono">
+                              ₹{price}/m
+                            </span>
+                            <span className="text-[10px] font-semibold text-[#5C1A32]">
+                              View &rarr;
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {filteredFabrics.length === 0 && (
-              <p className="text-sm text-[#4A413B]/50 text-center py-16">
-                No fabrics found for this filter.
-              </p>
+              <div className="text-center py-20 bg-white border border-[#5C1A32]/10 rounded-xl my-6 p-6">
+                <p className="text-base font-normal text-[#1B1512]" style={serif}>
+                  No fabrics match your current selection.
+                </p>
+                <p className="text-xs text-[#544B45]/70 mt-1">
+                  Try selecting a different material, resetting palette, or clearing the search
+                  term.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTone('all');
+                    setSelectedMaterial('all');
+                    setCustomColor(null);
+                    setSearchQuery('');
+                  }}
+                  className="mt-4 px-4 py-2 bg-[#5C1A32] text-[#FAF7F2] text-xs font-semibold uppercase tracking-wider rounded-lg"
+                >
+                  Clear Filters
+                </button>
+              </div>
             )}
           </div>
         </div>

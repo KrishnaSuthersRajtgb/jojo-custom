@@ -1,12 +1,18 @@
+import { useState } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, ImagePlus } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ImagePlus,
+  FileText,
+  Clock,
+  Sparkles,
+  Scissors,
+  CheckCircle,
+} from 'lucide-react';
 
-// ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx / ProductAccessories.tsx)
-//   ink      #1B1512  headings, primary text, grand-total panel
-//   wine     #5C1A32  primary accent (replaces fuchsia-800 / pink / rose)
-//   brass    #B8935A  secondary accent
-//   bone     #F6F1E7  page background
-// Display face: Fraunces, for page title and totals.
+import { getCoutureSketchForGarment } from '../utils/coutureSketches';
+import AmazonInvoiceModal from '../components/AmazonInvoiceModal';
 
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
@@ -22,8 +28,6 @@ interface AccessoryEntry {
   price: number;
 }
 
-// Fabric details forwarded from FabricDetail.tsx -> CustomOutfit.tsx ->
-// ProductStyle.tsx -> ProductAccessories.tsx.
 interface IncomingFabric {
   fabricId: string;
   fabricName: string;
@@ -36,9 +40,6 @@ interface IncomingFabric {
   fabricTotal: number;
 }
 
-// Reference photo forwarded from ProductStyle.tsx -> ProductAccessories.tsx
-// -> here. Carried through untouched and passed on to Order/Payment so it
-// ends up on the saved order for AdminOrders/OrderTracking to display.
 interface IncomingReferenceImage {
   dataUrl: string;
   fileName: string;
@@ -72,6 +73,13 @@ export default function ProductSummary() {
   const referenceImage = state.referenceImage ?? null;
   const grandTotal = accessoriesTotal + (fabric?.fabricTotal ?? 0);
 
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+
+  const coutureSketch = getCoutureSketchForGarment(
+    productId,
+    selections[0]?.subOptionLabel || selections[0]?.optionLabel || productName,
+  );
+
   const handleProceed = () => {
     void navigate('/order', {
       state: {
@@ -88,134 +96,345 @@ export default function ProductSummary() {
     });
   };
 
+  // Construct mock order object for the Amazon invoice preview
+  const proformaOrder = {
+    id: `PROFORMA-${Date.now().toString().slice(-6)}`,
+    placedAt: new Date().toISOString(),
+    paymentId: null,
+    orderDetails: {
+      fabricName: fabric?.fabricName ?? 'Selected Textile',
+      garment: productName,
+      meters: fabric?.meters ?? 3,
+      pricePerMeter: fabric?.pricePerMeter ?? 600,
+      fabricTotal: fabric?.fabricTotal ?? grandTotal * 0.7,
+      total: grandTotal,
+      accessories,
+    },
+    address: {
+      fullName: 'Atelier Patron',
+      street: 'Complimentary Measurement Address',
+      city: 'Chennai',
+      state: 'Tamil Nadu',
+      pincode: '600034',
+      phone: '+91 94440 12345',
+    },
+  };
+
   return (
-    // pt-16 clears the fixed h-16 Navbar; min-h-screen keeps the bone
-    // background filling the viewport instead of showing white below
-    // shorter content.
-    <div className="w-full min-h-screen bg-[#F6F1E7] px-6 pt-16 pb-12">
-      <div className="max-w-2xl mx-auto pt-10">
-        <Link
-          to={productId ? `/custom-outfit/${productId}/accessories` : '/custom-outfit'}
-          className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Link>
+    <div className="w-full min-h-screen bg-[#FAF7F2] px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Navigation & Stepper */}
+        <div className="flex items-center justify-between pb-6 border-b border-[#5C1A32]/10 mb-8">
+          <Link
+            to={productId ? `/custom-outfit/${productId}/accessories` : '/custom-outfit'}
+            className="inline-flex items-center gap-2 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors font-medium"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Accessories
+          </Link>
 
-        <h1 className="text-3xl md:text-4xl text-[#1B1512] mb-2" style={serif}>
-          Price Summary
-        </h1>
-        <p className="text-[#4A413B] mb-10">
-          Here's a recap of your {productName.toLowerCase()} before checkout.
-        </p>
-
-        {fabric && (
-          <div className="rounded-sm bg-white border border-[#5C1A32]/12 shadow-sm p-6 mb-6">
-            <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase mb-4">
-              Fabric
-            </h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[#4A413B]">Fabric</span>
-                <span className="font-medium text-[#1B1512]">{fabric.fabricName}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#4A413B]">Meters</span>
-                <span className="font-medium text-[#1B1512]">{fabric.meters} m</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#4A413B]">Price per meter</span>
-                <span className="font-medium text-[#1B1512]">
-                  {formatRupees(fabric.pricePerMeter)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-1 border-t border-[#5C1A32]/10">
-                <span className="text-[#2A211D] font-semibold">Fabric Total</span>
-                <span className="font-semibold text-[#5C1A32]">
-                  {formatRupees(fabric.fabricTotal)}
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center gap-2 text-xs text-[#8A7968]">
+            <span>1. Silhouette</span>
+            <span>&rarr;</span>
+            <span>2. Embellishments</span>
+            <span>&rarr;</span>
+            <span className="font-semibold text-[#5C1A32] border-b-2 border-[#5C1A32] pb-0.5">
+              3. Summary &amp; Invoice
+            </span>
+            <span>&rarr;</span>
+            <span>4. Delivery</span>
           </div>
-        )}
+        </div>
 
-        {selections.length > 0 && (
-          <div className="rounded-sm bg-white border border-[#5C1A32]/12 shadow-sm p-6 mb-6">
-            <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase mb-4">
-              Style Selected
-            </h2>
-            <div className="space-y-2">
-              {selections.map((sel, idx) => (
-                <div
-                  key={`${sel.sectionLabel}-${String(idx)}`}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="text-[#4A413B]">{sel.sectionLabel}</span>
-                  <span className="font-medium text-[#1B1512]">
-                    {sel.subOptionLabel ?? sel.optionLabel ?? '—'}
+        {/* 2-Column Haute Couture Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Dossier Details (7 cols) */}
+          <div className="lg:col-span-7 space-y-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#5C1A32]/10 text-[#5C1A32] text-xs font-semibold mb-3">
+                <Scissors className="h-3.5 w-3.5 text-[#B8935A]" />
+                Atelier Specification Dossier
+              </div>
+              <h1 className="text-3xl md:text-4xl text-[#1B1512] mb-3" style={serif}>
+                Order Price &amp; Specification Summary
+              </h1>
+              <p className="text-[#4A413B] text-sm md:text-base leading-relaxed">
+                Review your customized{' '}
+                <span className="font-semibold text-[#1B1512]">{productName.toLowerCase()}</span>{' '}
+                specification, fabric meterage, and artisanal handwork details before placing your
+                order.
+              </p>
+            </div>
+
+            {/* Fabric Specification Card */}
+            {fabric && (
+              <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-sm p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-full border border-black/10 shadow-inner shrink-0"
+                      style={{ backgroundColor: fabric.fabricHex || '#7A1F2B' }}
+                    />
+                    <div>
+                      <h2 className="text-xs font-bold tracking-widest text-[#1B1512] uppercase">
+                        Fabric Specification
+                      </h2>
+                      <div className="text-sm font-semibold text-[#1B1512]">
+                        {fabric.fabricName}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded bg-[#F6F1E7] text-[#5C1A32]">
+                    Tone: {fabric.fabricTone || 'Fine Silk'}
                   </span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Reference photo — only present if the client uploaded one on
-            the style page. Carried through unchanged into /order state so
-            it lands on the saved order for AdminOrders/OrderTracking. */}
-        {referenceImage && (
-          <div className="rounded-sm bg-white border border-[#5C1A32]/12 shadow-sm p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <ImagePlus className="h-4 w-4 text-[#B8935A]" />
-              <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
-                Reference Photo
-              </h2>
-            </div>
-            <div className="flex items-center gap-4">
-              <img
-                src={referenceImage.dataUrl}
-                alt="Reference upload preview"
-                className="h-20 w-20 rounded-sm object-cover border border-[#5C1A32]/10 shrink-0"
-              />
-              <p className="text-sm text-[#4A413B] truncate">{referenceImage.fileName}</p>
-            </div>
-          </div>
-        )}
-
-        <div className="rounded-sm bg-white border border-[#5C1A32]/12 shadow-sm p-6 mb-6">
-          <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase mb-4">
-            Accessories &amp; Embellishments
-          </h2>
-          {accessories.length > 0 ? (
-            <div className="space-y-2">
-              {accessories.map((a) => (
-                <div key={a.id} className="flex items-center justify-between text-sm">
-                  <span className="text-[#2A211D]">{a.label}</span>
-                  <span className="font-medium text-[#5C1A32]">+{formatRupees(a.price)}</span>
+                <div className="grid grid-cols-3 gap-4 text-xs pt-1">
+                  <div>
+                    <span className="text-[#8A7968] block">Required Meterage</span>
+                    <span className="font-semibold text-sm text-[#1B1512]">{fabric.meters} m</span>
+                  </div>
+                  <div>
+                    <span className="text-[#8A7968] block">Price per Meter</span>
+                    <span className="font-semibold text-sm text-[#1B1512]">
+                      {formatRupees(fabric.pricePerMeter)}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[#8A7968] block">Fabric Cost</span>
+                    <span className="font-bold text-sm text-[#5C1A32] font-mono">
+                      {formatRupees(fabric.fabricTotal)}
+                    </span>
+                  </div>
                 </div>
-              ))}
+              </div>
+            )}
+
+            {/* Selected Style Card */}
+            {selections.length > 0 && (
+              <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-sm p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3">
+                  <h2 className="text-xs font-bold tracking-widest text-[#1B1512] uppercase">
+                    Bespoke Silhouette &amp; Cut Selection
+                  </h2>
+                  <span className="text-xs text-[#8A7968]">Master Tailor Pattern</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  {selections.map((sel, idx) => (
+                    <div
+                      key={`${sel.sectionLabel}-${String(idx)}`}
+                      className="bg-[#FAF7F2] rounded-lg p-3 border border-[#5C1A32]/10"
+                    >
+                      <span className="text-[11px] text-[#8A7968] block uppercase tracking-wider">
+                        {sel.sectionLabel}
+                      </span>
+                      <span className="font-semibold text-[#1B1512] text-sm mt-0.5 block">
+                        {sel.subOptionLabel ?? sel.optionLabel ?? 'Atelier Standard'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Accessories & Embellishments */}
+            <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-sm p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3">
+                <h2 className="text-xs font-bold tracking-widest text-[#1B1512] uppercase">
+                  Handcrafted Trims &amp; Embellishments
+                </h2>
+                <span className="text-xs text-[#5C1A32] font-semibold font-mono">
+                  +{formatRupees(accessoriesTotal)}
+                </span>
+              </div>
+
+              {accessories.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {accessories.map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-[#FAF7F2] border border-[#5C1A32]/10 text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-[#B8935A]" />
+                        <span className="font-medium text-[#1B1512]">{a.label}</span>
+                      </div>
+                      <span className="font-semibold text-[#5C1A32] font-mono">
+                        +{formatRupees(a.price)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-[#8A7968]">
+                  Clean minimalist finishing selected (no additional trims).
+                </p>
+              )}
             </div>
-          ) : (
-            <p className="text-sm text-[#4A413B]/60">No add-ons selected.</p>
-          )}
-        </div>
 
-        <div className="rounded-sm bg-[#1B1512] text-[#F6F1E7] p-6 mb-10 flex items-center justify-between">
-          <span className="font-semibold">{fabric ? 'Grand Total' : 'Tailoring Total'}</span>
-          <span className="text-2xl font-bold" style={serif}>
-            {formatRupees(grandTotal)}
-          </span>
-        </div>
+            {/* Reference Upload Preview (if present) */}
+            {referenceImage && (
+              <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <ImagePlus className="h-4 w-4 text-[#B8935A]" />
+                  <h2 className="text-xs font-bold tracking-widest text-[#1B1512] uppercase">
+                    Client Design Reference Attached
+                  </h2>
+                </div>
+                <div className="flex items-center gap-4 bg-[#FAF7F2] p-3 rounded-lg border border-[#5C1A32]/10">
+                  <img
+                    src={referenceImage.dataUrl}
+                    alt="Reference upload preview"
+                    className="h-16 w-16 rounded-md object-cover border border-[#5C1A32]/20 shrink-0"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-[#1B1512] truncate max-w-xs">
+                      {referenceImage.fileName}
+                    </p>
+                    <p className="text-xs text-[#8A7968]">
+                      Our master designer will review this reference against your silhouette.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        <button
-          type="button"
-          onClick={handleProceed}
-          className="w-full inline-flex items-center justify-center gap-2 bg-[#1B1512] text-[#F6F1E7] font-semibold text-sm px-6 py-4 rounded-full hover:bg-[#5C1A32] transition-colors"
-        >
-          Proceed to Order
-          <ArrowRight className="h-4 w-4" />
-        </button>
+            {/* Craftsmanship & Delivery Guarantees */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="rounded-lg bg-emerald-50/60 border border-emerald-200/60 p-4 flex items-start gap-3 text-xs text-emerald-950">
+                <CheckCircle className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Complimentary Home Measurement:</span> Our fashion
+                  consultant can visit your location in Chennai, Bangalore, or Coimbatore for
+                  precision sizing.
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-amber-50/60 border border-amber-200/60 p-4 flex items-start gap-3 text-xs text-amber-950">
+                <Clock className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">5–7 Days Doorstep Delivery:</span> Dispatched in
+                  deluxe moisture-proof garment box via BlueDart Couture Express with live tracking.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Sticky Commercial & Proforma Card (5 cols) */}
+          <div className="lg:col-span-5 sticky top-8 space-y-6">
+            <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-lg overflow-hidden">
+              {/* Couture Sketch Architectural Banner */}
+              <div className="relative aspect-[3/4] max-h-[360px] w-full bg-[#F6F1E7] overflow-hidden border-b border-[#5C1A32]/10">
+                <img
+                  src={coutureSketch.imageUrl}
+                  alt={coutureSketch.title}
+                  className="w-full h-full object-cover object-top filter contrast-[1.03]"
+                />
+                <div className="absolute top-3 left-3 bg-[#1B1512]/80 backdrop-blur-sm text-[#F6F1E7] text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded">
+                  {coutureSketch.badge}
+                </div>
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent p-4 text-white">
+                  <div className="text-xs uppercase tracking-wider text-[#B8935A] font-semibold">
+                    Atelier Architectural Blueprint
+                  </div>
+                  <div className="text-lg font-bold" style={serif}>
+                    {coutureSketch.title}
+                  </div>
+                  <div className="text-xs text-neutral-300">{coutureSketch.subtitle}</div>
+                </div>
+              </div>
+
+              {/* Pricing & Commercial Breakdown */}
+              <div className="p-6 space-y-5">
+                <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3">
+                  <h3 className="text-xs font-bold tracking-widest text-[#1B1512] uppercase">
+                    Commercial Breakdown (GST Incl.)
+                  </h3>
+                  <span className="text-[11px] text-[#8A7968]">HSN 6211</span>
+                </div>
+
+                <div className="space-y-2.5 text-sm">
+                  {fabric && (
+                    <div className="flex items-center justify-between text-[#4A413B]">
+                      <span>
+                        Fabric: {fabric.fabricName} ({fabric.meters}m)
+                      </span>
+                      <span className="font-mono text-[#1B1512]">
+                        {formatRupees(fabric.fabricTotal)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-[#4A413B]">
+                    <span>Embellishments &amp; Trims</span>
+                    <span className="font-mono text-[#1B1512]">
+                      {formatRupees(accessoriesTotal)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-[#8A7968] pt-1 border-t border-dashed border-[#5C1A32]/10">
+                    <span>Taxable Value:</span>
+                    <span className="font-mono">{formatRupees(Math.round(grandTotal / 1.05))}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-[#8A7968]">
+                    <span>Estimated 5% GST (CGST + SGST):</span>
+                    <span className="font-mono">
+                      {formatRupees(Math.round(grandTotal - grandTotal / 1.05))}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-emerald-700 font-medium">
+                    <span>Insured Courier Shipping</span>
+                    <span className="uppercase font-bold">Free</span>
+                  </div>
+                </div>
+
+                {/* Grand Total Box */}
+                <div className="rounded-xl bg-[#1B1512] text-[#F6F1E7] p-5 flex items-center justify-between shadow-md">
+                  <div>
+                    <span className="text-xs text-[#B8935A] uppercase tracking-wider block font-semibold">
+                      Total Payable
+                    </span>
+                    <span className="text-xs text-neutral-300">
+                      All Taxes &amp; Sizing Included
+                    </span>
+                  </div>
+                  <span className="text-2xl md:text-3xl font-bold text-white" style={serif}>
+                    {formatRupees(grandTotal)}
+                  </span>
+                </div>
+
+                {/* Amazon Invoice Action */}
+                <button
+                  type="button"
+                  onClick={() => setShowInvoiceModal(true)}
+                  className="w-full inline-flex items-center justify-center gap-2 border border-[#5C1A32]/30 hover:border-[#5C1A32] bg-[#FAF7F2] hover:bg-[#5C1A32]/5 text-[#5C1A32] font-semibold text-xs px-4 py-3 rounded-lg transition-colors"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Preview Proforma Tax Invoice (Amazon Format)</span>
+                </button>
+
+                {/* Primary Proceed CTA */}
+                <button
+                  type="button"
+                  onClick={handleProceed}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-[#5C1A32] hover:bg-[#431224] text-[#F6F1E7] font-semibold text-base px-6 py-4 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl"
+                >
+                  <span>Proceed to Delivery &amp; Fit</span>
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Amazon-Style Tax Invoice Modal */}
+      <AmazonInvoiceModal
+        isOpen={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        order={proformaOrder}
+      />
     </div>
   );
 }

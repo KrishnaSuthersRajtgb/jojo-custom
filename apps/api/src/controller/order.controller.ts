@@ -118,7 +118,11 @@ export class OrderController {
   async updateOrderStatus(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { status } = req.body as { status?: OrderStatus };
+      const { status, trackingNumber, courier } = req.body as {
+        status?: OrderStatus;
+        trackingNumber?: string;
+        courier?: string;
+      };
 
       const validStatuses: OrderStatus[] = [
         'placed',
@@ -131,20 +135,30 @@ export class OrderController {
         'cancelled',
       ];
 
-      if (!id || !status || !validStatuses.includes(status)) {
+      if (!id || (!status && trackingNumber === undefined && courier === undefined)) {
+        res.status(400).json({ error: 'Valid update data is required.' });
+        return;
+      }
+
+      if (status && !validStatuses.includes(status)) {
         res.status(400).json({ error: 'Valid status is required.' });
         return;
       }
 
+      const updateFields: Record<string, unknown> = {};
+      if (status) updateFields.status = status;
+      if (trackingNumber !== undefined) updateFields.trackingNumber = trackingNumber;
+      if (courier !== undefined) updateFields.courier = courier;
+
       const order = await Order.findOneAndUpdate(
         { $or: [{ id }, { paymentId: id }] },
-        { status },
+        { $set: updateFields },
         { new: true },
       );
 
       if (!order) {
         // Return 200 with updated status even if order was stored only locally
-        res.status(200).json({ data: { id, status } });
+        res.status(200).json({ data: { id, ...updateFields } });
         return;
       }
 
@@ -152,6 +166,126 @@ export class OrderController {
     } catch (error) {
       console.error('[order] Update order status error:', error);
       res.status(500).json({ error: 'Failed to update order status.' });
+    }
+  }
+
+  /**
+   * Download Amazon-style Tax Invoice (PDF via Puppeteer or HTML)
+   * GET /api/orders/:id/invoice
+   */
+  async downloadInvoice(req: Request, res: Response): Promise<void> {
+    try {
+      const idParam = typeof req.params['id'] === 'string' ? req.params['id'] : '';
+      const format = req.query['format'] === 'html' ? 'html' : 'pdf';
+
+      const order = (await Order.findOne({
+        $or: [{ id: idParam }, { paymentId: idParam }],
+      }).lean()) as Record<string, unknown> | null;
+
+      const orderDetails = (order?.['orderDetails'] || {}) as Record<string, unknown>;
+      const address = (order?.['address'] || {}) as Record<string, unknown>;
+      const totalAmount = Number(orderDetails['total']) || 2904;
+      const fabricName =
+        typeof orderDetails['fabricName'] === 'string'
+          ? orderDetails['fabricName']
+          : 'Haute Couture Silk';
+      const garment =
+        typeof orderDetails['garment'] === 'string'
+          ? orderDetails['garment']
+          : 'Custom Couture Ensemble';
+      const meters = Number(orderDetails['meters']) || 3;
+      const fabricTotal = Number(orderDetails['fabricTotal']) || Math.round(totalAmount * 0.7);
+      const rawAcc = Array.isArray(orderDetails['accessories'])
+        ? (orderDetails['accessories'] as Array<{ label: string; price: number }>)
+        : [];
+
+      const items = [
+        {
+          title: `${garment} - ${fabricName}`,
+          description: `Bespoke artisanal cut & tailoring (${String(meters)}m premium textile)`,
+          hsn: '6211',
+          qty: 1,
+          unitPrice: fabricTotal,
+          netAmount: Math.round((fabricTotal / 1.05) * 100) / 100,
+          taxRate: 5,
+          taxAmount: Math.round((fabricTotal - fabricTotal / 1.05) * 100) / 100,
+          totalAmount: fabricTotal,
+        },
+      ];
+
+      rawAcc.forEach((acc) => {
+        const accPrice = typeof acc.price === 'number' ? acc.price : Number(acc.price) || 0;
+        const net = Math.round((accPrice / 1.05) * 100) / 100;
+        items.push({
+          title: `Atelier Trim: ${acc.label}`,
+          description: 'Handcrafted zardozi / border embellishment',
+          hsn: '5810',
+          qty: 1,
+          unitPrice: accPrice,
+          netAmount: net,
+          taxRate: 5,
+          taxAmount: Math.round((accPrice - net) * 100) / 100,
+          totalAmount: accPrice,
+        });
+      });
+
+      const orderPlacedAt = typeof order?.['placedAt'] === 'string' ? order['placedAt'] : undefined;
+      const invoiceData = {
+        orderId: idParam || 'ORD-JF-2026',
+        invoiceNumber: `INV-JF-${(idParam || '2026').slice(-6).toUpperCase()}`,
+        orderDate: orderPlacedAt
+          ? new Date(orderPlacedAt).toLocaleDateString('en-IN')
+          : new Date().toLocaleDateString('en-IN'),
+        invoiceDate: new Date().toLocaleDateString('en-IN'),
+        customerName:
+          (address['fullName'] as string) ||
+          (order?.['username'] as string) ||
+          'Valued Couture Client',
+        customerPhone: (address['phone'] as string) || '',
+        shippingAddress: {
+          fullName: (address['fullName'] as string) || 'Valued Client',
+          street: (address['street'] as string) || 'Bespoke Residence',
+          city: (address['city'] as string) || 'Chennai',
+          state: (address['state'] as string) || 'Tamil Nadu',
+          pincode: (address['pincode'] as string) || '600001',
+          phone: (address['phone'] as string) || '+91 94440 00000',
+        },
+        items,
+        grandTotal: totalAmount,
+        paymentMode: order?.['paymentId']
+          ? 'Online Payment (Razorpay/Card)'
+          : 'Prepaid Couture Order',
+        paymentTransactionId:
+          typeof order?.['paymentId'] === 'string' ? order['paymentId'] : undefined,
+      };
+
+      const { generateAmazonInvoiceHtml, generateInvoicePdf } =
+        await import('../services/invoice.service.js');
+
+      if (format === 'html') {
+        const html = generateAmazonInvoiceHtml(invoiceData);
+        res.setHeader('Content-Type', 'text/html');
+        res.send(html);
+        return;
+      }
+
+      try {
+        const pdfBuffer = await generateInvoicePdf(invoiceData);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="Invoice-${invoiceData.invoiceNumber}.pdf"`,
+        );
+        res.send(pdfBuffer);
+      } catch (pdfErr) {
+        console.warn('[invoice] Puppeteer PDF generation fallback to HTML:', pdfErr);
+        const html = generateAmazonInvoiceHtml(invoiceData);
+        res.setHeader('Content-Type', 'text/html');
+        res.send(html);
+      }
+    } catch (error) {
+      console.error('[order] Invoice error:', error);
+      res.status(500).json({ error: 'Failed to generate invoice.' });
     }
   }
 }

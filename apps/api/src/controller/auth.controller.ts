@@ -204,6 +204,93 @@ export class AuthController {
       res.status(500).json({ error: 'Failed to update profile.' });
     }
   }
+
+  /**
+   * Admin: Get all registered users.
+   * GET /api/auth/users
+   */
+  async getAllUsers(_req: Request, res: Response): Promise<void> {
+    try {
+      const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+      res.status(200).json({ data: users });
+    } catch (error) {
+      console.error('[auth] Get all users error:', error);
+      res.status(500).json({ error: 'Failed to fetch registered users.' });
+    }
+  }
+
+  /**
+   * Admin: Delete user.
+   * DELETE /api/auth/users/:id
+   */
+  async deleteUser(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const deleted = await User.findByIdAndDelete(id);
+      if (!deleted) {
+        res.status(404).json({ error: 'User not found.' });
+        return;
+      }
+      res.status(200).json({ message: 'User deleted successfully.' });
+    } catch (error) {
+      console.error('[auth] Delete user error:', error);
+      res.status(500).json({ error: 'Failed to delete user.' });
+    }
+  }
+
+  /**
+   * Admin: Assign or update role by email or user ID.
+   * PATCH /api/auth/role
+   */
+  async updateRole(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, role, userId } = req.body as {
+        email?: string;
+        role?: 'user' | 'staff' | 'admin';
+        userId?: string;
+      };
+
+      if (!role || !['user', 'staff', 'admin'].includes(role)) {
+        res.status(400).json({ error: 'Valid role (admin, staff, or user) is required.' });
+        return;
+      }
+
+      if (!email && !userId) {
+        res.status(400).json({ error: 'Email ID or user ID is required.' });
+        return;
+      }
+
+      let user = null;
+      if (userId) {
+        user = await User.findById(userId);
+      } else if (email) {
+        user = await User.findOne({ email: email.trim().toLowerCase() });
+      }
+
+      if (!user) {
+        res
+          .status(404)
+          .json({ error: `User with identifier "${email ?? userId ?? ''}" not found.` });
+        return;
+      }
+
+      user.role = role;
+      await user.save();
+
+      res.status(200).json({
+        data: {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+        },
+        message: `Role for ${user.email} updated to "${role}" successfully.`,
+      });
+    } catch (error) {
+      console.error('[auth] Update role error:', error);
+      res.status(500).json({ error: 'Failed to update user role.' });
+    }
+  }
 }
 
 export const authController = new AuthController();

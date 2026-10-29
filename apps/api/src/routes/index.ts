@@ -5,6 +5,7 @@ import { measurementRouter } from './measurement.routes.js';
 import { orderRouter } from './order.routes.js';
 import { franchiseRouter } from './franchise.routes.js';
 import { healthRouter } from './health.router.js';
+import { reviewRouter } from './review.routes.js';
 
 export const apiRouter = Router();
 
@@ -14,6 +15,7 @@ apiRouter.use('/measurements', measurementRouter);
 apiRouter.use('/orders', orderRouter);
 apiRouter.use('/franchise', franchiseRouter);
 apiRouter.use('/health', healthRouter);
+apiRouter.use('/reviews', reviewRouter);
 
 export * from './auth.routes.js';
 export * from './address.routes.js';
@@ -21,3 +23,4 @@ export * from './measurement.routes.js';
 export * from './order.routes.js';
 export * from './franchise.routes.js';
 export * from './health.router.js';
+export * from './review.routes.js';

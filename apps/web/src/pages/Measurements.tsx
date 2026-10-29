@@ -156,10 +156,7 @@ export default function MeasurementPage() {
   };
 
   return (
-    // pt-16 clears the fixed h-16 Navbar; min-h-screen keeps the bone
-    // background filling the viewport instead of showing white below
-    // shorter content.
-    <div className="w-full min-h-screen bg-[#F6F1E7] pt-16">
+    <div className="w-full min-h-screen bg-[#FAF7F2] py-8">
       <section className="w-full px-6 pt-10 pb-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-2 mb-2">

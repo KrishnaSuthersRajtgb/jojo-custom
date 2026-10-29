@@ -1,13 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Sparkles, Check, ShieldCheck } from 'lucide-react';
 
-// ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx)
-//   ink      #1B1512  headings, primary text
-//   wine     #5C1A32  primary accent (replaces fuchsia-800 / pink / rose)
-//   brass    #B8935A  secondary accent
-//   bone     #F6F1E7  page background
-// Display face: Fraunces, for page titles and totals.
+import { pricingService, PRICING_UPDATED_EVENT } from '../services/pricingService';
+import { getCoutureSketchForGarment } from '../utils/coutureSketches';
 
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
@@ -17,34 +13,6 @@ interface AccessoryOption {
   price: number;
 }
 
-// Same add-on list is used for every product by default. Send over a
-// product-specific list (like you did for Blouse Styles / Chudidhar
-// Kurta Types) whenever an item needs different embellishment options,
-// and add it to PRODUCT_ACCESSORIES below.
-const DEFAULT_ACCESSORIES: AccessoryOption[] = [
-  { id: 'zari-embroidery', label: 'Zari Embroidery', price: 800 },
-  { id: 'mirror-work-border', label: 'Mirror Work Border', price: 650 },
-  { id: 'hand-embroidery', label: 'Hand Embroidery', price: 1200 },
-  { id: 'stone-work', label: 'Stone Work', price: 750 },
-  { id: 'tassel-detailing', label: 'Tassel Detailing', price: 320 },
-  { id: 'piping-edge', label: 'Piping Edge', price: 200 },
-  { id: 'embroidered-belt', label: 'Embroidered Belt', price: 450 },
-  { id: 'contrast-lining', label: 'Contrast Lining', price: 280 },
-];
-
-const PRODUCT_ACCESSORIES: Record<string, AccessoryOption[]> = {
-  blouse: DEFAULT_ACCESSORIES,
-  chudidhar: DEFAULT_ACCESSORIES,
-  frocks: DEFAULT_ACCESSORIES,
-  lehanga: DEFAULT_ACCESSORIES,
-  'ready-to-wear-saree': DEFAULT_ACCESSORIES,
-  pant: DEFAULT_ACCESSORIES,
-  'over-coat': DEFAULT_ACCESSORIES,
-};
-
-// Fabric details forwarded from FabricDetail.tsx -> CustomOutfit.tsx ->
-// ProductStyle.tsx. Carried through here untouched and passed on to the
-// price summary page.
 interface IncomingFabric {
   fabricId: string;
   fabricName: string;
@@ -57,17 +25,11 @@ interface IncomingFabric {
   fabricTotal: number;
 }
 
-// Reference photo forwarded from ProductStyle.tsx. Carried through here
-// untouched and passed on to ProductSummary.tsx -> Order.tsx ->
-// Payment.tsx, so it ends up on the saved order for
-// AdminOrders.tsx/OrderTracking.tsx to display.
 interface IncomingReferenceImage {
   dataUrl: string;
   fileName: string;
 }
 
-// Whatever ProductStyle.tsx passed forward via router state — carried
-// through here and on to the price summary page unchanged.
 interface IncomingState {
   productName?: string;
   selections?: unknown;
@@ -88,16 +50,33 @@ export default function ProductAccessories() {
   const fabric = incoming.fabric ?? null;
   const referenceImage = incoming.referenceImage ?? null;
 
-  const accessories = productId ? PRODUCT_ACCESSORIES[productId] : undefined;
-  const productName = incoming.productName ?? productId ?? 'Item';
+  const [dynamicAccessories, setDynamicAccessories] = useState<AccessoryOption[]>(() => {
+    return pricingService.getAccessories().filter((a) => a.active);
+  });
 
+  useEffect(() => {
+    const handleUpdate = () => {
+      setDynamicAccessories(pricingService.getAccessories().filter((a) => a.active));
+    };
+    window.addEventListener(PRICING_UPDATED_EVENT, handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener(PRICING_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  const accessories = dynamicAccessories;
+  const productName = incoming.productName ?? productId ?? 'Item';
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
-  if (!productId || !accessories) {
+  const coutureSketch = getCoutureSketchForGarment(productId, productName);
+
+  if (!productId || accessories.length === 0) {
     return (
-      <div className="w-full min-h-screen bg-[#F6F1E7] px-6 pt-16 pb-16 flex items-center justify-center text-center">
+      <div className="w-full min-h-screen bg-[#FAF7F2] px-6 py-16 flex items-center justify-center text-center">
         <div>
-          <p className="text-[#4A413B] mb-4">We couldn't find that product.</p>
+          <p className="text-[#4A413B] mb-4">We couldn't find that product specification.</p>
           <Link
             to="/custom-outfit"
             className="inline-flex items-center gap-2 text-[#5C1A32] font-semibold text-sm"
@@ -134,93 +113,239 @@ export default function ProductAccessories() {
   };
 
   return (
-    // pt-16 clears the fixed h-16 Navbar; min-h-screen keeps the bone
-    // background filling the viewport instead of showing white below
-    // shorter content.
-    <div className="w-full min-h-screen bg-[#F6F1E7] px-6 pt-16 pb-12">
-      <div className="max-w-3xl mx-auto pt-10">
-        <Link
-          to={`/custom-outfit/${productId}`}
-          className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Link>
+    <div className="w-full min-h-screen bg-[#FAF7F2] px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Breadcrumb / Nav */}
+        <div className="flex items-center justify-between pb-6 border-b border-[#5C1A32]/10 mb-8">
+          <Link
+            to={`/custom-outfit/${productId}`}
+            className="inline-flex items-center gap-2 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors font-medium"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Cut &amp; Silhouette
+          </Link>
 
-        <div className="flex items-start justify-between gap-6 mb-10">
-          <div>
-            <h1 className="text-3xl md:text-4xl text-[#1B1512] mb-2" style={serif}>
-              Accessories &amp; Embellishments
-            </h1>
-            <p className="text-[#4A413B]">
-              Optional add-ons for your {productName.toLowerCase()} — select as many as you like.
-            </p>
+          <div className="flex items-center gap-2 text-xs text-[#8A7968]">
+            <span>1. Silhouette</span>
+            <span>&rarr;</span>
+            <span className="font-semibold text-[#5C1A32] border-b-2 border-[#5C1A32] pb-0.5">
+              2. Embellishments
+            </span>
+            <span>&rarr;</span>
+            <span>3. Summary</span>
+            <span>&rarr;</span>
+            <span>4. Delivery</span>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-xs text-[#4A413B]/60 mb-1">
-              {fabric ? 'Running total' : 'Tailoring total'}
+        </div>
+
+        {/* 2-Column Haute Couture Studio Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Embellishments Selection Grid (7 cols) */}
+          <div className="lg:col-span-7 space-y-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#5C1A32]/10 text-[#5C1A32] text-xs font-semibold mb-3">
+                <Sparkles className="h-3.5 w-3.5 text-[#B8935A]" />
+                Handcrafted Finishing
+              </div>
+              <h1 className="text-3xl md:text-4xl text-[#1B1512] mb-3" style={serif}>
+                Accessories &amp; Embellishments
+              </h1>
+              <p className="text-[#4A413B] text-sm md:text-base leading-relaxed">
+                Elevate your bespoke{' '}
+                <span className="font-semibold text-[#1B1512]">{productName.toLowerCase()}</span>{' '}
+                with traditional hand-embroidery, zardozi borders, piping edges, and custom
+                artisanal trims.
+              </p>
             </div>
-            <div className="text-2xl font-bold text-[#5C1A32]" style={serif}>
-              {formatRupees(grandTotal)}
-            </div>
+
+            {/* Fabric Banner */}
             {fabric && (
-              <div className="text-[11px] text-[#4A413B]/60 mt-0.5">
-                incl. {formatRupees(fabric.fabricTotal)} fabric
+              <div className="rounded-lg border border-[#5C1A32]/15 bg-white p-4 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full border border-black/10 shadow-inner flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: fabric.fabricHex || '#7A1F2B' }}
+                  />
+                  <div>
+                    <div className="text-xs text-[#8A7968] uppercase font-semibold tracking-wider">
+                      Selected Textile
+                    </div>
+                    <div className="text-sm font-semibold text-[#1B1512]">{fabric.fabricName}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-[#8A7968]">{fabric.meters} meters</div>
+                  <div className="text-sm font-bold text-[#5C1A32] font-mono">
+                    {formatRupees(fabric.fabricTotal)}
+                  </div>
+                </div>
               </div>
             )}
+
+            {/* Accessories Cards Grid */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-[#8A7968] font-medium px-1">
+                <span>SELECT CRAFTSMANSHIP ADD-ONS ({selectedAccessories.length} selected)</span>
+                {selectedAccessories.length > 0 && (
+                  <button
+                    onClick={() => setSelected({})}
+                    className="text-[#5C1A32] hover:underline"
+                  >
+                    Clear selections
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {accessories.map((accessory) => {
+                  const isChecked = Boolean(selected[accessory.id]);
+                  return (
+                    <label
+                      key={accessory.id}
+                      onClick={() => toggleAccessory(accessory.id)}
+                      className={`relative flex items-center justify-between gap-4 rounded-lg border-2 p-4 cursor-pointer transition-all duration-200 ${
+                        isChecked
+                          ? 'border-[#5C1A32] bg-[#5C1A32]/5 shadow-sm'
+                          : 'border-neutral-200/80 hover:border-[#5C1A32]/40 bg-white hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+                            isChecked
+                              ? 'bg-[#5C1A32] border-[#5C1A32] text-white'
+                              : 'border-neutral-300 bg-white'
+                          }`}
+                        >
+                          {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-[#1B1512] block">
+                            {accessory.label}
+                          </span>
+                          <span className="text-[11px] text-[#8A7968]">
+                            Atelier hand-crafted trim
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-[#5C1A32] font-mono shrink-0">
+                        +{formatRupees(accessory.price)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Guarantee note */}
+            <div className="rounded-lg bg-amber-50/60 border border-amber-200/60 p-4 flex items-start gap-3 text-xs text-amber-900">
+              <ShieldCheck className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold">Master Artisan Precision Guarantee:</span> All trims
+                are individually color-matched to your fabric by our master drapers in Chennai with
+                double-interlined hand stitching.
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Sticky Atelier Specification & Preview (5 cols) */}
+          <div className="lg:col-span-5 sticky top-8 space-y-6">
+            <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-md overflow-hidden">
+              {/* Illustration Preview */}
+              <div className="relative aspect-[3/4] max-h-[380px] w-full bg-[#F6F1E7] overflow-hidden border-b border-[#5C1A32]/10">
+                <img
+                  src={coutureSketch.imageUrl}
+                  alt={coutureSketch.title}
+                  className="w-full h-full object-cover object-top filter contrast-[1.03]"
+                />
+                <div className="absolute top-3 left-3 bg-[#1B1512]/80 backdrop-blur-sm text-[#F6F1E7] text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded">
+                  {coutureSketch.badge}
+                </div>
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 text-white">
+                  <div className="text-xs uppercase tracking-wider text-[#B8935A] font-medium">
+                    Atelier Silhouette
+                  </div>
+                  <div className="text-lg font-bold" style={serif}>
+                    {coutureSketch.title}
+                  </div>
+                  <div className="text-xs text-neutral-300">{coutureSketch.subtitle}</div>
+                </div>
+              </div>
+
+              {/* Running Breakdown */}
+              <div className="p-6 space-y-4">
+                <h3 className="text-xs font-bold tracking-widest text-[#1B1512] uppercase border-b border-[#5C1A32]/10 pb-2">
+                  Atelier Price Specification
+                </h3>
+
+                <div className="space-y-2 text-sm">
+                  {fabric && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#4A413B]">
+                        {fabric.fabricName} ({fabric.meters}m)
+                      </span>
+                      <span className="font-medium text-[#1B1512] font-mono">
+                        {formatRupees(fabric.fabricTotal)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#4A413B]">
+                      Embellishments ({selectedAccessories.length})
+                    </span>
+                    <span className="font-medium text-[#5C1A32] font-mono">
+                      {formatRupees(accessoriesOnlyTotal)}
+                    </span>
+                  </div>
+
+                  {selectedAccessories.length > 0 && (
+                    <div className="pt-2 pl-3 border-l-2 border-[#5C1A32]/20 space-y-1">
+                      {selectedAccessories.map((a) => (
+                        <div key={a.id} className="flex justify-between text-xs text-[#8A7968]">
+                          <span>• {a.label}</span>
+                          <span className="font-mono">+{formatRupees(a.price)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-emerald-700 pt-1">
+                    <span>Doorstep Measurement &amp; Delivery</span>
+                    <span className="font-bold uppercase tracking-wider">Complimentary</span>
+                  </div>
+                </div>
+
+                {/* Grand Total Bar */}
+                <div className="pt-4 border-t-2 border-[#1B1512] flex items-baseline justify-between">
+                  <div>
+                    <span className="text-xs text-[#8A7968] block">Running Total</span>
+                    <span className="text-xs font-semibold text-[#1B1512]">
+                      Includes 5% GST &amp; Tailoring
+                    </span>
+                  </div>
+                  <span className="text-2xl font-bold text-[#5C1A32]" style={serif}>
+                    {formatRupees(grandTotal)}
+                  </span>
+                </div>
+
+                {/* CTA Button */}
+                <button
+                  type="button"
+                  onClick={handleViewSummary}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-[#1B1512] hover:bg-[#5C1A32] text-[#F6F1E7] font-semibold text-sm px-6 py-4 rounded-xl shadow-lg transition-all duration-200 mt-2 hover:shadow-xl"
+                >
+                  <span>Review Price Summary</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+
+                <p className="text-[11px] text-center text-[#8A7968]">
+                  You can adjust measurements &amp; details in the next step before checkout.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-
-        {fabric && (
-          <div className="mb-8 rounded-sm border border-[#5C1A32]/15 bg-white px-5 py-3 flex items-center justify-between text-sm">
-            <span className="text-[#4A413B]">
-              Fabric: <span className="font-semibold text-[#1B1512]">{fabric.fabricName}</span>
-            </span>
-            <span className="font-semibold text-[#5C1A32]">
-              {fabric.meters}m · {formatRupees(fabric.fabricTotal)}
-            </span>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {accessories.map((accessory) => {
-            const isChecked = Boolean(selected[accessory.id]);
-            return (
-              <label
-                key={accessory.id}
-                className={`flex items-center justify-between gap-3 rounded-sm border px-5 py-4 cursor-pointer transition-colors ${
-                  isChecked
-                    ? 'border-[#5C1A32] bg-[#5C1A32]/5'
-                    : 'border-[#5C1A32]/12 hover:border-[#5C1A32]/30 bg-white'
-                }`}
-              >
-                <span className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => {
-                      toggleAccessory(accessory.id);
-                    }}
-                    className="h-4 w-4 accent-[#5C1A32]"
-                  />
-                  <span className="text-sm font-medium text-[#1B1512]">{accessory.label}</span>
-                </span>
-                <span className="text-sm font-semibold text-[#5C1A32]">
-                  +{formatRupees(accessory.price)}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-
-        <button
-          type="button"
-          onClick={handleViewSummary}
-          className="mt-10 w-full inline-flex items-center justify-center gap-2 bg-[#1B1512] text-[#F6F1E7] font-semibold text-sm px-6 py-4 rounded-full hover:bg-[#5C1A32] transition-colors"
-        >
-          View Price Summary
-          <ArrowRight className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );

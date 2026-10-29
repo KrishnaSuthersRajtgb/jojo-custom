@@ -10,7 +10,8 @@
     "paths": {
       "@/*": ["src/*"]
     },
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals"],
+    "noEmit": true
   },
   "include": ["src", "vite.config.ts"],
   "exclude": ["node_modules", "dist", "tests/e2e"]

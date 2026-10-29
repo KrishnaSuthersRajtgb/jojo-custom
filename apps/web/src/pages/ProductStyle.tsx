@@ -3,11 +3,8 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, ChevronDown, Check, Ruler, ImagePlus, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { MEASUREMENTS_UPDATED_EVENT } from '../components/MeasurementSidebar';
-import MannequinPreview, {
-  type Neckline,
-  type SleeveStyle,
-  type Silhouette,
-} from '../components/MannequinPreview';
+import type { Neckline, SleeveStyle, Silhouette } from '../components/MannequinPreview';
+
 import {
   MEASUREMENT_SECTIONS,
   PRODUCT_TO_SECTION,
@@ -108,23 +105,31 @@ interface ReferenceImage {
 // have redistribution rights to those and the links tend to rot.
 // ---------------------------------------------------------------------
 const OPTION_REFERENCE_IMAGES: Record<string, string> = {
-  // 'blouse:style:darted': '/references/blouse/darted.jpg',
-  // 'blouse:style:2-dart': '/references/blouse/darted-2.jpg',
-  // 'blouse:style:princess-cut': '/references/blouse/princess-cut.jpg',
-  // 'blouse:style:katori-cut': '/references/blouse/katori-cut.jpg',
-  // 'chudidhar:kurta-type:anarkali': '/references/chudidhar/anarkali.jpg',
-  // ...add the rest as photos become available
+  'blouse:style:princess-cut': '/images/styles/blouse-princess-cut.jpg',
+  'blouse:style:darted': '/images/styles/blouse-darted.jpg',
+  'blouse:style:2-dart': '/images/styles/blouse-darted.jpg',
+  'blouse:style:3-dart': '/images/styles/blouse-darted.jpg',
+  'blouse:style:4-dart': '/images/styles/blouse-darted.jpg',
+  'blouse:style:katori-cut': '/images/styles/blouse-katori-cut.jpg',
+  'blouse:style:customized': '/images/styles/blouse-custom.jpg',
 };
 
-// Generates a labeled placeholder image (bone background, wine text —
-// matches the page's design tokens) for any option that doesn't have a
-// real photo yet. Purely a stand-in so the preview panel always renders
-// a real image on click; swap OPTION_REFERENCE_IMAGES (or an option's
-// own referenceImageUrl) to a real photo whenever one's ready and it
-// takes priority over this automatically.
-function buildPlaceholderImageUrl(label: string): string {
-  const text = encodeURIComponent(label);
-  return `https://placehold.co/480x640/F6F1E7/5C1A32?text=${text}&font=roboto`;
+const STYLE_DESCRIPTIONS: Record<string, string> = {
+  darted: 'Classic tailored bodice with custom dart seams for balanced shaping and modest drape.',
+  '2-dart': 'Dual front darts for clean, gentle contouring under traditional drapes.',
+  '3-dart': 'Balanced three-point darting providing elegant bust and waist contour.',
+  '4-dart': 'Deep four-seam contouring for maximum definition in pure silks.',
+  'princess-cut':
+    'Smooth curved seams from armhole over bust for an impeccably contoured bridal silhouette.',
+  'katori-cut':
+    'Vintage two-piece molded cup tailoring for authentic structure and full bust support.',
+  customized:
+    'Artisan pattern drafted from your uploaded reference photo, sketch, or custom specifications.',
+};
+
+// Generates fallback real image for any unassigned option
+function buildPlaceholderImageUrl(): string {
+  return '/images/styles/blouse-princess-cut.jpg';
 }
 
 function resolveReferenceImage(
@@ -132,7 +137,15 @@ function resolveReferenceImage(
   section: StyleSection,
   sel: SectionSelection | undefined,
 ): { url: string; label: string } | null {
-  if (!sel) return null;
+  if (!sel) {
+    const firstOption = section.options[0];
+    if (firstOption) {
+      const key = `${productId}:${section.id}:${firstOption.id}`;
+      const url = OPTION_REFERENCE_IMAGES[key] ?? '/images/styles/blouse-princess-cut.jpg';
+      return { url, label: firstOption.label };
+    }
+    return null;
+  }
   const option = section.options.find((o) => o.id === sel.optionId);
   if (!option) return null;
   const subOption = option.subOptions?.find((s) => s.id === sel.subOptionId);
@@ -142,7 +155,8 @@ function resolveReferenceImage(
   const url =
     OPTION_REFERENCE_IMAGES[key] ??
     target.referenceImageUrl ??
-    buildPlaceholderImageUrl(target.label);
+    OPTION_REFERENCE_IMAGES[`${productId}:${section.id}:${option.id}`] ??
+    buildPlaceholderImageUrl();
 
   return { url, label: target.label };
 }
@@ -463,27 +477,6 @@ function buildStyleVisual(
   return {};
 }
 
-function ReferenceImagePanel({ image }: { image: { url: string; label: string } | null }) {
-  return (
-    <div className="lg:w-64 shrink-0 rounded-sm border border-[#5C1A32]/12 bg-white overflow-hidden flex flex-col">
-      <div className="aspect-[3/4] bg-[#F6F1E7] flex items-center justify-center overflow-hidden">
-        {image ? (
-          <img src={image.url} alt={image.label} className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-xs text-[#4A413B]/40 px-6 text-center">
-            Select a style to see a reference photo
-          </span>
-        )}
-      </div>
-      {image ? (
-        <p className="text-xs font-medium text-[#1B1512] text-center py-2 px-2 truncate">
-          {image.label}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 export default function ProductStyle() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
@@ -597,7 +590,7 @@ export default function ProductStyle() {
 
   if (!productId || !config) {
     return (
-      <div className="w-full min-h-screen bg-[#F6F1E7] px-6 pt-16 pb-16 flex items-center justify-center text-center">
+      <div className="w-full min-h-screen bg-[#FAF7F2] px-6 py-16 flex items-center justify-center text-center">
         <div>
           <p className="text-[#4A413B] mb-4">We couldn't find that product.</p>
           <Link
@@ -684,13 +677,14 @@ export default function ProductStyle() {
 
   // Same as handleMeasurementChange, but for the second measurement
   // section on products that need two (Ready to Wear Saree today).
-  const handleSecondaryMeasurementChange = (key: string, value: string) => {
+  const _handleSecondaryMeasurementChange = (key: string, value: string) => {
     setSecondaryMeasurementValues((prev) => {
       const next = { ...prev, [key]: value };
       persistMeasurementsFor(secondaryMeasurementSection, next);
       return next;
     });
   };
+  void _handleSecondaryMeasurementChange;
 
   // Saves this product's reference image into the shared reference-image
   // storage object, keyed by productId — other products' saved photos
@@ -809,344 +803,435 @@ export default function ProductStyle() {
     });
   };
 
-  const previewMeasurements = buildPreviewMeasurements(
+  const _previewMeasurements = buildPreviewMeasurements(
     measurementSection?.storageSuffix,
     measurementValues,
   );
-  const styleVisual = buildStyleVisual(productId, config, selections);
+  void _previewMeasurements;
+  const _styleVisual = buildStyleVisual(productId, config, selections);
+  void _styleVisual;
+
+  const primarySection = config.sections[0];
+  const primarySel = primarySection ? selections[primarySection.id] : undefined;
+  const activeHeroImage = primarySection
+    ? resolveReferenceImage(productId, primarySection, primarySel)
+    : null;
+  const selectedOptionObj = primarySection?.options.find((o) => o.id === primarySel?.optionId);
+  const selectedSubOptionObj = selectedOptionObj?.subOptions?.find(
+    (s) => s.id === primarySel?.subOptionId,
+  );
+  const currentTitle = selectedSubOptionObj?.label ?? selectedOptionObj?.label ?? 'Select Your Cut';
+  const currentDesc =
+    (selectedSubOptionObj ? STYLE_DESCRIPTIONS[selectedSubOptionObj.id] : undefined) ??
+    (selectedOptionObj ? STYLE_DESCRIPTIONS[selectedOptionObj.id] : undefined) ??
+    'Select a bodice cut on the left to inspect the haute-couture silhouette illustration.';
+
+  const filledMeasurementsCount = Object.values(measurementValues).filter(
+    (v) => typeof v === 'string' && v.trim() !== '',
+  ).length;
+  const totalMeasurementsCount = measurementSection?.fields.length ?? 0;
 
   return (
-    // pt-16 clears the fixed h-16 Navbar; min-h-screen keeps the bone
-    // background filling the viewport instead of showing white below
-    // shorter content.
-    <div className="w-full min-h-screen bg-[#F6F1E7] px-6 pt-16 pb-12">
-      <div className="max-w-3xl mx-auto pt-10">
-        <Link
-          to="/custom-outfit"
-          className="inline-flex items-center gap-1.5 text-sm text-[#4A413B] hover:text-[#5C1A32] transition-colors mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Link>
+    <div className="w-full min-h-screen bg-[#FAF7F2] py-8 sm:py-12 text-[#1B1512]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 space-y-8">
+        {/* Navigation & Stepper Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#5C1A32]/10 pb-6">
+          <div>
+            <Link
+              to="/custom-outfit"
+              className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-semibold text-[#544B45] hover:text-[#5C1A32] transition-colors mb-2"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Garments</span>
+            </Link>
+            <h1
+              className="text-3xl sm:text-4xl font-normal tracking-tight text-[#1B1512]"
+              style={serif}
+            >
+              {config.name} Atelier Studio
+            </h1>
+            <p className="text-xs sm:text-sm text-[#544B45]/80 mt-1">
+              Select your signature cut, specify body measurements, or attach reference sketches.
+            </p>
+          </div>
 
-        <h1 className="text-3xl md:text-4xl text-[#1B1512] mb-2" style={serif}>
-          {config.name} Styles
-        </h1>
-        <p className="text-[#4A413B] mb-10">
-          Choose the style you'd like for your {config.name.toLowerCase()}.
-        </p>
+          {/* Stepper Progress */}
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <span className="px-3 py-1.5 rounded-full bg-[#5C1A32] text-[#FAF7F2] text-xs font-semibold tracking-wider uppercase shadow-2xs">
+              1. Cut & Style
+            </span>
+            <span className="text-[#A89F95]">→</span>
+            <span className="px-3 py-1.5 rounded-full bg-white border border-[#5C1A32]/15 text-[#544B45] text-xs font-medium tracking-wider uppercase">
+              2. Accessories
+            </span>
+            <span className="text-[#A89F95]">→</span>
+            <span className="px-3 py-1.5 rounded-full bg-white border border-[#5C1A32]/15 text-[#544B45] text-xs font-medium tracking-wider uppercase">
+              3. Summary
+            </span>
+          </div>
+        </div>
 
-        <div className="flex flex-col gap-10">
-          {config.sections.map((section) => {
-            const sel: SectionSelection | undefined = selections[section.id];
-            const usesAccordion = sectionHasSubOptions(section);
-            const referenceImage = resolveReferenceImage(productId, section, sel);
+        {/* 2-Column Master Atelier Studio */}
+        <div className="flex flex-col lg:flex-row gap-10 items-start">
+          {/* =============================================================== */}
+          {/* LEFT COLUMN: Style Options, Measurements, Reference Upload    */}
+          {/* =============================================================== */}
+          <div className="flex-1 min-w-0 space-y-10 w-full">
+            {/* 1. Style Selection Sections */}
+            {config.sections.map((section, sIdx) => {
+              const sel: SectionSelection | undefined = selections[section.id];
+              const usesAccordion = sectionHasSubOptions(section);
 
-            return (
-              <div key={section.id}>
-                <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase mb-4">
-                  {section.label}
-                </h2>
+              return (
+                <div
+                  key={section.id}
+                  className="bg-white border border-[#5C1A32]/12 rounded-xl p-6 shadow-2xs space-y-5"
+                >
+                  <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3.5">
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold tracking-[0.25em] text-[#B8935A]">
+                        STEP {sIdx + 1} OF {config.sections.length}
+                      </span>
+                      <h2 className="text-lg font-normal text-[#1B1512] mt-0.5" style={serif}>
+                        {section.label}
+                      </h2>
+                    </div>
+                    {sel && (
+                      <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[11px] font-semibold flex items-center gap-1">
+                        <Check className="h-3 w-3" /> Selected
+                      </span>
+                    )}
+                  </div>
 
-                <div className="flex flex-col lg:flex-row gap-6">
-                  <div className="flex-1 min-w-0">
-                    {usesAccordion ? (
-                      <div className="flex flex-col gap-3">
-                        {section.options.map((option) => {
-                          const isSelected = option.id === sel?.optionId;
-                          const isExpanded = option.id === expanded[section.id];
-                          const isOnlySelectedAsParent =
-                            isSelected && option.subOptions?.length && !sel.subOptionId;
+                  {usesAccordion ? (
+                    <div className="grid grid-cols-1 gap-3.5">
+                      {section.options.map((option) => {
+                        const isSelected = option.id === sel?.optionId;
+                        const isExpanded = option.id === expanded[section.id];
+                        const desc = STYLE_DESCRIPTIONS[option.id];
 
-                          return (
-                            <div
-                              key={option.id}
-                              className={`rounded-sm border transition-colors ${
-                                isSelected
-                                  ? 'border-[#5C1A32]'
-                                  : 'border-[#5C1A32]/12 hover:border-[#5C1A32]/30'
-                              }`}
+                        return (
+                          <div
+                            key={option.id}
+                            className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+                              isSelected
+                                ? 'border-[#5C1A32] ring-1 ring-[#5C1A32] bg-[#5C1A32]/3 shadow-xs'
+                                : 'border-[#5C1A32]/15 bg-white hover:border-[#5C1A32]/40'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleOptionClick(section, option)}
+                              className="w-full p-4 text-left flex items-start justify-between gap-4 cursor-pointer"
                             >
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleOptionClick(section, option);
-                                }}
-                                aria-pressed={isSelected && !option.subOptions?.length}
-                                className={`w-full flex items-center justify-between gap-3 px-5 py-4 rounded-sm text-left ${
-                                  isSelected && !option.subOptions?.length
-                                    ? 'bg-[#5C1A32] text-[#F6F1E7]'
-                                    : 'bg-white text-[#1B1512]'
-                                }`}
-                              >
-                                <span className="flex items-center gap-2 font-medium text-sm">
-                                  {isSelected && !option.subOptions?.length && (
-                                    <Check className="h-4 w-4" />
+                              <div className="flex items-start gap-3.5">
+                                <div
+                                  className={`mt-0.5 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                                    isSelected
+                                      ? 'border-[#5C1A32] bg-[#5C1A32] text-white'
+                                      : 'border-[#5C1A32]/30 bg-white'
+                                  }`}
+                                >
+                                  {isSelected && <Check className="h-3 w-3" />}
+                                </div>
+                                <div>
+                                  <h3 className="text-base font-semibold text-[#1B1512]">
+                                    {option.label}
+                                  </h3>
+                                  {desc && (
+                                    <p className="text-xs text-[#544B45] mt-1 font-light leading-relaxed">
+                                      {desc}
+                                    </p>
                                   )}
-                                  {option.label}
-                                  {isOnlySelectedAsParent && (
-                                    <span className="text-xs font-normal text-[#5C1A32]/70">
-                                      (select an option below)
-                                    </span>
-                                  )}
-                                </span>
-                                {option.subOptions?.length ? (
-                                  <ChevronDown
-                                    className={`h-4 w-4 text-[#4A413B]/50 transition-transform ${
-                                      isExpanded ? 'rotate-180' : ''
-                                    }`}
-                                  />
-                                ) : null}
-                              </button>
+                                </div>
+                              </div>
 
-                              {option.subOptions?.length && isExpanded ? (
-                                <div className="flex flex-col gap-2 px-5 pb-4">
+                              {option.subOptions?.length ? (
+                                <ChevronDown
+                                  className={`h-4 w-4 text-[#544B45] transition-transform shrink-0 mt-1 ${
+                                    isExpanded ? 'rotate-180' : ''
+                                  }`}
+                                />
+                              ) : null}
+                            </button>
+
+                            {/* Sub-options Pills */}
+                            {option.subOptions?.length && isExpanded ? (
+                              <div className="px-5 pb-4 pt-1 border-t border-[#5C1A32]/10 bg-white/60">
+                                <span className="text-[10px] uppercase font-semibold text-[#B8935A] tracking-wider block mb-2">
+                                  Select Dart Seam Configuration:
+                                </span>
+                                <div className="flex flex-wrap gap-2">
                                   {option.subOptions.map((sub) => {
                                     const isSubSelected = sub.id === sel?.subOptionId;
                                     return (
                                       <button
                                         key={sub.id}
                                         type="button"
-                                        onClick={() => {
-                                          handleSubOptionClick(section, option, sub);
-                                        }}
-                                        aria-pressed={isSubSelected}
-                                        className={`flex items-center gap-2 text-left text-sm px-4 py-2.5 rounded-sm border ${
+                                        onClick={() => handleSubOptionClick(section, option, sub)}
+                                        className={`px-3.5 py-2 rounded-lg text-xs font-semibold tracking-wider uppercase transition-all flex items-center gap-1.5 ${
                                           isSubSelected
-                                            ? 'bg-[#5C1A32]/8 border-[#5C1A32] text-[#5C1A32] font-semibold'
-                                            : 'bg-white border-[#5C1A32]/12 text-[#4A413B] hover:border-[#5C1A32]/30'
+                                            ? 'bg-[#5C1A32] text-white shadow-2xs'
+                                            : 'bg-white border border-[#5C1A32]/20 text-[#1B1512] hover:border-[#5C1A32]'
                                         }`}
                                       >
-                                        {isSubSelected && <Check className="h-3.5 w-3.5" />}
-                                        {sub.label}
+                                        {isSubSelected && <Check className="h-3 w-3" />}
+                                        <span>{sub.label}</span>
                                       </button>
                                     );
                                   })}
                                 </div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {section.options.map((option) => {
-                          const isSelected = option.id === sel?.optionId;
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() => {
-                                handleOptionClick(section, option);
-                              }}
-                              aria-pressed={isSelected}
-                              className={`flex items-center gap-2 text-left text-sm px-4 py-3 rounded-sm border transition-colors ${
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {section.options.map((option) => {
+                        const isSelected = option.id === sel?.optionId;
+                        const desc = STYLE_DESCRIPTIONS[option.id];
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => handleOptionClick(section, option)}
+                            className={`p-4 rounded-xl border text-left transition-all duration-200 flex items-start gap-3.5 cursor-pointer ${
+                              isSelected
+                                ? 'border-[#5C1A32] ring-1 ring-[#5C1A32] bg-[#5C1A32]/5 shadow-xs'
+                                : 'border-[#5C1A32]/15 bg-white hover:border-[#5C1A32]/40'
+                            }`}
+                          >
+                            <div
+                              className={`mt-0.5 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
                                 isSelected
-                                  ? 'bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7] font-semibold'
-                                  : 'bg-white border-[#5C1A32]/12 text-[#2A211D] hover:border-[#5C1A32]/30'
+                                  ? 'border-[#5C1A32] bg-[#5C1A32] text-white'
+                                  : 'border-[#5C1A32]/30 bg-white'
                               }`}
                             >
-                              {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
-                              <span>{option.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <ReferenceImagePanel image={referenceImage} />
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-semibold text-[#1B1512]">
+                                {option.label}
+                              </h3>
+                              {desc && (
+                                <p className="text-xs text-[#544B45] mt-1 leading-relaxed">
+                                  {desc}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {/* Only this product's measurement fields show here — Blouse
-              fields for Blouse, Chudi fields for Chudidhar, and so on.
-              MannequinPreview sits alongside and reacts live both to the
-              measurement values and to whichever style options above are
-              selected. */}
-          {measurementSection ? (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Ruler className="h-4 w-4 text-[#B8935A]" />
-                <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
-                  {config.name} Measurements
-                </h2>
-              </div>
-              <div className="flex flex-col lg:flex-row gap-8">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 flex-1">
+            {/* 2. Master Tailor Measurements */}
+            {measurementSection && (
+              <div className="bg-white border border-[#5C1A32]/12 rounded-xl p-6 shadow-2xs space-y-5">
+                <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <Ruler className="h-4 w-4 text-[#B8935A]" />
+                    <h2 className="text-lg font-normal text-[#1B1512]" style={serif}>
+                      Master Tailor Measurements
+                    </h2>
+                  </div>
+                  <span className="text-xs text-[#5C1A32] font-semibold bg-[#5C1A32]/8 px-2.5 py-1 rounded">
+                    {filledMeasurementsCount} / {totalMeasurementsCount} Fields
+                  </span>
+                </div>
+
+                <p className="text-xs text-[#544B45] font-light leading-relaxed">
+                  Enter your exact body dimensions in inches, or use the numbers saved to your
+                  profile. If left as template values, our master tailor will coordinate during
+                  fitting.
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 pt-1">
                   {measurementSection.fields.map((field, idx) => (
-                    <label key={field.key} className="flex flex-col gap-1.5">
-                      <span className="text-xs text-[#4A413B]">
+                    <div
+                      key={field.key}
+                      className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#5C1A32]/10"
+                    >
+                      <span className="text-[10px] uppercase font-semibold text-[#544B45]/70 block truncate mb-1">
                         {idx + 1}. {field.label}
                       </span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5 bg-white border border-[#5C1A32]/15 rounded px-2 py-1 focus-within:border-[#5C1A32] focus-within:ring-1 focus-within:ring-[#5C1A32]">
                         <input
                           type="number"
                           step="0.1"
                           inputMode="decimal"
                           placeholder="0.0"
                           value={measurementValues[field.key] ?? ''}
-                          onChange={(e) => {
-                            handleMeasurementChange(field.key, e.target.value);
-                          }}
-                          className="w-full rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-[#1B1512] focus:outline-none focus:border-[#5C1A32] bg-white"
+                          onChange={(e) => handleMeasurementChange(field.key, e.target.value)}
+                          className="w-full text-xs font-semibold text-[#1B1512] bg-transparent focus:outline-none"
                         />
-                        <span className="text-xs text-[#4A413B]/60 shrink-0">in</span>
+                        <span className="text-[10px] text-[#A89F95] font-mono shrink-0">in</span>
                       </div>
-                    </label>
+                    </div>
                   ))}
                 </div>
+              </div>
+            )}
 
-                <div className="lg:w-64 shrink-0">
-                  <MannequinPreview
-                    title={`${config.name} Preview`}
-                    {...previewMeasurements}
-                    {...styleVisual}
-                  />
+            {/* 3. Reference Image Upload */}
+            <div className="bg-white border border-[#5C1A32]/12 rounded-xl p-6 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <ImagePlus className="h-4 w-4 text-[#B8935A]" />
+                  <h2 className="text-lg font-normal text-[#1B1512]" style={serif}>
+                    Reference Photo or Sketch
+                  </h2>
                 </div>
+                <span className="text-xs text-[#544B45]/60 italic">Optional</span>
               </div>
-            </div>
-          ) : null}
 
-          {/* Second measurement section, only rendered for products that
-              need two (Ready to Wear Saree needs both Blouse and Chudi
-              measurements). Mirrors the block above; no effect on any
-              product with just one section. */}
-          {secondaryMeasurementSection ? (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Ruler className="h-4 w-4 text-[#B8935A]" />
-                <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
-                  {secondaryMeasurementSection.title} Measurements
-                </h2>
-              </div>
-              <div className="flex flex-col lg:flex-row gap-8">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 flex-1">
-                  {secondaryMeasurementSection.fields.map((field, idx) => (
-                    <label key={field.key} className="flex flex-col gap-1.5">
-                      <span className="text-xs text-[#4A413B]">
-                        {idx + 1}. {field.label}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          step="0.1"
-                          inputMode="decimal"
-                          placeholder="0.0"
-                          value={secondaryMeasurementValues[field.key] ?? ''}
-                          onChange={(e) => {
-                            handleSecondaryMeasurementChange(field.key, e.target.value);
-                          }}
-                          className="w-full rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-[#1B1512] focus:outline-none focus:border-[#5C1A32] bg-white"
-                        />
-                        <span className="text-xs text-[#4A413B]/60 shrink-0">in</span>
-                      </div>
+              {referenceImage ? (
+                <div className="flex items-center gap-4 bg-[#FAF7F2] border border-[#5C1A32]/15 rounded-xl p-4">
+                  <img
+                    src={referenceImage.dataUrl}
+                    alt="Uploaded Reference Preview"
+                    className="h-20 w-20 rounded-lg object-cover border border-[#5C1A32]/20 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-[#1B1512] truncate">
+                      {referenceImage.fileName}
+                    </p>
+                    <p className="text-[11px] text-[#544B45] mt-0.5">
+                      Attached for the master tailor's pattern table.
+                    </p>
+                    <label
+                      htmlFor="ref-upload-input"
+                      className="inline-block mt-1.5 text-xs font-semibold text-[#5C1A32] cursor-pointer hover:underline"
+                    >
+                      Replace photo
                     </label>
-                  ))}
-                </div>
-
-                <div className="lg:w-64 shrink-0">
-                  <MannequinPreview
-                    title={`${secondaryMeasurementSection.title} Preview`}
-                    {...buildPreviewMeasurements(
-                      secondaryMeasurementSection.storageSuffix,
-                      secondaryMeasurementValues,
-                    )}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Reference photo — optional image the client can attach so
-              the stitching employee has something visual to match
-              alongside the style selections and measurements above. */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <ImagePlus className="h-4 w-4 text-[#B8935A]" />
-              <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
-                Reference Photo
-              </h2>
-              <span className="text-xs font-normal text-[#4A413B]/60 normal-case tracking-normal">
-                (optional)
-              </span>
-            </div>
-
-            {referenceImage ? (
-              <div className="flex items-center gap-4 rounded-sm border border-[#5C1A32]/12 bg-white p-4">
-                <img
-                  src={referenceImage.dataUrl}
-                  alt="Reference upload preview"
-                  className="h-24 w-24 rounded-sm object-cover border border-[#5C1A32]/10 shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1B1512] truncate">
-                    {referenceImage.fileName}
-                  </p>
-                  <p className="text-xs text-[#4A413B]/60 mt-0.5">
-                    Attached for the tailoring team to reference.
-                  </p>
-                  <label
-                    htmlFor="reference-image-input"
-                    className="inline-block mt-2 text-xs font-semibold text-[#5C1A32] cursor-pointer hover:underline"
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveReferenceImage}
+                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-full"
                   >
-                    Replace photo
-                  </label>
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
+              ) : (
+                <label
+                  htmlFor="ref-upload-input"
+                  className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#5C1A32]/20 hover:border-[#5C1A32]/50 bg-[#FAF7F2]/50 rounded-xl cursor-pointer text-center transition-colors"
+                >
+                  <div className="h-10 w-10 rounded-full bg-[#5C1A32]/10 text-[#5C1A32] flex items-center justify-center mb-2">
+                    <ImagePlus className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-[#1B1512]">
+                    Click to upload a custom blouse photo or sketch
+                  </span>
+                  <span className="text-[10px] text-[#544B45]/70 mt-0.5">
+                    JPG, PNG, or WEBP up to 4MB
+                  </span>
+                </label>
+              )}
+
+              <input
+                id="ref-upload-input"
+                type="file"
+                accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                onChange={handleReferenceImageChange}
+                className="sr-only"
+              />
+              {referenceImageError && (
+                <p className="text-xs text-rose-600 font-medium">{referenceImageError}</p>
+              )}
+            </div>
+          </div>
+
+          {/* =============================================================== */}
+          {/* RIGHT COLUMN: Haute Couture Preview & Order Specification Card  */}
+          {/* =============================================================== */}
+          <aside className="w-full lg:w-96 xl:w-[420px] shrink-0 lg:sticky lg:top-24 space-y-6">
+            <div className="bg-white border border-[#5C1A32]/15 rounded-2xl overflow-hidden shadow-lg">
+              {/* Illustration Arch Preview */}
+              <div className="relative aspect-[3/4] bg-[#EDE5D8] overflow-hidden">
+                <img
+                  src={activeHeroImage?.url ?? '/images/styles/blouse-princess-cut.jpg'}
+                  alt={currentTitle}
+                  className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-75" />
+
+                <div className="absolute top-4 left-4">
+                  <span className="px-2.5 py-1 bg-[#1B1512]/70 backdrop-blur-sm text-[#FAF7F2] text-[9px] uppercase tracking-[0.2em] font-semibold rounded">
+                    ATELIER SPECIFICATION
+                  </span>
+                </div>
+
+                <div className="absolute bottom-4 left-4 right-4 text-white">
+                  <span className="text-[10px] uppercase font-semibold text-[#B8935A] tracking-wider block">
+                    CURRENT SILHOUETTE
+                  </span>
+                  <h3 className="text-xl font-normal leading-tight mt-0.5" style={serif}>
+                    {currentTitle}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Specification Details & Continue Button */}
+              <div className="p-5 space-y-4">
+                <p className="text-xs text-[#544B45] font-light leading-relaxed">{currentDesc}</p>
+
+                {/* Fabric Attachment Badge (if selected) */}
+                {fabric && (
+                  <div className="bg-[#FAF7F2] p-3 rounded-lg border border-[#5C1A32]/10 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="h-4 w-4 rounded-full border border-white shadow-xs shrink-0"
+                        style={{ backgroundColor: fabric.fabricHex }}
+                      />
+                      <div>
+                        <span className="font-semibold text-[#1B1512] block truncate">
+                          {fabric.fabricName}
+                        </span>
+                        <span className="text-[10px] text-[#A89F95] uppercase">
+                          {fabric.fabricTone} Tone
+                        </span>
+                      </div>
+                    </div>
+                    <span className="font-semibold text-[#5C1A32]">₹{fabric.pricePerMeter}/m</span>
+                  </div>
+                )}
+
+                {/* Measurements Status Pill */}
+                <div className="flex items-center justify-between text-xs py-2 border-t border-b border-[#5C1A32]/10">
+                  <span className="text-[#544B45]">Measurements Status:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {filledMeasurementsCount > 0
+                      ? `${filledMeasurementsCount} Dimensions Set`
+                      : 'Template Selected'}
+                  </span>
+                </div>
+
+                {/* Main Action Button */}
                 <button
                   type="button"
-                  onClick={handleRemoveReferenceImage}
-                  aria-label="Remove reference photo"
-                  className="h-8 w-8 shrink-0 rounded-full border border-[#5C1A32]/20 text-[#5C1A32] flex items-center justify-center hover:bg-[#5C1A32]/5"
+                  onClick={handleContinue}
+                  disabled={!isComplete}
+                  className={`w-full py-3.5 px-6 rounded-lg font-semibold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-sm ${
+                    isComplete
+                      ? 'bg-[#5C1A32] text-[#FAF7F2] hover:bg-[#431224] hover:shadow-md cursor-pointer'
+                      : 'bg-[#5C1A32]/15 text-[#5C1A32]/40 cursor-not-allowed'
+                  }`}
                 >
-                  <X className="h-4 w-4" />
+                  <span>Continue to Accessories</span>
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
-            ) : (
-              <label
-                htmlFor="reference-image-input"
-                className="flex flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed border-[#5C1A32]/20 bg-white px-6 py-8 text-center cursor-pointer hover:border-[#5C1A32]/40 transition-colors"
-              >
-                <span className="h-10 w-10 rounded-full bg-[#5C1A32]/8 text-[#5C1A32] flex items-center justify-center">
-                  <ImagePlus className="h-5 w-5" />
-                </span>
-                <span className="text-sm font-medium text-[#1B1512]">
-                  Click to upload a reference photo
-                </span>
-                <span className="text-xs text-[#4A413B]/60">JPG, PNG, or WEBP · up to 4MB</span>
-              </label>
-            )}
-
-            <input
-              id="reference-image-input"
-              type="file"
-              accept={ACCEPTED_IMAGE_TYPES.join(',')}
-              onChange={handleReferenceImageChange}
-              className="sr-only"
-            />
-
-            {referenceImageError && (
-              <p className="text-xs text-red-600 mt-2">{referenceImageError}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-10 flex justify-center">
-          <button
-            type="button"
-            onClick={handleContinue}
-            disabled={!isComplete}
-            className={`inline-flex items-center gap-2 font-semibold text-sm px-6 py-3 rounded-full transition-colors ${
-              isComplete
-                ? 'bg-[#1B1512] text-[#F6F1E7] hover:bg-[#5C1A32]'
-                : 'bg-[#5C1A32]/10 text-[#4A413B]/50 cursor-not-allowed'
-            }`}
-          >
-            Continue to Accessories
-            <ArrowRight className="h-4 w-4" />
-          </button>
+            </div>
+          </aside>
         </div>
       </div>
     </div>

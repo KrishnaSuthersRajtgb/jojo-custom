@@ -179,8 +179,8 @@ export default function Franchise() {
 
   if (submitted) {
     return (
-      <div className="w-full bg-[#F6F1E7] pt-16 min-h-[70vh] flex items-center">
-        <section className="w-full px-6 py-16">
+      <div className="w-full bg-[#FAF7F2] min-h-[70vh] flex items-center py-12">
+        <section className="w-full px-6 py-8">
           <div className="max-w-md mx-auto text-center bg-white border border-[#5C1A32]/12 rounded-sm shadow-sm p-10">
             <div className="h-14 w-14 rounded-full bg-[#5C1A32]/10 text-[#5C1A32] flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="h-7 w-7" />
@@ -209,10 +209,9 @@ export default function Franchise() {
   }
 
   return (
-    // pt-16 clears the fixed h-16 Navbar (z-[60])
-    <div className="w-full bg-[#F6F1E7] pt-16">
+    <div className="w-full bg-[#FAF7F2] py-8">
       {/* ---------------- HERO ---------------- */}
-      <section className="w-full px-6 pt-16 pb-14">
+      <section className="w-full px-6 pb-14">
         <div className="max-w-4xl mx-auto text-center">
           <Link
             to="/"

@@ -166,35 +166,41 @@ export default function AdminOrders() {
     .reduce((sum, o) => sum + o.orderDetails.total, 0);
 
   return (
-    <div className="w-full bg-[#F6F1E7]">
-      <section className="w-full px-6 py-10">
+    <div className="w-full bg-[#FAF7F2] min-h-screen">
+      <section className="w-full px-6 py-12">
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2.5 mb-2">
             <ShieldCheck className="h-6 w-6 text-[#5C1A32]" />
-            <h1 className="text-3xl text-[#1B1512]" style={serif}>
-              Admin · All Orders
+            <h1 className="text-3xl sm:text-4xl text-[#1B1512] font-normal" style={serif}>
+              Atelier · All Orders
             </h1>
           </div>
-          <p className="text-[#4A413B] text-sm">
-            Every order placed on this device, across all accounts.
+          <p className="text-[#544B45] text-xs uppercase tracking-wider font-medium">
+            Centralized registry of client bespoke garments &amp; payments
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
-            <div className="bg-[#F6F1E7] rounded-sm border border-[#5C1A32]/15 p-5">
-              <p className="text-xs text-[#4A413B]/60 mb-1">Total Orders</p>
-              <p className="text-2xl text-[#1B1512]" style={serif}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-8">
+            <div className="bg-white border border-[#5C1A32]/12 p-6 shadow-sm">
+              <p className="text-[10px] font-semibold tracking-wider text-[#544B45] uppercase mb-1">
+                Total Orders
+              </p>
+              <p className="text-3xl text-[#1B1512] font-normal" style={serif}>
                 {orders.length}
               </p>
             </div>
-            <div className="bg-[#F6F1E7] rounded-sm border border-[#5C1A32]/15 p-5">
-              <p className="text-xs text-[#4A413B]/60 mb-1">Paid Orders</p>
-              <p className="text-2xl text-[#1B1512]" style={serif}>
+            <div className="bg-white border border-[#5C1A32]/12 p-6 shadow-sm">
+              <p className="text-[10px] font-semibold tracking-wider text-[#544B45] uppercase mb-1">
+                Paid Orders
+              </p>
+              <p className="text-3xl text-[#1B1512] font-normal" style={serif}>
                 {orders.filter((o) => o.paymentId).length}
               </p>
             </div>
-            <div className="bg-[#F6F1E7] rounded-sm border border-[#5C1A32]/15 p-5">
-              <p className="text-xs text-[#4A413B]/60 mb-1">Revenue Collected</p>
-              <p className="text-2xl text-[#5C1A32]" style={serif}>
+            <div className="bg-white border border-[#5C1A32]/12 p-6 shadow-sm">
+              <p className="text-[10px] font-semibold tracking-wider text-[#544B45] uppercase mb-1">
+                Revenue Collected
+              </p>
+              <p className="text-3xl text-[#5C1A32] font-normal" style={serif}>
                 {formatRupees(totalRevenue)}
               </p>
             </div>
@@ -202,12 +208,12 @@ export default function AdminOrders() {
         </div>
       </section>
 
-      <section className="w-full px-6 pb-16">
-        <div className="max-w-5xl mx-auto space-y-4">
+      <section className="w-full px-6 pb-20">
+        <div className="max-w-5xl mx-auto space-y-5">
           {orders.length === 0 ? (
-            <div className="bg-[#F6F1E7] rounded-sm border border-[#5C1A32]/15 p-10 text-center">
-              <Package className="h-8 w-8 text-[#5C1A32]/25 mx-auto mb-3" />
-              <p className="text-[#4A413B]">No orders found on this device yet.</p>
+            <div className="bg-white border border-[#5C1A32]/15 p-12 text-center shadow-sm">
+              <Package className="h-8 w-8 text-[#5C1A32]/30 mx-auto mb-3" />
+              <p className="text-[#544B45] text-sm">No orders registered in the system yet.</p>
             </div>
           ) : (
             orders.map((order) => {
@@ -216,7 +222,7 @@ export default function AdminOrders() {
               return (
                 <div
                   key={order.id}
-                  className="bg-[#F6F1E7] rounded-sm border border-[#5C1A32]/15 overflow-hidden"
+                  className="bg-white border border-[#5C1A32]/12 shadow-sm overflow-hidden"
                 >
                   <button
                     type="button"

@@ -69,6 +69,8 @@ export interface IOrder extends Document {
   paymentId: string | null;
   paymentStatus: 'pending' | 'paid' | 'failed';
   status: OrderStatus;
+  trackingNumber?: string;
+  courier?: string;
   placedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -157,6 +159,14 @@ const OrderSchema = new Schema<IOrder>(
         'cancelled',
       ],
       default: 'placed',
+    },
+    trackingNumber: {
+      type: String,
+      default: '',
+    },
+    courier: {
+      type: String,
+      default: 'BlueDart Express',
     },
     placedAt: {
       type: Date,

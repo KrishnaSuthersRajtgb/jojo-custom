@@ -32,6 +32,7 @@ interface IncomingReferenceImage {
 
 interface IncomingState {
   productName?: string;
+  baseTailoringPrice?: number;
   selections?: unknown;
   measurementValues?: Record<string, string>;
   fabric?: IncomingFabric;
@@ -102,6 +103,7 @@ export default function ProductAccessories() {
       state: {
         productId,
         productName,
+        baseTailoringPrice: incoming.baseTailoringPrice,
         selections: incoming.selections ?? null,
         measurementValues: incoming.measurementValues ?? null,
         accessories: selectedAccessories,

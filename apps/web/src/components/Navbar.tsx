@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +8,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, MapPin, User, Ruler, Package, ShoppingBag, Menu, X } from 'lucide-react';
+import {
+  LogOut,
+  MapPin,
+  User,
+  Ruler,
+  Package,
+  ShoppingBag,
+  Menu,
+  X,
+  ArrowRight,
+  Sparkles,
+  ExternalLink,
+} from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
@@ -30,6 +42,44 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [recentOrders, setRecentOrders] = useState<
+    Array<{
+      orderId?: string;
+      product?: string;
+      totalAmount?: number;
+      status?: string;
+      createdAt?: string;
+    }>
+  >([]);
+
+  useEffect(() => {
+    const updateOrders = () => {
+      const ordersKey = user?.name ? `jojo_orders_${user.name}` : 'jojo_orders_guest';
+      const raw = localStorage.getItem(ordersKey);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as Array<{
+            orderId?: string;
+            product?: string;
+            totalAmount?: number;
+            status?: string;
+            createdAt?: string;
+          }>;
+          if (Array.isArray(parsed)) {
+            setRecentOrders(parsed.slice(0, 3));
+          }
+        } catch {
+          setRecentOrders([]);
+        }
+      } else {
+        setRecentOrders([]);
+      }
+    };
+    updateOrders();
+    window.addEventListener('storage', updateOrders);
+    return () => window.removeEventListener('storage', updateOrders);
+  }, [user]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -104,15 +154,19 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
 
         {/* Right Actions */}
         <div className="flex items-center gap-4 md:gap-6">
-          {/* My Orders Icon */}
+          {/* Couture Bag & Orders Trigger */}
           <button
-            onClick={() => {
-              void navigate('/order-tracking');
-            }}
-            title="My Orders"
-            className="p-2 text-[#1B1512]/75 hover:text-[#5C1A32] transition-colors"
+            onClick={() => setCartDrawerOpen(true)}
+            title="Couture Bag & Orders"
+            className="p-2 text-[#1B1512]/75 hover:text-[#5C1A32] transition-colors relative"
+            aria-label="Open Couture Bag"
           >
             <ShoppingBag className="h-[18px] w-[18px]" strokeWidth={1.5} />
+            {recentOrders.length > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#5C1A32] text-[#FAF7F2] text-[10px] font-bold flex items-center justify-center">
+                {recentOrders.length}
+              </span>
+            )}
           </button>
 
           {/* User Account / Profile */}
@@ -287,6 +341,173 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── 3. Couture Bag & Atelier Slide-out Drawer ─────────────────────── */}
+      {cartDrawerOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setCartDrawerOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-full max-w-md bg-[#FAF7F2] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300 border-l border-[#5C1A32]/15">
+            {/* Drawer Header */}
+            <div className="p-6 border-b border-[#5C1A32]/10 bg-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <ShoppingBag className="h-5 w-5 text-[#5C1A32]" />
+                <h3 className="text-lg text-[#1B1512] font-semibold tracking-wide" style={serif}>
+                  JoJo Flora Atelier Bag
+                </h3>
+              </div>
+              <button
+                onClick={() => setCartDrawerOpen(false)}
+                className="p-1.5 text-[#1B1512]/60 hover:text-[#1B1512] rounded-full hover:bg-[#FAF7F2]"
+                aria-label="Close bag drawer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Drawer Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Quick Shortcuts */}
+              <div className="space-y-2.5">
+                <span className="text-[10px] font-bold tracking-[0.2em] text-[#B8935A] uppercase block">
+                  Atelier Services
+                </span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={() => {
+                      setCartDrawerOpen(false);
+                      void navigate('/custom-outfit');
+                    }}
+                    className="p-3 text-left rounded-sm bg-white border border-[#5C1A32]/12 hover:border-[#5C1A32] hover:bg-[#5C1A32]/5 transition-all text-xs font-semibold text-[#1B1512]"
+                  >
+                    <Sparkles className="h-4 w-4 text-[#B8935A] mb-1.5" />
+                    Bespoke Atelier
+                    <span className="block text-[10px] font-normal text-[#4A413B]/70">
+                      Design blouse, lehenga
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCartDrawerOpen(false);
+                      void navigate('/fabrics');
+                    }}
+                    className="p-3 text-left rounded-sm bg-white border border-[#5C1A32]/12 hover:border-[#5C1A32] hover:bg-[#5C1A32]/5 transition-all text-xs font-semibold text-[#1B1512]"
+                  >
+                    <Package className="h-4 w-4 text-[#B8935A] mb-1.5" />
+                    Fabric Library
+                    <span className="block text-[10px] font-normal text-[#4A413B]/70">
+                      Pure silk & weaves
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Recent / Active Orders */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold tracking-[0.2em] text-[#B8935A] uppercase">
+                    Your Atelier Orders
+                  </span>
+                  {recentOrders.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setCartDrawerOpen(false);
+                        void navigate('/order-tracking');
+                      }}
+                      className="text-[11px] font-semibold text-[#5C1A32] hover:underline flex items-center gap-1"
+                    >
+                      View All ({recentOrders.length}) <ArrowRight className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {recentOrders.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {recentOrders.map((ord, idx) => (
+                      <div
+                        key={ord.orderId ?? idx}
+                        className="p-3.5 bg-white rounded-sm border border-[#5C1A32]/10 shadow-xs space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#1B1512]">
+                            {ord.product || 'Custom Bespoke Outfit'}
+                          </span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider bg-[#5C1A32]/10 text-[#5C1A32] px-2 py-0.5 rounded-full">
+                            {ord.status || 'In Atelier'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-[#4A413B]">
+                          <span className="font-mono text-[11px] text-[#4A413B]/70">
+                            #{ord.orderId || `ORD-${idx + 1}`}
+                          </span>
+                          {ord.totalAmount !== undefined && (
+                            <span className="font-semibold text-[#1B1512]">
+                              ₹{ord.totalAmount.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center bg-white rounded-sm border border-dashed border-[#5C1A32]/20 space-y-3">
+                    <ShoppingBag className="h-8 w-8 text-[#5C1A32]/30 mx-auto" />
+                    <p className="text-xs text-[#4A413B] font-medium">
+                      No active couture orders yet
+                    </p>
+                    <button
+                      onClick={() => {
+                        setCartDrawerOpen(false);
+                        void navigate('/custom-outfit');
+                      }}
+                      className="inline-block text-[11px] uppercase tracking-wider font-semibold text-[#5C1A32] hover:underline"
+                    >
+                      + Start Custom Outfit
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Doorstep Fitting Banner */}
+              <div className="bg-[#5C1A32] text-[#FAF7F2] p-4 rounded-sm space-y-2">
+                <span className="text-[9px] font-bold tracking-[0.25em] text-[#B8935A] uppercase block">
+                  Home Fitting
+                </span>
+                <p className="text-xs leading-relaxed text-[#FAF7F2]/90">
+                  Prefer a master tailor to visit your home with fabric swatches?
+                </p>
+                <button
+                  onClick={() => {
+                    setCartDrawerOpen(false);
+                    void navigate('/measurements');
+                  }}
+                  className="w-full py-2 bg-[#FAF7F2] text-[#1B1512] hover:bg-white text-xs font-semibold uppercase tracking-wider rounded-sm transition-colors mt-2"
+                >
+                  Book Fitting Visit
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-5 border-t border-[#5C1A32]/10 bg-white">
+              <button
+                onClick={() => {
+                  setCartDrawerOpen(false);
+                  void navigate('/order-tracking');
+                }}
+                className="w-full py-3 bg-[#1B1512] hover:bg-[#5C1A32] text-[#FAF7F2] text-xs uppercase tracking-[0.2em] font-semibold rounded-sm transition-colors flex items-center justify-center gap-2"
+              >
+                Track Live Garment Progress <ExternalLink className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </header>

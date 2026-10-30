@@ -23,6 +23,11 @@ pricingRouter.put('/accessories', (req, res) => {
   void pricingController.updateAccessories(req, res);
 });
 
+// Update garments, sub-divisions and tailoring pricing
+pricingRouter.put('/garments', (req, res) => {
+  void pricingController.updateGarments(req, res);
+});
+
 // Reset pricing to defaults
 pricingRouter.post('/reset', (req, res) => {
   void pricingController.resetPricing(req, res);

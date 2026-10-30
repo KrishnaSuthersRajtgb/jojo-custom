@@ -39,22 +39,12 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     }
   }
 
-  // Fallback to x-username or x-user-key header if sent from client
-  const fallbackUser = (req.headers['x-username'] ?? req.headers['x-user-key']) as
-    | string
-    | undefined;
-  if (fallbackUser) {
-    req.user = { username: fallbackUser };
-    next();
-    return;
-  }
-
-  res.status(401).json({ error: 'Authentication required' });
+  res.status(401).json({ error: 'Authentication required. Valid Bearer token must be provided.' });
 }
 
 /**
  * Optional authentication middleware.
- * Attaches user if token or username header is present, but doesn't block unauthenticated requests.
+ * Attaches user if a valid Bearer token is present, but doesn't block unauthenticated guest requests.
  */
 export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
@@ -66,13 +56,6 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction): 
       req.user = decoded;
     } catch {
       // Ignore invalid token on optional auth
-    }
-  } else {
-    const fallbackUser = (req.headers['x-username'] ?? req.headers['x-user-key']) as
-      | string
-      | undefined;
-    if (fallbackUser) {
-      req.user = { username: fallbackUser };
     }
   }
 

@@ -31,9 +31,11 @@ import { getCoutureSketchForGarment } from '../utils/coutureSketches';
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
 interface SelectionEntry {
+  sectionId?: string;
   sectionLabel: string;
   optionLabel: string | null;
   subOptionLabel: string | null;
+  tailoringPrice?: number;
 }
 
 interface AccessoryEntry {
@@ -62,6 +64,8 @@ interface OrderDetails {
   total: number;
   isCustom?: boolean;
   fabricTotal?: number;
+  baseTailoringPrice?: number;
+  totalTailoring?: number;
   productId?: string;
   productName?: string;
   selections?: SelectionEntry[] | null;
@@ -663,6 +667,35 @@ export default function Payment() {
                     ₹{orderDetails.fabricTotal ?? orderDetails.total}
                   </span>
                 </div>
+
+                {/* Base Stitching for Custom Outfits */}
+                {orderDetails.isCustom && orderDetails.baseTailoringPrice ? (
+                  <div className="flex items-center justify-between text-[#544B45]">
+                    <span>Base Stitching ({orderDetails.productName || orderDetails.garment})</span>
+                    <span className="font-semibold text-[#1B1512]">
+                      ₹{orderDetails.baseTailoringPrice}
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* Itemized Sub-Division Tailoring Charges */}
+                {orderDetails.isCustom &&
+                  orderDetails.selections
+                    ?.filter((s) => (s.tailoringPrice ?? 0) > 0)
+                    .map((s, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between text-xs text-[#736357] pl-2 border-l-2 border-[#5C1A32]/25"
+                      >
+                        <span className="truncate max-w-[200px]">
+                          + {s.subOptionLabel ?? s.optionLabel} ({s.sectionLabel})
+                        </span>
+                        <span className="font-mono text-[#5C1A32] font-semibold">
+                          +₹{s.tailoringPrice}
+                        </span>
+                      </div>
+                    ))}
+
                 {orderDetails.accessoriesTotal && orderDetails.accessoriesTotal > 0 ? (
                   <div className="flex items-center justify-between text-[#544B45]">
                     <span>Atelier Embellishments</span>

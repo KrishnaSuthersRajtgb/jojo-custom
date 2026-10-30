@@ -27,6 +27,8 @@ import Footer from './components/Footer';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ColorWheel from './components/ColorWheel';
+import WhatsAppConcierge from './components/WhatsAppConcierge';
+import SitePopupBanner from './components/SitePopupBanner';
 
 import ScrollToTop from './components/ScrollToTop';
 function AppContent() {
@@ -136,6 +138,8 @@ function AppContent() {
         </main>
         {!isAdminRoute && <MeasurementSidebar />}
       </div>
+      {!isAdminRoute && <WhatsAppConcierge />}
+      {!isAdminRoute && <SitePopupBanner />}
       {!isAdminRoute && <Footer />}
     </div>
   );

@@ -68,6 +68,7 @@ interface CustomSelection {
   sectionLabel: string;
   optionLabel: string | null;
   subOptionLabel: string | null;
+  tailoringPrice?: number;
 }
 
 // Reference photo forwarded from ProductStyle.tsx -> ProductAccessories.tsx
@@ -82,6 +83,8 @@ interface CustomReferenceImage {
 interface CustomOutfitOrderState {
   productId?: string;
   productName?: string;
+  baseTailoringPrice?: number;
+  totalTailoring?: number;
   selections?: CustomSelection[] | null;
   measurementValues?: Record<string, string> | null;
   accessories?: CustomAccessory[];
@@ -113,6 +116,8 @@ interface NormalizedOrder {
   meters: number;
   pricePerMeter: number;
   fabricTotal: number;
+  baseTailoringPrice?: number | undefined;
+  totalTailoring?: number | undefined;
   productName?: string | undefined;
   selections?: CustomSelection[] | null | undefined;
   accessories: CustomAccessory[];
@@ -150,6 +155,12 @@ function normalizeOrder(
   const accessories = custom.accessories ?? [];
   const accessoriesTotal = custom.accessoriesTotal ?? 0;
   const fabricTotal = fabric?.fabricTotal ?? 0;
+  const baseTailoringPrice = custom.baseTailoringPrice ?? 450;
+  const styleTailoring = (custom.selections ?? []).reduce(
+    (sum, s) => sum + (s.tailoringPrice ?? 0),
+    0,
+  );
+  const totalTailoring = custom.totalTailoring ?? baseTailoringPrice + styleTailoring;
 
   return {
     isCustom: true,
@@ -161,11 +172,13 @@ function normalizeOrder(
     meters: fabric?.meters ?? 0,
     pricePerMeter: fabric?.pricePerMeter ?? 0,
     fabricTotal,
+    baseTailoringPrice,
+    totalTailoring,
     productName: custom.productName,
     selections: custom.selections,
     accessories,
     accessoriesTotal,
-    total: custom.grandTotal ?? fabricTotal + accessoriesTotal,
+    total: custom.grandTotal ?? fabricTotal + accessoriesTotal + totalTailoring,
     // custom.measurementValues comes from ProductSummary.tsx's router
     // state; bodyType isn't part of that flow's state, so it's read
     // from the same localStorage key MeasurementSidebar.tsx/
@@ -335,19 +348,39 @@ export default function Order() {
                     orderDetails.selections &&
                     orderDetails.selections.length > 0 && (
                       <div className="py-3">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#1B1512] block mb-2">
-                          Bespoke Style Options:
-                        </span>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#1B1512]">
+                            Bespoke Style Options &amp; Tailoring:
+                          </span>
+                          {orderDetails.totalTailoring ? (
+                            <span className="text-xs font-mono font-bold text-[#5C1A32]">
+                              Total: {formatRupees(orderDetails.totalTailoring)}
+                            </span>
+                          ) : null}
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {orderDetails.selections.map((sel, idx) => (
                             <div
                               key={`${sel.sectionLabel}-${String(idx)}`}
-                              className="p-2 rounded bg-[#FAF7F2] border border-[#5C1A32]/10 flex items-center justify-between text-xs"
+                              className="p-2.5 rounded bg-[#FAF7F2] border border-[#5C1A32]/10 flex items-center justify-between text-xs"
                             >
-                              <span className="text-[#736357]">{sel.sectionLabel}</span>
-                              <span className="font-semibold text-[#1B1512]">
-                                {sel.subOptionLabel ?? sel.optionLabel ?? 'Standard'}
-                              </span>
+                              <div>
+                                <span className="text-[10px] text-[#8A7968] block uppercase">
+                                  {sel.sectionLabel}
+                                </span>
+                                <span className="font-semibold text-[#1B1512] block">
+                                  {sel.subOptionLabel ?? sel.optionLabel ?? 'Standard'}
+                                </span>
+                              </div>
+                              <div className="text-right ml-2 shrink-0">
+                                {sel.tailoringPrice ? (
+                                  <span className="font-mono text-[11px] font-bold text-[#5C1A32]">
+                                    +{formatRupees(sel.tailoringPrice)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-[#8A7968]">Included</span>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -501,6 +534,34 @@ export default function Order() {
                   </span>
                 </div>
 
+                {/* Base Stitching (Custom Outfits) */}
+                {orderDetails.isCustom && orderDetails.baseTailoringPrice ? (
+                  <div className="flex items-center justify-between text-[#544B45]">
+                    <span>Base Stitching ({orderDetails.productName || orderDetails.garment})</span>
+                    <span className="font-semibold text-[#1B1512]">
+                      {formatRupees(orderDetails.baseTailoringPrice)}
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* Itemized Sub-Division Tailoring Charges */}
+                {orderDetails.isCustom &&
+                  orderDetails.selections
+                    ?.filter((s) => (s.tailoringPrice ?? 0) > 0)
+                    .map((s, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between text-xs text-[#736357] pl-2 border-l-2 border-[#5C1A32]/25"
+                      >
+                        <span className="truncate max-w-[200px]">
+                          + {s.subOptionLabel ?? s.optionLabel} ({s.sectionLabel})
+                        </span>
+                        <span className="font-mono text-[#5C1A32] font-semibold">
+                          +{formatRupees(s.tailoringPrice ?? 0)}
+                        </span>
+                      </div>
+                    ))}
+
                 {orderDetails.isCustom && orderDetails.accessoriesTotal > 0 && (
                   <div className="flex items-center justify-between text-[#544B45]">
                     <span>Atelier Embellishments</span>
@@ -509,11 +570,6 @@ export default function Order() {
                     </span>
                   </div>
                 )}
-
-                <div className="flex items-center justify-between text-[#544B45]">
-                  <span>Custom Pattern Drafting &amp; Stitching</span>
-                  <span className="font-semibold text-emerald-700">Included</span>
-                </div>
 
                 <div className="flex items-center justify-between text-[#544B45]">
                   <span>Insured Express Courier</span>

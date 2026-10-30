@@ -26,22 +26,24 @@ const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 const MAX_REFERENCE_IMAGE_BYTES = 4 * 1024 * 1024; // 4MB
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
+import {
+  garmentStyleService,
+  GARMENTS_UPDATED_EVENT,
+  type GarmentItem,
+} from '../services/garmentStyleService';
+
 interface StyleSubOption {
   id: string;
   label: string;
-  // Optional per-suboption reference photo shown in the style preview
-  // panel. Falls back to the parent option's image (or the shared
-  // OPTION_REFERENCE_IMAGES map below) when omitted.
+  tailoringPrice?: number;
   referenceImageUrl?: string;
 }
 
 interface StyleOption {
   id: string;
   label: string;
+  tailoringPrice?: number;
   subOptions?: StyleSubOption[];
-  // Optional reference photo shown in the style preview panel when this
-  // option is selected. Prefer filling in OPTION_REFERENCE_IMAGES below
-  // instead — keeps image sourcing in one place.
   referenceImageUrl?: string;
 }
 
@@ -54,6 +56,7 @@ interface StyleSection {
 interface ProductStyleConfig {
   name: string;
   sections: StyleSection[];
+  baseTailoringPrice?: number;
 }
 
 interface SectionSelection {
@@ -484,13 +487,44 @@ export default function ProductStyle() {
   const { user } = useAuth();
   const fabric = (location.state as IncomingStyleState | null)?.fabric ?? null;
 
-  const config = productId ? PRODUCT_STYLES[productId] : undefined;
+  const [garmentItem, setGarmentItem] = useState<GarmentItem | undefined>(() =>
+    productId ? garmentStyleService.getGarment(productId) : undefined,
+  );
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      if (productId) {
+        setGarmentItem(garmentStyleService.getGarment(productId));
+      }
+    };
+    window.addEventListener(GARMENTS_UPDATED_EVENT, handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener(GARMENTS_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, [productId]);
+
+  const config: ProductStyleConfig | undefined = garmentItem
+    ? {
+        name: garmentItem.label,
+        sections: garmentItem.sections,
+        baseTailoringPrice: garmentItem.baseTailoringPrice,
+      }
+    : productId
+      ? PRODUCT_STYLES[productId]
+      : undefined;
+
+  const baseTailoringPrice = garmentItem?.baseTailoringPrice ?? 450;
+
   // Most products map to a single measurement section (a plain string in
   // PRODUCT_TO_SECTION). A product that needs two sections' worth of
   // fields (e.g. Ready to Wear Saree needing both Blouse and Chudi
   // measurements) maps to a 2-item array instead — primarySuffix/
   // secondarySuffix below just unpack whichever shape is present.
-  const rawSectionSuffixes = productId ? PRODUCT_TO_SECTION[productId] : undefined;
+  const rawSectionSuffixes = productId
+    ? (PRODUCT_TO_SECTION[productId] ?? garmentItem?.measurementProfile ?? 'blouse')
+    : undefined;
   const [primarySuffix, secondarySuffix] = Array.isArray(rawSectionSuffixes)
     ? rawSectionSuffixes
     : [rawSectionSuffixes, undefined];
@@ -775,6 +809,7 @@ export default function ProductStyle() {
       const sel = selections[section.id];
       const option = section.options.find((o) => o.id === sel?.optionId) ?? null;
       const subOption = option?.subOptions?.find((s) => s.id === sel?.subOptionId) ?? null;
+      const tailoringPrice = subOption?.tailoringPrice ?? option?.tailoringPrice ?? 0;
       return {
         sectionId: section.id,
         sectionLabel: section.label,
@@ -782,6 +817,7 @@ export default function ProductStyle() {
         optionLabel: option?.label ?? null,
         subOptionId: subOption?.id ?? null,
         subOptionLabel: subOption?.label ?? null,
+        tailoringPrice,
       };
     });
 
@@ -789,6 +825,7 @@ export default function ProductStyle() {
       state: {
         productId,
         productName: config.name,
+        baseTailoringPrice,
         selections: resolvedSelections,
         measurementValues,
         // Only populated for products with a second measurement section
@@ -935,9 +972,16 @@ export default function ProductStyle() {
                                   {isSelected && <Check className="h-3 w-3" />}
                                 </div>
                                 <div>
-                                  <h3 className="text-base font-semibold text-[#1B1512]">
-                                    {option.label}
-                                  </h3>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="text-base font-semibold text-[#1B1512]">
+                                      {option.label}
+                                    </h3>
+                                    {option.tailoringPrice ? (
+                                      <span className="text-[10px] font-semibold font-mono text-[#5C1A32] bg-[#5C1A32]/10 px-2 py-0.5 rounded">
+                                        +₹{option.tailoringPrice} tailoring
+                                      </span>
+                                    ) : null}
+                                  </div>
                                   {desc && (
                                     <p className="text-xs text-[#544B45] mt-1 font-light leading-relaxed">
                                       {desc}
@@ -959,7 +1003,7 @@ export default function ProductStyle() {
                             {option.subOptions?.length && isExpanded ? (
                               <div className="px-5 pb-4 pt-1 border-t border-[#5C1A32]/10 bg-white/60">
                                 <span className="text-[10px] uppercase font-semibold text-[#B8935A] tracking-wider block mb-2">
-                                  Select Dart Seam Configuration:
+                                  Select Configuration &amp; Tailoring:
                                 </span>
                                 <div className="flex flex-wrap gap-2">
                                   {option.subOptions.map((sub) => {
@@ -977,6 +1021,17 @@ export default function ProductStyle() {
                                       >
                                         {isSubSelected && <Check className="h-3 w-3" />}
                                         <span>{sub.label}</span>
+                                        {sub.tailoringPrice ? (
+                                          <span
+                                            className={`text-[9px] font-mono px-1 py-0.2 rounded ${
+                                              isSubSelected
+                                                ? 'bg-white/20 text-[#FAF7F2]'
+                                                : 'text-[#5C1A32] bg-[#5C1A32]/10 font-bold'
+                                            }`}
+                                          >
+                                            +₹{sub.tailoringPrice}
+                                          </span>
+                                        ) : null}
                                       </button>
                                     );
                                   })}
@@ -1012,10 +1067,19 @@ export default function ProductStyle() {
                             >
                               {isSelected && <Check className="h-3 w-3" />}
                             </div>
-                            <div>
-                              <h3 className="text-sm font-semibold text-[#1B1512]">
-                                {option.label}
-                              </h3>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <h3 className="text-sm font-semibold text-[#1B1512]">
+                                  {option.label}
+                                </h3>
+                                {option.tailoringPrice ? (
+                                  <span className="text-[10px] font-semibold font-mono text-[#5C1A32] bg-[#5C1A32]/10 px-1.5 py-0.5 rounded">
+                                    +₹{option.tailoringPrice}
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-[#8A7968]">Standard</span>
+                                )}
+                              </div>
                               {desc && (
                                 <p className="text-xs text-[#544B45] mt-1 leading-relaxed">
                                   {desc}

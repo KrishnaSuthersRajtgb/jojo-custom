@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { authRouter } from './routes/auth.routes.js';
 import { addressRouter } from './routes/address.routes.js';
 import { measurementRouter } from './routes/measurement.routes.js';
@@ -10,11 +11,25 @@ import { cronRouter } from './routes/cron.routes.js';
 import { healthRouter } from './routes/health.router.js';
 import { reviewRouter } from './routes/review.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { authLimiter, apiLimiter, corsOptions } from './middleware/security.middleware.js';
 
 export const app = express();
 
-// Middleware
-app.use(cors());
+// 1. Security HTTP Headers (Clickjacking, MIME-sniffing, XSS protection)
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
+
+// 2. Strict CORS Whitelist
+app.use(cors(corsOptions));
+
+// 3. General API rate limiter
+app.use('/api', apiLimiter);
+
+// 4. Request Body Parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -22,8 +37,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/health', healthRouter);
 app.use('/api/health', healthRouter);
 
-// Main API routes
-app.use('/api/auth', authRouter);
+// Main API routes (with dedicated auth brute-force limiter)
+app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/addresses', addressRouter);
 app.use('/api/measurements', measurementRouter);
 app.use('/api/orders', orderRouter);
@@ -33,7 +48,7 @@ app.use('/api/cron', cronRouter);
 app.use('/api/reviews', reviewRouter);
 
 // Direct route aliases (without /api prefix)
-app.use('/auth', authRouter);
+app.use('/auth', authLimiter, authRouter);
 app.use('/addresses', addressRouter);
 app.use('/measurements', measurementRouter);
 app.use('/orders', orderRouter);

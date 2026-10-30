@@ -95,6 +95,7 @@ export class PricingController {
           fabricPrices: fabricPricesObj,
           accessories: pricing.accessories.length > 0 ? pricing.accessories : DEFAULT_ACCESSORIES,
           customFabrics: pricing.customFabrics,
+          garments: pricing.garments || [],
           updatedAt: pricing.updatedAt,
         },
       });
@@ -248,6 +249,41 @@ export class PricingController {
     } catch (error) {
       console.error('[pricing] Update accessories error:', error);
       res.status(500).json({ error: 'Failed to update accessories.' });
+    }
+  }
+
+  /**
+   * Update garments list, sub-divisions & tailoring pricing
+   * PUT /api/pricing/garments
+   */
+  async updateGarments(req: Request, res: Response): Promise<void> {
+    try {
+      const { garments } = req.body as { garments?: unknown[] };
+      if (!Array.isArray(garments)) {
+        res.status(400).json({ error: 'Garments array is required.' });
+        return;
+      }
+
+      let pricing = await Pricing.findOne({ id: 'global_pricing' });
+      if (!pricing) {
+        pricing = new Pricing({
+          id: 'global_pricing',
+          fabricPrices: new Map(),
+          accessories: DEFAULT_ACCESSORIES,
+        });
+      }
+
+      pricing.garments = garments;
+      pricing.markModified('garments');
+      await pricing.save();
+
+      res.status(200).json({
+        message: 'Garments and styling configurations updated successfully.',
+        data: { garments: pricing.garments },
+      });
+    } catch (error) {
+      console.error('[pricing] Update garments error:', error);
+      res.status(500).json({ error: 'Failed to update garments.' });
     }
   }
 

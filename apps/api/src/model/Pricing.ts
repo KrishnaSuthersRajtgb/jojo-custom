@@ -26,6 +26,7 @@ export interface IPricingDoc extends Document {
   fabricPrices: Map<string, number>; // fabricId -> pricePerMeter
   accessories: IAccessoryItem[];
   customFabrics: ICustomFabricItem[];
+  garments?: unknown[];
   updatedAt: Date;
 }
 
@@ -62,6 +63,7 @@ const PricingSchema = new Schema<IPricingDoc>(
     fabricPrices: { type: Map, of: Number, default: {} },
     accessories: [AccessorySchema],
     customFabrics: [CustomFabricSchema],
+    garments: { type: Schema.Types.Mixed, default: [] },
   },
   { timestamps: true },
 );

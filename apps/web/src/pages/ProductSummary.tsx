@@ -17,9 +17,11 @@ import AmazonInvoiceModal from '../components/AmazonInvoiceModal';
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
 interface SelectionEntry {
+  sectionId?: string;
   sectionLabel: string;
   optionLabel: string | null;
   subOptionLabel: string | null;
+  tailoringPrice?: number;
 }
 
 interface AccessoryEntry {
@@ -47,6 +49,8 @@ interface IncomingReferenceImage {
 
 interface IncomingState {
   productName?: string;
+  baseTailoringPrice?: number;
+  totalTailoring?: number;
   selections?: SelectionEntry[] | null;
   measurementValues?: Record<string, string> | null;
   accessories?: AccessoryEntry[];
@@ -67,11 +71,16 @@ export default function ProductSummary() {
 
   const productName = state.productName ?? productId ?? 'Item';
   const selections = state.selections ?? [];
+  const baseTailoringPrice = state.baseTailoringPrice ?? 450;
+  const styleTailoringTotal = selections.reduce((sum, s) => sum + (s.tailoringPrice ?? 0), 0);
+  const totalTailoring = baseTailoringPrice + styleTailoringTotal;
+
   const accessories = state.accessories ?? [];
   const accessoriesTotal = state.accessoriesTotal ?? 0;
   const fabric = state.fabric ?? null;
   const referenceImage = state.referenceImage ?? null;
-  const grandTotal = accessoriesTotal + (fabric?.fabricTotal ?? 0);
+  const fabricTotal = fabric?.fabricTotal ?? 0;
+  const grandTotal = accessoriesTotal + fabricTotal + totalTailoring;
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
@@ -85,6 +94,8 @@ export default function ProductSummary() {
       state: {
         productId,
         productName,
+        baseTailoringPrice,
+        totalTailoring,
         selections,
         measurementValues: state.measurementValues ?? null,
         accessories,
@@ -96,7 +107,7 @@ export default function ProductSummary() {
     });
   };
 
-  // Construct mock order object for the Amazon invoice preview
+  // Construct order object for the Amazon invoice preview with individual tailoring items
   const proformaOrder = {
     id: `PROFORMA-${Date.now().toString().slice(-6)}`,
     placedAt: new Date().toISOString(),
@@ -106,9 +117,12 @@ export default function ProductSummary() {
       garment: productName,
       meters: fabric?.meters ?? 3,
       pricePerMeter: fabric?.pricePerMeter ?? 600,
-      fabricTotal: fabric?.fabricTotal ?? grandTotal * 0.7,
+      fabricTotal,
+      baseTailoringPrice,
+      totalTailoring,
       total: grandTotal,
       accessories,
+      selections,
     },
     address: {
       fullName: 'Atelier Patron',
@@ -210,33 +224,72 @@ export default function ProductSummary() {
               </div>
             )}
 
-            {/* Selected Style Card */}
-            {selections.length > 0 && (
-              <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-sm p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3">
+            {/* Bespoke Tailoring & Silhouette Breakdown Card */}
+            <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-sm p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Scissors className="h-4 w-4 text-[#B8935A]" />
                   <h2 className="text-xs font-bold tracking-widest text-[#1B1512] uppercase">
-                    Bespoke Silhouette &amp; Cut Selection
+                    Bespoke Tailoring &amp; Silhouette Breakdown
                   </h2>
-                  <span className="text-xs text-[#8A7968]">Master Tailor Pattern</span>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  {selections.map((sel, idx) => (
-                    <div
-                      key={`${sel.sectionLabel}-${String(idx)}`}
-                      className="bg-[#FAF7F2] rounded-lg p-3 border border-[#5C1A32]/10"
-                    >
-                      <span className="text-[11px] text-[#8A7968] block uppercase tracking-wider">
-                        {sel.sectionLabel}
-                      </span>
-                      <span className="font-semibold text-[#1B1512] text-sm mt-0.5 block">
-                        {sel.subOptionLabel ?? sel.optionLabel ?? 'Atelier Standard'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <span className="text-xs font-mono font-bold text-[#5C1A32]">
+                  {formatRupees(totalTailoring)}
+                </span>
               </div>
-            )}
+
+              {/* Base Stitching Item */}
+              <div className="bg-[#FAF7F2] rounded-lg p-3.5 border border-[#5C1A32]/10 flex items-center justify-between text-sm">
+                <div>
+                  <span className="text-[11px] text-[#8A7968] block uppercase tracking-wider font-semibold">
+                    Master Pattern Drafting &amp; Base Tailoring
+                  </span>
+                  <span className="font-semibold text-[#1B1512] text-sm mt-0.5 block">
+                    {productName} Precision Hand-Tailoring
+                  </span>
+                </div>
+                <span className="font-mono font-semibold text-[#5C1A32]">
+                  {formatRupees(baseTailoringPrice)}
+                </span>
+              </div>
+
+              {/* Sub-division options with separate tailoring amount */}
+              {selections.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <span className="text-[11px] font-bold text-[#1B1512] uppercase tracking-wider block">
+                    Itemized Sub-Division Customizations:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {selections.map((sel, idx) => (
+                      <div
+                        key={`${sel.sectionLabel}-${String(idx)}`}
+                        className="bg-[#FAF7F2] rounded-lg p-3 border border-[#5C1A32]/10 flex items-center justify-between"
+                      >
+                        <div>
+                          <span className="text-[11px] text-[#8A7968] block uppercase tracking-wider">
+                            {sel.sectionLabel}
+                          </span>
+                          <span className="font-semibold text-[#1B1512] text-sm mt-0.5 block">
+                            {sel.subOptionLabel ?? sel.optionLabel ?? 'Atelier Standard'}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          {sel.tailoringPrice ? (
+                            <span className="font-mono text-xs font-bold text-[#5C1A32]">
+                              +{formatRupees(sel.tailoringPrice)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[#8A7968] font-medium bg-neutral-100 px-1.5 py-0.5 rounded">
+                              Base Included
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Accessories & Embellishments */}
             <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-sm p-6 space-y-4">
@@ -365,6 +418,31 @@ export default function ProductSummary() {
                       </span>
                     </div>
                   )}
+
+                  {/* Base Tailoring */}
+                  <div className="flex items-center justify-between text-[#4A413B]">
+                    <span>Base Stitching ({productName})</span>
+                    <span className="font-mono text-[#1B1512]">
+                      {formatRupees(baseTailoringPrice)}
+                    </span>
+                  </div>
+
+                  {/* Itemized Sub-Division Tailoring Charges */}
+                  {selections
+                    .filter((s) => (s.tailoringPrice ?? 0) > 0)
+                    .map((s, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between text-xs text-[#736357] pl-3 border-l-2 border-[#5C1A32]/25"
+                      >
+                        <span className="truncate max-w-[210px]">
+                          + {s.subOptionLabel ?? s.optionLabel} ({s.sectionLabel})
+                        </span>
+                        <span className="font-mono text-[#5C1A32] font-semibold">
+                          +{formatRupees(s.tailoringPrice ?? 0)}
+                        </span>
+                      </div>
+                    ))}
 
                   <div className="flex items-center justify-between text-[#4A413B]">
                     <span>Embellishments &amp; Trims</span>

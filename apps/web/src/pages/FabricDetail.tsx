@@ -1,8 +1,13 @@
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Minus, Plus, ShoppingCart, Scissors, Star } from 'lucide-react';
-import { FABRICS, GARMENT_TYPES, type GarmentType } from '../data/fabrics';
+import { FABRICS } from '../data/fabrics';
 import { pricingService, PRICING_UPDATED_EVENT } from '../services/pricingService';
+import {
+  garmentStyleService,
+  GARMENTS_UPDATED_EVENT,
+  type GarmentItem,
+} from '../services/garmentStyleService';
 import { reviewApi, type ReviewItem, type ReviewStats } from '../services/api';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx) ─────────────
@@ -22,27 +27,39 @@ export default function FabricDetail() {
   const { tone, fabricId } = useParams<{ tone: string; fabricId: string }>();
   const navigate = useNavigate();
   const [, setPriceTick] = useState(0);
+  const [garments, setGarments] = useState<GarmentItem[]>(() => garmentStyleService.getGarments());
 
   useEffect(() => {
     const handlePriceUpdate = () => {
       setPriceTick((t) => t + 1);
     };
+    const handleGarmentsUpdate = () => {
+      setGarments(garmentStyleService.getGarments());
+    };
+
     window.addEventListener(PRICING_UPDATED_EVENT, handlePriceUpdate);
+    window.addEventListener(GARMENTS_UPDATED_EVENT, handleGarmentsUpdate);
     window.addEventListener('storage', handlePriceUpdate);
+    window.addEventListener('storage', handleGarmentsUpdate);
     return () => {
       window.removeEventListener(PRICING_UPDATED_EVENT, handlePriceUpdate);
+      window.removeEventListener(GARMENTS_UPDATED_EVENT, handleGarmentsUpdate);
       window.removeEventListener('storage', handlePriceUpdate);
+      window.removeEventListener('storage', handleGarmentsUpdate);
     };
   }, []);
 
   const fabric = FABRICS.find((f) => f.id === fabricId && f.tone === tone);
 
-  const defaultGarment = GARMENT_TYPES[0];
-  if (!defaultGarment) {
-    throw new Error('GARMENT_TYPES must contain at least one garment type.');
-  }
+  const defaultGarment = garments[0] ?? {
+    id: 'blouse',
+    label: 'Blouse',
+    defaultMeters: 1,
+    baseTailoringPrice: 450,
+    sections: [],
+  };
 
-  const [selectedGarment, setSelectedGarment] = useState<GarmentType>(defaultGarment);
+  const [selectedGarment, setSelectedGarment] = useState<GarmentItem>(defaultGarment);
   const [meters, setMeters] = useState(defaultGarment.defaultMeters);
   const [metersInput, setMetersInput] = useState(String(defaultGarment.defaultMeters));
 
@@ -75,7 +92,7 @@ export default function FabricDetail() {
   const effectivePrice = pricingService.getFabricPrice(fabric.id, fabric.pricePerMeter);
   const total = meters * effectivePrice;
 
-  const handleSelectGarment = (garment: GarmentType) => {
+  const handleSelectGarment = (garment: GarmentItem) => {
     setSelectedGarment(garment);
     setMeters(garment.defaultMeters);
     setMetersInput(String(garment.defaultMeters));
@@ -238,7 +255,7 @@ export default function FabricDetail() {
                   What would you like to make?
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {GARMENT_TYPES.map((g) => (
+                  {garments.map((g) => (
                     <button
                       key={g.id}
                       onClick={() => {

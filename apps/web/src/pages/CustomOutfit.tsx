@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Shirt,
@@ -10,7 +10,13 @@ import {
   Package,
   ArrowRight,
   Check,
+  Scissors,
 } from 'lucide-react';
+import {
+  garmentStyleService,
+  GARMENTS_UPDATED_EVENT,
+  type GarmentItem,
+} from '../services/garmentStyleService';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx)
 //   ink      #1B1512  headings, primary text, selected-card background
@@ -20,13 +26,6 @@ import {
 // Display face: Fraunces, for the page title only.
 
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-}
 
 // Fabric details forwarded from FabricDetail.tsx's "Customize to JOJO"
 // button (see navigate("/custom-outfit", { state: { fabric } })).
@@ -46,50 +45,15 @@ interface CustomOutfitState {
   fabric?: IncomingFabric;
 }
 
-const PRODUCTS: Product[] = [
-  {
-    id: 'blouse',
-    name: 'Blouse',
-    description: 'Fitted or designer-back blouses, tailored to your size.',
-    icon: <Shirt className="h-6 w-6" />,
-  },
-  {
-    id: 'chudidhar',
-    name: 'Chudidhar',
-    description: 'Classic or Anarkali-style sets stitched to measure.',
-    icon: <Layers className="h-6 w-6" />,
-  },
-  {
-    id: 'frocks',
-    name: 'Frocks',
-    description: 'Everyday and party frocks in your choice of fabric.',
-    icon: <Sparkles className="h-6 w-6" />,
-  },
-  {
-    id: 'lehanga',
-    name: 'Lehanga',
-    description: 'Festive lehangas with custom embroidery options.',
-    icon: <Crown className="h-6 w-6" />,
-  },
-  {
-    id: 'ready-to-wear-saree',
-    name: 'Ready to Wear Saree',
-    description: 'Pre-stitched sarees, ready in your exact size.',
-    icon: <PackageCheck className="h-6 w-6" />,
-  },
-  {
-    id: 'pant',
-    name: 'Pant',
-    description: 'Palazzos, straight pants, and more, made to fit.',
-    icon: <Ruler className="h-6 w-6" />,
-  },
-  {
-    id: 'over-coat',
-    name: 'Over Coat',
-    description: 'Layered over-coats tailored for a sharp silhouette.',
-    icon: <Package className="h-6 w-6" />,
-  },
-];
+const DEFAULT_ICONS: Record<string, React.ReactNode> = {
+  blouse: <Shirt className="h-6 w-6" />,
+  chudidhar: <Layers className="h-6 w-6" />,
+  frocks: <Sparkles className="h-6 w-6" />,
+  lehanga: <Crown className="h-6 w-6" />,
+  'ready-to-wear-saree': <PackageCheck className="h-6 w-6" />,
+  pant: <Ruler className="h-6 w-6" />,
+  'over-coat': <Package className="h-6 w-6" />,
+};
 
 function formatRupees(amount: number): string {
   return `₹${amount.toLocaleString('en-IN')}`;
@@ -100,9 +64,23 @@ export default function CustomOutfit() {
   const location = useLocation();
   const fabric = (location.state as CustomOutfitState | null)?.fabric ?? null;
 
+  const [garments, setGarments] = useState<GarmentItem[]>(() => garmentStyleService.getGarments());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setGarments(garmentStyleService.getGarments());
+    };
+    window.addEventListener(GARMENTS_UPDATED_EVENT, handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener(GARMENTS_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const selectedProduct = PRODUCTS.find((p) => p.id === selectedId) ?? null;
+  const selectedProduct = garments.find((p) => p.id === selectedId) ?? null;
 
   const handleContinue = () => {
     if (!fabric) {
@@ -111,7 +89,7 @@ export default function CustomOutfit() {
     }
     if (!selectedProduct) return;
     void navigate(`/custom-outfit/${selectedProduct.id}`, {
-      state: { productName: selectedProduct.name, fabric },
+      state: { productName: selectedProduct.label, fabric },
     });
   };
 
@@ -141,8 +119,9 @@ export default function CustomOutfit() {
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-          {PRODUCTS.map((product) => {
+          {garments.map((product) => {
             const isSelected = product.id === selectedId;
+            const icon = DEFAULT_ICONS[product.id] ?? <Scissors className="h-6 w-6" />;
             return (
               <button
                 key={product.id}
@@ -167,16 +146,25 @@ export default function CustomOutfit() {
                     isSelected ? 'bg-[#F6F1E7]/15 text-[#B8935A]' : 'bg-[#5C1A32]/8 text-[#5C1A32]'
                   }`}
                 >
-                  {product.icon}
+                  {icon}
                 </div>
-                <h3 className="text-base font-semibold mb-1">{product.name}</h3>
+                <h3 className="text-base font-semibold mb-1">{product.label}</h3>
                 <p
-                  className={`text-xs leading-relaxed ${
+                  className={`text-xs leading-relaxed mb-3 ${
                     isSelected ? 'text-[#F6F1E7]/75' : 'text-[#4A413B]'
                   }`}
                 >
-                  {product.description}
+                  {product.description ||
+                    'Bespoke atelier tailoring custom crafted to your sizing.'}
                 </p>
+                <div className="mt-auto pt-2 border-t border-black/5 flex items-center justify-between text-[11px]">
+                  <span className={isSelected ? 'text-[#B8935A]' : 'text-[#5C1A32] font-semibold'}>
+                    Base Stitching: ₹{product.baseTailoringPrice}
+                  </span>
+                  <span className={isSelected ? 'text-neutral-300' : 'text-[#8A7968]'}>
+                    {product.defaultMeters}m
+                  </span>
+                </div>
               </button>
             );
           })}
@@ -196,7 +184,7 @@ export default function CustomOutfit() {
             {!fabric
               ? 'Select a fabric first'
               : selectedProduct
-                ? `Continue with ${selectedProduct.name}`
+                ? `Continue with ${selectedProduct.label}`
                 : 'Select an item to continue'}
             <ArrowRight className="h-4 w-4" />
           </button>

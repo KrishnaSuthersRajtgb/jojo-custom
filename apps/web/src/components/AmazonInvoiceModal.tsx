@@ -15,7 +15,15 @@ interface InvoiceModalProps {
       meters?: number;
       pricePerMeter?: number;
       fabricTotal?: number;
+      baseTailoringPrice?: number;
+      totalTailoring?: number;
       total?: number;
+      selections?: Array<{
+        sectionLabel: string;
+        optionLabel: string | null;
+        subOptionLabel: string | null;
+        tailoringPrice?: number;
+      }> | null;
       accessories?: Array<{ label: string; price: number }>;
     };
     address?: {
@@ -113,12 +121,35 @@ export default function AmazonInvoiceModal({ isOpen, onClose, order }: InvoiceMo
   const items = [
     {
       title: `${details.garment || 'Bespoke Garment'} · ${details.fabricName || 'Pure Silk Fabric'}`,
-      desc: `Haute Couture Tailoring & Textile (${details.meters ?? 1} meter${(details.meters ?? 1) > 1 ? 's' : ''})`,
+      desc: `Haute Couture Fabric Textile (${details.meters ?? 1} meter${(details.meters ?? 1) > 1 ? 's' : ''})`,
       qty: 1,
       unitPrice: fabricTotal,
       totalAmount: fabricTotal,
     },
   ];
+
+  if (details.baseTailoringPrice && details.baseTailoringPrice > 0) {
+    items.push({
+      title: `Tailoring: ${details.garment || 'Garment'} Base Assembly`,
+      desc: 'Master pattern cutting, bespoke sizing, and craftsmanship',
+      qty: 1,
+      unitPrice: details.baseTailoringPrice,
+      totalAmount: details.baseTailoringPrice,
+    });
+  }
+
+  details.selections
+    ?.filter((s) => (s.tailoringPrice ?? 0) > 0)
+    .forEach((s) => {
+      const p = s.tailoringPrice || 0;
+      items.push({
+        title: `Style Customization: ${s.subOptionLabel ?? s.optionLabel ?? 'Custom Cut'}`,
+        desc: `${s.sectionLabel} tailored specification`,
+        qty: 1,
+        unitPrice: p,
+        totalAmount: p,
+      });
+    });
 
   accessories.forEach((a) => {
     const p = a.price || 0;

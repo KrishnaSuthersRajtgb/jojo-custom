@@ -343,6 +343,7 @@ export interface PricingData {
   fabricPrices: Record<string, number>;
   accessories: AccessoryItem[];
   customFabrics?: CustomFabricItem[];
+  garments?: unknown[];
   updatedAt?: string;
 }
 
@@ -386,6 +387,15 @@ export const pricingApi = {
         body: JSON.stringify({ accessories }),
       },
     );
+  },
+
+  updateGarments: async (
+    garments: unknown[],
+  ): Promise<{ message: string; data: { garments: unknown[] } }> => {
+    return request<{ message: string; data: { garments: unknown[] } }>('/api/pricing/garments', {
+      method: 'PUT',
+      body: JSON.stringify({ garments }),
+    });
   },
 
   reset: async (): Promise<{ message: string; data: PricingData }> => {

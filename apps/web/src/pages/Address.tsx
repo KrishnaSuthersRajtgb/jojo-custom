@@ -1,6 +1,17 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { MapPin, Plus, Pencil, Trash2, Home, Briefcase, Check, X, Loader2 } from 'lucide-react';
+import {
+  MapPin,
+  Plus,
+  Pencil,
+  Trash2,
+  Home,
+  Briefcase,
+  Check,
+  X,
+  Loader2,
+  LocateFixed,
+} from 'lucide-react';
 import { useAddresses, type Address, type AddressType } from '../context/AddressContext';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx / ProductAccessories.tsx / ProductSummary.tsx)
@@ -57,8 +68,17 @@ export default function Address() {
   const [form, setForm] = useState<AddressFormState>(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<Address | null>(null);
   const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
   const [pincodeStatus, setPincodeStatus] = useState<string | null>(null);
   const [areaSuggestions, setAreaSuggestions] = useState<string[]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
 
   interface PostalOffice {
     Name?: string;
@@ -114,6 +134,69 @@ export default function Address() {
     }
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!('geolocation' in navigator)) {
+      setPincodeStatus('GPS not supported on this device');
+      return;
+    }
+    setGpsLoading(true);
+    setPincodeStatus('Detecting GPS location...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void (async () => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+            );
+            const data = (await res.json()) as {
+              address?: {
+                postcode?: string;
+                city?: string;
+                town?: string;
+                village?: string;
+                suburb?: string;
+                county?: string;
+                state?: string;
+                road?: string;
+                neighbourhood?: string;
+              };
+            };
+            const addr = data.address || {};
+            const postcode = addr.postcode ? addr.postcode.replace(/\D/g, '').slice(0, 6) : '';
+            const detectedCity =
+              addr.city || addr.town || addr.village || addr.suburb || addr.county || '';
+            const detectedState = addr.state || '';
+            const street = [addr.road, addr.neighbourhood].filter(Boolean).join(', ');
+
+            setForm((prev) => ({
+              ...prev,
+              pincode: postcode || prev.pincode,
+              city: detectedCity || prev.city,
+              state: detectedState || prev.state,
+              line1: street || prev.line1,
+            }));
+
+            if (postcode && postcode.length === 6) {
+              void fetchPincodeDetails(postcode);
+            } else {
+              setPincodeStatus('Location detected');
+            }
+          } catch {
+            setPincodeStatus('Could not detect location');
+          } finally {
+            setGpsLoading(false);
+          }
+        })();
+      },
+      () => {
+        setPincodeStatus('Location permission denied');
+        setGpsLoading(false);
+      },
+      { timeout: 10000 },
+    );
+  };
+
   const openAddForm = () => {
     setForm(EMPTY_FORM);
     setEditingId(null);
@@ -149,6 +232,11 @@ export default function Address() {
   };
 
   const handleChange = (field: keyof AddressFormState, value: string) => {
+    if (field === 'phone') {
+      const cleaned = value.replace(/\D/g, '').slice(0, 10);
+      setForm((prev) => ({ ...prev, phone: cleaned }));
+      return;
+    }
     if (field === 'pincode') {
       const cleaned = value.replace(/\D/g, '').slice(0, 6);
       setForm((prev) => ({ ...prev, pincode: cleaned }));
@@ -165,11 +253,17 @@ export default function Address() {
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (form.phone.length !== 10) {
+      alert('Please enter a valid 10-digit mobile number.');
+      return;
+    }
 
     if (editingId) {
       updateAddress(editingId, form);
+      showToast('Address updated successfully');
     } else {
       addAddress(form);
+      showToast('New address saved to your couture profile');
     }
 
     closeForm();
@@ -177,16 +271,25 @@ export default function Address() {
 
   const handleSetDefault = (id: string) => {
     setDefaultAddress(id);
+    showToast('Default delivery address updated');
   };
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
     deleteAddress(deleteTarget.id);
     setDeleteTarget(null);
+    showToast('Address deleted');
   };
 
   return (
     <div className="w-full min-h-screen bg-[#FAF7F2] py-8">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-[#1B1512] text-[#FAF7F2] px-5 py-2.5 rounded-full text-xs font-medium tracking-wide shadow-xl flex items-center gap-2 border border-[#B8935A]/50 animate-in fade-in duration-200">
+          <Check className="h-3.5 w-3.5 text-[#B8935A]" />
+          {toastMessage}
+        </div>
+      )}
       <section className="w-full px-6 pt-8 pb-6">
         {/* flex-col on mobile so the button doesn't get squeezed next to
             the title on narrow screens; row layout once there's room. */}
@@ -347,16 +450,30 @@ export default function Address() {
                 </div>
 
                 <div>
-                  <label className={LABEL_CLASSES}>Phone Number</label>
-                  <input
-                    required
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => {
-                      handleChange('phone', e.target.value);
-                    }}
-                    className={INPUT_CLASSES}
-                  />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-semibold tracking-[0.15em] text-[#1B1512] uppercase block">
+                      Phone Number
+                    </label>
+                    <span className="text-[10px] text-[#4A413B]/60 font-mono">
+                      {form.phone.length}/10 digits
+                    </span>
+                  </div>
+                  <div className="relative flex">
+                    <span className="inline-flex items-center px-2.5 rounded-l-sm border border-r-0 border-[#5C1A32]/20 bg-[#FAF7F2] text-[#1B1512] text-xs font-semibold">
+                      +91
+                    </span>
+                    <input
+                      required
+                      type="tel"
+                      maxLength={10}
+                      placeholder="9345816672"
+                      value={form.phone}
+                      onChange={(e) => {
+                        handleChange('phone', e.target.value);
+                      }}
+                      className="w-full rounded-r-sm rounded-l-none border border-[#5C1A32]/20 bg-white text-[#1B1512] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C1A32]/40 focus:border-[#5C1A32]"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -364,22 +481,23 @@ export default function Address() {
                     <label className="text-[11px] font-semibold tracking-[0.15em] text-[#1B1512] uppercase block">
                       Pincode
                     </label>
-                    {pincodeLoading && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-[#5C1A32]">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Fetching...
-                      </span>
-                    )}
-                    {!pincodeLoading && pincodeStatus && (
-                      <span
-                        className={`text-[11px] ${
-                          pincodeStatus.includes('autofilled')
-                            ? 'text-emerald-700 font-medium'
-                            : 'text-[#4A413B]/70'
-                        }`}
+                    <div className="flex items-center gap-2">
+                      {pincodeLoading && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-[#5C1A32]">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Fetching...
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        disabled={gpsLoading}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#5C1A32] hover:text-[#431223] hover:underline cursor-pointer transition-colors"
+                        title="Detect your current location via GPS"
                       >
-                        {pincodeStatus}
-                      </span>
-                    )}
+                        <LocateFixed className={`h-3 w-3 ${gpsLoading ? 'animate-spin' : ''}`} />
+                        {gpsLoading ? 'Locating...' : 'Use GPS'}
+                      </button>
+                    </div>
                   </div>
                   <input
                     required
@@ -391,6 +509,17 @@ export default function Address() {
                     }}
                     className={INPUT_CLASSES}
                   />
+                  {!pincodeLoading && pincodeStatus && (
+                    <p
+                      className={`text-[11px] mt-1 ${
+                        pincodeStatus.includes('autofilled') || pincodeStatus.includes('detected')
+                          ? 'text-emerald-700 font-medium'
+                          : 'text-[#4A413B]/70'
+                      }`}
+                    >
+                      {pincodeStatus}
+                    </p>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2">

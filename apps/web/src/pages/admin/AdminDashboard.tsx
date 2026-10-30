@@ -27,7 +27,19 @@ import {
   ShieldCheck,
   UserCheck,
   KeyRound,
+  Megaphone,
+  Upload,
+  Layers,
+  Edit2,
+  Check,
 } from 'lucide-react';
+
+import {
+  BANNER_STORAGE_KEY,
+  DEFAULT_BANNER,
+  type BannerConfig,
+} from '../../components/SitePopupBanner';
+import { garmentStyleService, type GarmentItem } from '../../services/garmentStyleService';
 
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -132,13 +144,15 @@ type AdminTab =
   | 'dashboard'
   | 'fabrics'
   | 'accessories'
+  | 'garments'
   | 'orders'
   | 'coupons'
   | 'roles'
   | 'failedPayments'
   | 'visuals'
   | 'users'
-  | 'reviews';
+  | 'reviews'
+  | 'banner';
 
 function formatRupees(amount: number): string {
   return `₹${amount.toLocaleString('en-IN')}`;
@@ -215,11 +229,51 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (
       isStaff &&
-      !['dashboard', 'fabrics', 'accessories', 'orders', 'coupons'].includes(activeTab)
+      !['dashboard', 'fabrics', 'accessories', 'garments', 'orders', 'coupons', 'banner'].includes(
+        activeTab,
+      )
     ) {
       setActiveTab('dashboard');
     }
   }, [isStaff, activeTab]);
+
+  // ── Promo Popup Banner State ───────────────────────────────────────────
+  const [bannerConfig, setBannerConfig] = useState<BannerConfig>(() => {
+    try {
+      const raw = localStorage.getItem(BANNER_STORAGE_KEY);
+      if (raw) return JSON.parse(raw) as BannerConfig;
+    } catch {
+      // ignore
+    }
+    return DEFAULT_BANNER;
+  });
+
+  const handleSaveBanner = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    localStorage.setItem(BANNER_STORAGE_KEY, JSON.stringify(bannerConfig));
+    window.dispatchEvent(new Event('jojo_banner_updated'));
+    showToast('Promotion popup banner saved and published live on user storefront!');
+  };
+
+  const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setBannerConfig((prev) => ({ ...prev, imageUrl: reader.result as string }));
+        showToast('Image uploaded and set as popup banner!');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResetBanner = () => {
+    setBannerConfig(DEFAULT_BANNER);
+    localStorage.setItem(BANNER_STORAGE_KEY, JSON.stringify(DEFAULT_BANNER));
+    window.dispatchEvent(new Event('jojo_banner_updated'));
+    showToast('Banner reset to default atelier announcement.');
+  };
 
   // ── All Fabrics with Dynamic Additions ──────────────────────────────────
   const [allFabrics, setAllFabrics] = useState<Fabric[]>([]);
@@ -293,6 +347,54 @@ export default function AdminDashboard() {
   const [newCouponValue, setNewCouponValue] = useState('15');
   const [newCouponMin, setNewCouponMin] = useState('1500');
   const [newCouponDesc, setNewCouponDesc] = useState('');
+
+  // ── Garment Items & Sub-Divisions Catalog State ──────────────────────────
+  const [garmentsList, setGarmentsList] = useState<GarmentItem[]>(() =>
+    garmentStyleService.getGarments(),
+  );
+  const [selectedGarmentId, setSelectedGarmentId] = useState<string>(() => {
+    const list = garmentStyleService.getGarments();
+    return list[0]?.id ?? 'blouse';
+  });
+
+  const selectedGarment = useMemo(
+    () => garmentsList.find((g) => g.id === selectedGarmentId) ?? garmentsList[0],
+    [garmentsList, selectedGarmentId],
+  );
+
+  // Add Item Modal
+  const [showAddGarmentModal, setShowAddGarmentModal] = useState(false);
+  const [newGarmentName, setNewGarmentName] = useState('');
+  const [newGarmentMeters, setNewGarmentMeters] = useState('2.5');
+  const [newGarmentBaseTailoring, setNewGarmentBaseTailoring] = useState('500');
+  const [newGarmentDesc, setNewGarmentDesc] = useState('');
+  const [newGarmentProfile, setNewGarmentProfile] = useState<'blouse' | 'chudi' | 'pant'>('blouse');
+
+  // Edit Item Modal
+  const [editingGarment, setEditingGarment] = useState<GarmentItem | null>(null);
+  const [editGarmentName, setEditGarmentName] = useState('');
+  const [editGarmentMeters, setEditGarmentMeters] = useState('');
+  const [editGarmentBaseTailoring, setEditGarmentBaseTailoring] = useState('');
+
+  // Add Section Modal
+  const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+  const [newSectionLabel, setNewSectionLabel] = useState('');
+
+  // Add Option Modal
+  const [showAddOptionModal, setShowAddOptionModal] = useState(false);
+  const [targetSectionIdForOption, setTargetSectionIdForOption] = useState('');
+  const [newOptionLabel, setNewOptionLabel] = useState('');
+  const [newOptionTailoringPrice, setNewOptionTailoringPrice] = useState('250');
+
+  // Add Sub-Option Modal
+  const [showAddSubOptionModal, setShowAddSubOptionModal] = useState(false);
+  const [targetSectionIdForSub, setTargetSectionIdForSub] = useState('');
+  const [targetOptionIdForSub, setTargetOptionIdForSub] = useState('');
+  const [newSubOptionLabel, setNewSubOptionLabel] = useState('');
+  const [newSubOptionTailoringPrice, setNewSubOptionTailoringPrice] = useState('150');
+
+  // Inline option editing
+  const [editingTailoringPrices, setEditingTailoringPrices] = useState<Record<string, string>>({});
 
   // ── Staff & Role-Based Access State (Admin & Staff only) ────────────────
   const [roleEmailInput, setRoleEmailInput] = useState('');
@@ -844,6 +946,232 @@ export default function AdminDashboard() {
     showToast(`Promo code "${code}" removed.`);
   };
 
+  // ── Garment Items & Sub-Divisions Handlers ──────────────────────────────
+  const refreshGarments = () => {
+    setGarmentsList(garmentStyleService.getGarments());
+  };
+
+  const handleCreateGarment = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!newGarmentName.trim()) {
+      showToast('Please enter an item name (e.g. Kurti Set, Western Gown).');
+      return;
+    }
+    const meters = parseFloat(newGarmentMeters);
+    const baseTailoring = parseFloat(newGarmentBaseTailoring);
+    if (isNaN(meters) || meters <= 0) {
+      showToast('Please enter a valid default meterage.');
+      return;
+    }
+    if (isNaN(baseTailoring) || baseTailoring < 0) {
+      showToast('Please enter a valid base tailoring fee.');
+      return;
+    }
+
+    const created = garmentStyleService.addGarment({
+      label: newGarmentName.trim(),
+      defaultMeters: meters,
+      baseTailoringPrice: Math.round(baseTailoring),
+      description:
+        newGarmentDesc.trim() || 'Custom tailored ensemble handcrafted to precision measurements.',
+      measurementProfile: newGarmentProfile,
+      sections: [],
+    });
+
+    refreshGarments();
+    setSelectedGarmentId(created.id);
+    setShowAddGarmentModal(false);
+    setNewGarmentName('');
+    setNewGarmentDesc('');
+    showToast(`Created new item "${created.label}"! Now visible on user styling & fabric pages.`);
+  };
+
+  const handleSaveGarmentEdits = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingGarment) return;
+    const meters = parseFloat(editGarmentMeters);
+    const baseTailoring = parseFloat(editGarmentBaseTailoring);
+    if (!editGarmentName.trim() || isNaN(meters) || isNaN(baseTailoring)) {
+      showToast('Please provide valid garment details.');
+      return;
+    }
+
+    garmentStyleService.updateGarment(editingGarment.id, {
+      label: editGarmentName.trim(),
+      defaultMeters: meters,
+      baseTailoringPrice: Math.round(baseTailoring),
+    });
+
+    refreshGarments();
+    setEditingGarment(null);
+    showToast(`Updated item "${editGarmentName.trim()}" successfully.`);
+  };
+
+  const handleDeleteGarment = (id: string, label: string) => {
+    if (garmentsList.length <= 1) {
+      showToast('Catalog must contain at least one item.');
+      return;
+    }
+    garmentStyleService.deleteGarment(id);
+    const updated = garmentStyleService.getGarments();
+    setGarmentsList(updated);
+    if (selectedGarmentId === id) {
+      setSelectedGarmentId(updated[0]?.id ?? 'blouse');
+    }
+    showToast(`Item "${label}" removed from user pages.`);
+  };
+
+  const handleCreateSection = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedGarment) return;
+    if (!newSectionLabel.trim()) {
+      showToast('Please enter a sub-division section name (e.g. Neckline Pattern, Sleeve Cut).');
+      return;
+    }
+
+    const sectionId = newSectionLabel
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 30);
+
+    garmentStyleService.addSection(selectedGarment.id, {
+      id: sectionId || `sec-${Date.now().toString().slice(-4)}`,
+      label: newSectionLabel.trim(),
+      options: [],
+    });
+
+    refreshGarments();
+    setShowAddSectionModal(false);
+    setNewSectionLabel('');
+    showToast(
+      `Added sub-division section "${newSectionLabel.trim()}" to ${selectedGarment.label}.`,
+    );
+  };
+
+  const handleDeleteSection = (sectionId: string, sectionLabel: string) => {
+    if (!selectedGarment) return;
+    garmentStyleService.deleteSection(selectedGarment.id, sectionId);
+    refreshGarments();
+    showToast(`Deleted sub-division "${sectionLabel}".`);
+  };
+
+  const handleCreateOption = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedGarment || !targetSectionIdForOption) return;
+    if (!newOptionLabel.trim()) {
+      showToast('Please enter a style option name (e.g. Princess Cut, Sweetheart Neck).');
+      return;
+    }
+    const price = parseFloat(newOptionTailoringPrice);
+    if (isNaN(price) || price < 0) {
+      showToast('Please enter a valid tailoring amount (in INR).');
+      return;
+    }
+
+    const optionId = newOptionLabel
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 30);
+
+    garmentStyleService.addOption(selectedGarment.id, targetSectionIdForOption, {
+      id: optionId || `opt-${Date.now().toString().slice(-4)}`,
+      label: newOptionLabel.trim(),
+      tailoringPrice: Math.round(price),
+      subOptions: [],
+    });
+
+    refreshGarments();
+    setShowAddOptionModal(false);
+    setNewOptionLabel('');
+    showToast(
+      `Added option "${newOptionLabel.trim()}" with tailoring amount ₹${Math.round(price)}.`,
+    );
+  };
+
+  const handleUpdateOptionTailoringAmount = (
+    sectionId: string,
+    optionId: string,
+    newPriceVal: number,
+  ) => {
+    if (!selectedGarment) return;
+    garmentStyleService.updateOption(selectedGarment.id, sectionId, optionId, {
+      tailoringPrice: newPriceVal,
+    });
+    refreshGarments();
+    showToast(`Tailoring fee updated to ₹${newPriceVal}.`);
+  };
+
+  const handleDeleteOption = (sectionId: string, optionId: string, optionLabel: string) => {
+    if (!selectedGarment) return;
+    garmentStyleService.deleteOption(selectedGarment.id, sectionId, optionId);
+    refreshGarments();
+    showToast(`Deleted style option "${optionLabel}".`);
+  };
+
+  const handleCreateSubOption = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedGarment || !targetSectionIdForSub || !targetOptionIdForSub) return;
+    if (!newSubOptionLabel.trim()) {
+      showToast('Please enter a sub-option name (e.g. 2 Dart, 3 Dart).');
+      return;
+    }
+    const price = parseFloat(newSubOptionTailoringPrice);
+    if (isNaN(price) || price < 0) {
+      showToast('Please enter a valid tailoring fee.');
+      return;
+    }
+
+    const subId = newSubOptionLabel
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 30);
+
+    garmentStyleService.addSubOption(
+      selectedGarment.id,
+      targetSectionIdForSub,
+      targetOptionIdForSub,
+      {
+        id: subId || `sub-${Date.now().toString().slice(-4)}`,
+        label: newSubOptionLabel.trim(),
+        tailoringPrice: Math.round(price),
+      },
+    );
+
+    refreshGarments();
+    setShowAddSubOptionModal(false);
+    setNewSubOptionLabel('');
+    showToast(
+      `Added sub-option "${newSubOptionLabel.trim()}" with tailoring amount ₹${Math.round(price)}.`,
+    );
+  };
+
+  const handleDeleteSubOption = (
+    sectionId: string,
+    optionId: string,
+    subOptionId: string,
+    subLabel: string,
+  ) => {
+    if (!selectedGarment) return;
+    garmentStyleService.deleteSubOption(selectedGarment.id, sectionId, optionId, subOptionId);
+    refreshGarments();
+    showToast(`Deleted sub-option "${subLabel}".`);
+  };
+
+  const handleResetGarmentsToFactory = () => {
+    if (
+      window.confirm(
+        'Reset all garment items, sub-divisions, and tailoring pricing to factory defaults?',
+      )
+    ) {
+      garmentStyleService.resetToDefaults();
+      refreshGarments();
+      showToast('Garment catalog reset to factory defaults.');
+    }
+  };
+
   // ── Role Assignment Handler (Admin & Staff Only) ──────────────────────────
   const handleAssignRole = async (
     e?: React.SubmitEvent,
@@ -950,6 +1278,23 @@ export default function AdminDashboard() {
             </div>
             <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-[#E8DFC8]">
               {accessories.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('garments')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
+              activeTab === 'garments'
+                ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
+                : 'text-[#A89F95] hover:text-[#FAF7F2] hover:bg-white/5'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Layers className="h-4 w-4 text-[#B8935A]" />
+              <span>Items &amp; Styling</span>
+            </div>
+            <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-[#E8DFC8]">
+              {garmentsList.length}
             </span>
           </button>
 
@@ -1071,6 +1416,29 @@ export default function AdminDashboard() {
                 <Film className="h-4 w-4 text-[#B8935A]" />
                 <span>AI Reel &amp; Media</span>
               </button>
+
+              <button
+                onClick={() => setActiveTab('banner')}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
+                  activeTab === 'banner'
+                    ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
+                    : 'text-[#A89F95] hover:text-[#FAF7F2] hover:bg-white/5'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Megaphone className="h-4 w-4 text-[#B8935A]" />
+                  <span>Promotion Banner</span>
+                </div>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                    bannerConfig.active
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : 'bg-white/10 text-[#E8DFC8]'
+                  }`}
+                >
+                  {bannerConfig.active ? 'LIVE' : 'OFF'}
+                </span>
+              </button>
             </>
           )}
         </nav>
@@ -1114,10 +1482,34 @@ export default function AdminDashboard() {
                   `Client Ratings & Atelier Reviews (${reviews.length} Total)`}
                 {activeTab === 'failedPayments' && 'Failed Payments & Background Cron Job'}
                 {activeTab === 'visuals' && 'AI Visuals & Editorial Video Reel'}
+                {activeTab === 'garments' &&
+                  `Garment Items, Sub-Divisions & Tailoring Pricing (${garmentsList.length} Items)`}
+                {activeTab === 'banner' && 'Storefront Promotion Popup Banner'}
+                {activeTab === 'coupons' && 'Atelier Privileged Coupons & Promo Codes'}
+                {activeTab === 'roles' && 'Staff & Governance Access Control'}
               </h1>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
+              {activeTab === 'garments' && (
+                <>
+                  <button
+                    onClick={() => setShowAddGarmentModal(true)}
+                    className="px-3.5 py-2 bg-[#5C1A32] text-[#FAF7F2] text-xs font-semibold uppercase tracking-wider rounded hover:bg-[#451325] flex items-center gap-1.5 shadow-xs transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add New Item
+                  </button>
+                  <button
+                    onClick={handleResetGarmentsToFactory}
+                    className="px-3 py-2 bg-[#FAF7F2] border border-[#5C1A32]/25 text-[#5C1A32] hover:bg-[#5C1A32]/5 text-xs font-semibold uppercase tracking-wider rounded flex items-center gap-1.5 transition-colors"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Reset Factory
+                  </button>
+                </>
+              )}
+
               {activeTab === 'fabrics' && (
                 <button
                   onClick={() => setShowAddFabricModal(true)}
@@ -3177,8 +3569,1101 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+
+          {/* ── TAB 11: PROMOTION POPUP BANNER MANAGEMENT ─────────────────── */}
+          {activeTab === 'banner' && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="bg-white p-6 rounded-lg border border-[#5C1A32]/10 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Megaphone className="h-5 w-5 text-[#5C1A32]" />
+                    <h2 className="text-xl font-bold text-[#1B1512]" style={serif}>
+                      Storefront Popup Banner
+                    </h2>
+                  </div>
+                  <p className="text-xs text-[#8A7968] mt-1">
+                    Configure the promotion banner that pops up whenever customers arrive at your
+                    website.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                      bannerConfig.active
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${bannerConfig.active ? 'bg-emerald-600 animate-pulse' : 'bg-gray-400'}`}
+                    />
+                    {bannerConfig.active ? 'Popup Active on Storefront' : 'Popup Disabled / Off'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Main Content: Form on Left, Live Preview on Right */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Left Column: Form Settings */}
+                <form
+                  onSubmit={handleSaveBanner}
+                  className="lg:col-span-7 bg-white p-6 rounded-lg border border-[#5C1A32]/10 shadow-xs space-y-5"
+                >
+                  {/* Active Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-[#FAF7F2] rounded-md border border-[#5C1A32]/10">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#1B1512]">
+                        Display Popup to Visitors
+                      </h4>
+                      <p className="text-[11px] text-[#8A7968]">
+                        When enabled, visitors will see this modal popup upon visiting the site.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={bannerConfig.active}
+                        onChange={(e) =>
+                          setBannerConfig((prev) => ({ ...prev, active: e.target.checked }))
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#5C1A32]" />
+                    </label>
+                  </div>
+
+                  {/* Banner Image Settings */}
+                  <div className="space-y-3">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#1B1512]">
+                      Banner Image (URL or Downloaded File)
+                    </label>
+
+                    {/* Method 1: Image URL */}
+                    <div>
+                      <span className="text-[10px] text-[#8A7968] block mb-1">
+                        Option 1: Paste Image URL
+                      </span>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. /images/hero-model.jpg or https://images.unsplash.com/..."
+                          value={
+                            bannerConfig.imageUrl.startsWith('data:')
+                              ? '[Uploaded Image File from Device]'
+                              : bannerConfig.imageUrl
+                          }
+                          onChange={(e) =>
+                            setBannerConfig((prev) => ({ ...prev, imageUrl: e.target.value }))
+                          }
+                          className="flex-1 px-3 py-2 text-xs border border-[#5C1A32]/20 rounded focus:outline-none focus:ring-1 focus:ring-[#5C1A32]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Method 2: File Upload from Computer */}
+                    <div className="pt-1">
+                      <span className="text-[10px] text-[#8A7968] block mb-1">
+                        Option 2: Upload Image Downloaded to Device
+                      </span>
+                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#5C1A32]/30 hover:border-[#5C1A32] rounded bg-[#FAF7F2]/50 hover:bg-[#FAF7F2] cursor-pointer transition-colors text-xs text-[#5C1A32] font-semibold">
+                        <Upload className="w-4 h-4" />
+                        <span>Select image file from computer (JPG, PNG, WebP)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBannerFileUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Headline & Subtitle */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[#1B1512] mb-1">
+                        Banner Headline
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Bespoke Haute Couture Atelier"
+                        value={bannerConfig.title}
+                        onChange={(e) =>
+                          setBannerConfig((prev) => ({ ...prev, title: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 text-xs border border-[#5C1A32]/20 rounded focus:outline-none focus:ring-1 focus:ring-[#5C1A32]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[#1B1512] mb-1">
+                        Subtitle / Promotional Description
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="e.g. Complimentary Master Tailor Home Measurement in Chennai, Coimbatore & Bengaluru."
+                        value={bannerConfig.subtitle}
+                        onChange={(e) =>
+                          setBannerConfig((prev) => ({ ...prev, subtitle: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 text-xs border border-[#5C1A32]/20 rounded focus:outline-none focus:ring-1 focus:ring-[#5C1A32]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Button Text & Target Link */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[#1B1512] mb-1">
+                        Button Label
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Book A Fitting Visit"
+                        value={bannerConfig.buttonText}
+                        onChange={(e) =>
+                          setBannerConfig((prev) => ({ ...prev, buttonText: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 text-xs border border-[#5C1A32]/20 rounded focus:outline-none focus:ring-1 focus:ring-[#5C1A32]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[#1B1512] mb-1">
+                        Destination Link URL
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. /measurements or /custom-outfit"
+                        value={bannerConfig.linkUrl}
+                        onChange={(e) =>
+                          setBannerConfig((prev) => ({ ...prev, linkUrl: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 text-xs border border-[#5C1A32]/20 rounded focus:outline-none focus:ring-1 focus:ring-[#5C1A32]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-4 border-t border-[#5C1A32]/10 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={handleResetBanner}
+                      className="px-4 py-2 border border-gray-300 text-xs font-semibold text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                    >
+                      Reset Default
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-[#5C1A32] hover:bg-[#431223] text-[#FAF7F2] text-xs font-semibold uppercase tracking-wider rounded transition-colors shadow-sm flex items-center gap-1.5"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      Save &amp; Publish Banner
+                    </button>
+                  </div>
+                </form>
+
+                {/* Right Column: Live Modal Mockup Preview */}
+                <div className="lg:col-span-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#1B1512] flex items-center gap-1.5">
+                      <Eye className="w-4 h-4 text-[#B8935A]" /> Live Storefront Preview
+                    </span>
+                    <span className="text-[11px] text-[#8A7968]">What customers see</span>
+                  </div>
+
+                  {/* Mockup Modal Container */}
+                  <div className="relative w-full bg-[#FAF7F2] rounded-lg shadow-xl overflow-hidden border border-[#B8935A]/40">
+                    {/* Simulated Close X */}
+                    <div className="absolute top-3 right-3 z-20 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-xs">
+                      <X className="w-3.5 h-3.5" />
+                    </div>
+
+                    {/* Preview Image */}
+                    <div className="relative w-full h-48 bg-black overflow-hidden">
+                      <img
+                        src={bannerConfig.imageUrl || '/images/hero-model.jpg'}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/images/hero-model.jpg';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#1B1512]/90 via-black/20 to-transparent" />
+                      <div className="absolute top-3 left-3 bg-[#5C1A32] text-[#FAF7F2] text-[9px] tracking-[0.2em] uppercase font-bold px-2 py-0.5 rounded-sm flex items-center gap-1 border border-[#B8935A]/50">
+                        <Sparkles className="w-2.5 h-2.5 text-[#B8935A]" /> JoJo Flora Exclusive
+                      </div>
+                    </div>
+
+                    {/* Preview Text */}
+                    <div className="p-5 text-center space-y-2 bg-[#FAF7F2]">
+                      <h4 className="text-lg text-[#1B1512] font-normal" style={serif}>
+                        {bannerConfig.title || 'Your Promotion Headline'}
+                      </h4>
+                      <p className="text-xs text-[#4A413B] leading-relaxed line-clamp-2">
+                        {bannerConfig.subtitle ||
+                          'Your promotional description will appear right here for all website patrons.'}
+                      </p>
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          className="px-5 py-2.5 bg-[#5C1A32] text-[#FAF7F2] text-xs font-semibold uppercase tracking-wider rounded-sm shadow-sm inline-flex items-center gap-1.5"
+                        >
+                          <span>{bannerConfig.buttonText || 'Discover Now'}</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 12: GARMENT ITEMS, SUB-DIVISIONS & TAILORING AMOUNTS ─── */}
+          {activeTab === 'garments' && (
+            <div className="space-y-6">
+              {/* Top Banner & Instructions */}
+              <div className="bg-white p-6 rounded-lg border border-[#5C1A32]/10 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-[#5C1A32]" />
+                    <h2 className="text-xl font-bold text-[#1B1512]" style={serif}>
+                      Items, Sub-Divisions &amp; Tailoring Pricing
+                    </h2>
+                  </div>
+                  <p className="text-xs text-[#8A7968] mt-1">
+                    Manage atelier garment items (shown in user pills &amp; outfit selector), create
+                    sub-division sections (e.g. Neckline, Sleeves), and assign tailoring fees added
+                    directly to customer bills.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddGarmentModal(true)}
+                    className="px-4 py-2 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold uppercase tracking-wider rounded flex items-center gap-1.5 shadow-xs transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Add Item</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetGarmentsToFactory}
+                    className="px-3.5 py-2 border border-[#5C1A32]/25 text-[#5C1A32] hover:bg-[#5C1A32]/5 text-xs font-semibold uppercase tracking-wider rounded flex items-center gap-1.5 transition-colors"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>Reset Defaults</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Garment Selector Pills / Horizontal Cards */}
+              <div className="bg-white p-5 rounded-lg border border-[#5C1A32]/10 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase font-bold tracking-wider text-[#8A7968]">
+                    Select An Item To Configure Sub-Divisions &amp; Stitching Fees:
+                  </span>
+                  <span className="text-xs text-[#5C1A32] font-semibold">
+                    {garmentsList.length} Items Available to Customers
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                  {garmentsList.map((g) => {
+                    const isSelected = g.id === selectedGarmentId;
+                    return (
+                      <div
+                        key={g.id}
+                        onClick={() => setSelectedGarmentId(g.id)}
+                        className={`p-3.5 rounded-lg border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-[#5C1A32] text-white border-[#5C1A32] shadow-sm'
+                            : 'bg-[#FAF7F2] hover:bg-white text-[#1B1512] border-[#5C1A32]/15 hover:border-[#5C1A32]/40'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1 mb-2">
+                          <h4 className="text-sm font-bold truncate">{g.label}</h4>
+                          {g.isCustom && (
+                            <span
+                              className={`text-[9px] px-1 py-0.2 rounded font-bold uppercase ${
+                                isSelected
+                                  ? 'bg-white/20 text-[#FAF7F2]'
+                                  : 'bg-[#5C1A32]/10 text-[#5C1A32]'
+                              }`}
+                            >
+                              New
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-1 text-[11px]">
+                          <div className="flex justify-between">
+                            <span className={isSelected ? 'text-[#E8DFC8]' : 'text-[#8A7968]'}>
+                              Base Tailoring:
+                            </span>
+                            <span className="font-mono font-bold">₹{g.baseTailoringPrice}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className={isSelected ? 'text-[#E8DFC8]' : 'text-[#8A7968]'}>
+                              Meters:
+                            </span>
+                            <span className="font-mono">{g.defaultMeters}m</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className={isSelected ? 'text-[#E8DFC8]' : 'text-[#8A7968]'}>
+                              Sub-Divs:
+                            </span>
+                            <span className="font-bold">{g.sections.length}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 pt-2 border-t border-black/10 flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingGarment(g);
+                              setEditGarmentName(g.label);
+                              setEditGarmentMeters(String(g.defaultMeters));
+                              setEditGarmentBaseTailoring(String(g.baseTailoringPrice));
+                            }}
+                            className={`p-1 rounded hover:bg-black/10 transition-colors ${
+                              isSelected ? 'text-[#FAF7F2]' : 'text-[#5C1A32]'
+                            }`}
+                            title="Edit Item Details"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteGarment(g.id, g.label);
+                            }}
+                            className={`p-1 rounded hover:bg-black/10 transition-colors ${
+                              isSelected ? 'text-rose-200' : 'text-rose-600'
+                            }`}
+                            title="Delete Item"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sub-Divisions & Options for Selected Item */}
+              {selectedGarment && (
+                <div className="space-y-6">
+                  {/* Item Detail Card */}
+                  <div className="bg-white p-5 rounded-lg border border-[#5C1A32]/10 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-[#1B1512]" style={serif}>
+                          {selectedGarment.label} — Sub-Divisions &amp; Styling Options
+                        </h3>
+                        <span className="text-[10px] bg-[#5C1A32]/10 text-[#5C1A32] font-mono font-bold px-2 py-0.5 rounded">
+                          ID: {selectedGarment.id}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#8A7968] mt-1">
+                        Base Tailoring:{' '}
+                        <span className="font-bold text-[#1B1512]">
+                          ₹{selectedGarment.baseTailoringPrice}
+                        </span>{' '}
+                        · Required Meterage:{' '}
+                        <span className="font-bold text-[#1B1512]">
+                          {selectedGarment.defaultMeters}m
+                        </span>{' '}
+                        · Measurement Profile:{' '}
+                        <span className="font-bold uppercase text-[#5C1A32]">
+                          {selectedGarment.measurementProfile || 'blouse'}
+                        </span>
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowAddSectionModal(true)}
+                      className="px-4 py-2 bg-[#1B1512] hover:bg-[#5C1A32] text-white text-xs font-semibold uppercase tracking-wider rounded flex items-center gap-1.5 shadow-xs transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-[#B8935A]" />
+                      <span>Add Sub-Division Section</span>
+                    </button>
+                  </div>
+
+                  {/* Sub-Divisions List */}
+                  {selectedGarment.sections.length === 0 ? (
+                    <div className="p-12 text-center bg-white rounded-lg border border-dashed border-[#5C1A32]/30 space-y-3">
+                      <Layers className="h-10 w-10 text-[#B8935A] mx-auto opacity-60" />
+                      <h4 className="text-sm font-bold text-[#1B1512]">
+                        No Sub-Divisions defined for {selectedGarment.label} yet
+                      </h4>
+                      <p className="text-xs text-[#8A7968] max-w-md mx-auto">
+                        Add sub-division sections like "Neckline Style", "Sleeve Cut", or "Bodice
+                        Pattern", then configure options with custom tailoring amounts.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddSectionModal(true)}
+                        className="px-4 py-2 bg-[#5C1A32] text-white text-xs font-semibold uppercase tracking-wider rounded"
+                      >
+                        Create First Sub-Division Section
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {selectedGarment.sections.map((section, sIdx) => (
+                        <div
+                          key={section.id}
+                          className="bg-white rounded-lg border border-[#5C1A32]/15 shadow-xs overflow-hidden"
+                        >
+                          {/* Section Header */}
+                          <div className="p-4 bg-[#FAF7F2] border-b border-[#5C1A32]/10 flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-6 h-6 rounded-full bg-[#5C1A32] text-white text-xs font-bold flex items-center justify-center">
+                                {sIdx + 1}
+                              </span>
+                              <div>
+                                <h4 className="text-sm font-bold text-[#1B1512]">
+                                  {section.label}
+                                </h4>
+                                <span className="text-[10px] text-[#8A7968]">
+                                  Sub-division ID: {section.id} · {section.options.length}{' '}
+                                  Selectable Options
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTargetSectionIdForOption(section.id);
+                                  setShowAddOptionModal(true);
+                                }}
+                                className="px-3 py-1.5 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold uppercase tracking-wider rounded flex items-center gap-1 shadow-xs transition-colors"
+                              >
+                                <Plus className="h-3 w-3" />
+                                <span>Add Option</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSection(section.id, section.label)}
+                                className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded transition-colors"
+                                title="Delete Sub-Division Section"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Options Table */}
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="bg-[#FAF7F2]/50 border-b border-neutral-200 text-[#8A7968] font-bold uppercase text-[10px] tracking-wider">
+                                  <th className="p-3 w-12 text-center">#</th>
+                                  <th className="p-3">Style Option Label</th>
+                                  <th className="p-3 w-48">Tailoring Amount (₹)</th>
+                                  <th className="p-3">Sub-Options (Dart / Specific Seams)</th>
+                                  <th className="p-3 text-right w-28">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-neutral-100">
+                                {section.options.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={5} className="p-4 text-center text-[#8A7968]">
+                                      No options added yet in this sub-division. Click "+ Add
+                                      Option" above.
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  section.options.map((opt, oIdx) => {
+                                    const priceInputKey = `${section.id}:${opt.id}`;
+                                    const currentPriceInput =
+                                      editingTailoringPrices[priceInputKey] ??
+                                      String(opt.tailoringPrice);
+
+                                    return (
+                                      <tr
+                                        key={opt.id}
+                                        className="hover:bg-neutral-50/70 transition-colors"
+                                      >
+                                        <td className="p-3 text-center text-[#8A7968] font-mono">
+                                          {oIdx + 1}
+                                        </td>
+                                        <td className="p-3">
+                                          <div className="font-semibold text-[#1B1512]">
+                                            {opt.label}
+                                          </div>
+                                          <span className="text-[10px] text-[#8A7968] font-mono">
+                                            {opt.id}
+                                          </span>
+                                        </td>
+                                        <td className="p-3">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-[#5C1A32] font-bold font-mono">
+                                              ₹
+                                            </span>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              value={currentPriceInput}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                setEditingTailoringPrices((prev) => ({
+                                                  ...prev,
+                                                  [priceInputKey]: val,
+                                                }));
+                                              }}
+                                              onBlur={() => {
+                                                const p = parseFloat(currentPriceInput);
+                                                if (
+                                                  !isNaN(p) &&
+                                                  p >= 0 &&
+                                                  p !== opt.tailoringPrice
+                                                ) {
+                                                  handleUpdateOptionTailoringAmount(
+                                                    section.id,
+                                                    opt.id,
+                                                    Math.round(p),
+                                                  );
+                                                }
+                                              }}
+                                              className="w-24 px-2 py-1 border border-[#5C1A32]/25 rounded text-xs font-mono font-bold text-[#5C1A32] focus:outline-none focus:border-[#5C1A32]"
+                                            />
+                                            {currentPriceInput !== String(opt.tailoringPrice) && (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const p = parseFloat(currentPriceInput);
+                                                  if (!isNaN(p) && p >= 0) {
+                                                    handleUpdateOptionTailoringAmount(
+                                                      section.id,
+                                                      opt.id,
+                                                      Math.round(p),
+                                                    );
+                                                  }
+                                                }}
+                                                className="p-1 text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100"
+                                                title="Save tailoring amount"
+                                              >
+                                                <Check className="h-3.5 w-3.5" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="p-3">
+                                          <div className="space-y-1.5">
+                                            {opt.subOptions && opt.subOptions.length > 0 ? (
+                                              <div className="flex flex-wrap gap-1.5">
+                                                {opt.subOptions.map((sub) => (
+                                                  <span
+                                                    key={sub.id}
+                                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#FAF7F2] border border-[#5C1A32]/15 text-[#1B1512] text-[11px]"
+                                                  >
+                                                    <span className="font-medium">{sub.label}</span>
+                                                    <span className="font-mono text-[#5C1A32] font-bold">
+                                                      ₹{sub.tailoringPrice}
+                                                    </span>
+                                                    <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                        handleDeleteSubOption(
+                                                          section.id,
+                                                          opt.id,
+                                                          sub.id,
+                                                          sub.label,
+                                                        )
+                                                      }
+                                                      className="text-neutral-400 hover:text-rose-600 ml-0.5"
+                                                      title="Delete Sub-Option"
+                                                    >
+                                                      <X className="h-3 w-3" />
+                                                    </button>
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <span className="text-[11px] text-[#8A7968]">
+                                                Single option (no sub-divisions)
+                                              </span>
+                                            )}
+
+                                            <div>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setTargetSectionIdForSub(section.id);
+                                                  setTargetOptionIdForSub(opt.id);
+                                                  setShowAddSubOptionModal(true);
+                                                }}
+                                                className="inline-flex items-center gap-1 text-[10px] text-[#5C1A32] hover:underline font-semibold"
+                                              >
+                                                <Plus className="h-2.5 w-2.5" />
+                                                <span>Add Sub-Option Pill</span>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="p-3 text-right">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleDeleteOption(section.id, opt.id, opt.label)
+                                            }
+                                            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded transition-colors"
+                                            title="Delete Option"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
+
+      {/* ── MODALS FOR ITEMS, SUB-DIVISIONS & TAILORING ─────────────────── */}
+
+      {/* 1. Add Item Modal */}
+      {showAddGarmentModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-[#5C1A32]/20 overflow-hidden">
+            <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
+              <div className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-[#5C1A32]" />
+                <h3 className="text-base font-bold text-[#1B1512]" style={serif}>
+                  Add New Garment Item
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddGarmentModal(false)}
+                className="text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateGarment} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Item Name / Label (Visible on user pills &amp; outfit selector) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Kurti Set, Western Gown, Sharara Suit"
+                  value={newGarmentName}
+                  onChange={(e) => setNewGarmentName(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-semibold focus:outline-none focus:border-[#5C1A32]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                    Default Meters (m) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    required
+                    value={newGarmentMeters}
+                    onChange={(e) => setNewGarmentMeters(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-mono focus:outline-none focus:border-[#5C1A32]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                    Base Tailoring Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    required
+                    value={newGarmentBaseTailoring}
+                    onChange={(e) => setNewGarmentBaseTailoring(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-mono text-[#5C1A32] font-bold focus:outline-none focus:border-[#5C1A32]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Measurement Profile
+                </label>
+                <select
+                  value={newGarmentProfile}
+                  onChange={(e) =>
+                    setNewGarmentProfile(e.target.value as 'blouse' | 'chudi' | 'pant')
+                  }
+                  className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-xs focus:outline-none"
+                >
+                  <option value="blouse">
+                    Blouse Profile (Upper Chest, Front/Back Neck, Shoulders)
+                  </option>
+                  <option value="chudi">
+                    Chudi / Kurti Profile (Chest, Waist, Height, Slit Open)
+                  </option>
+                  <option value="pant">
+                    Pant / Salwaar Profile (Hip, Seat, Knee, Thigh, Leg Round)
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Short Description
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Bespoke fitted ensemble tailored to perfection."
+                  value={newGarmentDesc}
+                  onChange={(e) => setNewGarmentDesc(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-xs focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#5C1A32]/10">
+                <button
+                  type="button"
+                  onClick={() => setShowAddGarmentModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-xs font-semibold rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold uppercase tracking-wider rounded"
+                >
+                  Save &amp; Publish Item
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Edit Garment Modal */}
+      {editingGarment && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#5C1A32]/20 overflow-hidden">
+            <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
+              <div className="flex items-center gap-2">
+                <Edit2 className="h-4 w-4 text-[#5C1A32]" />
+                <h3 className="text-base font-bold text-[#1B1512]" style={serif}>
+                  Edit Item: {editingGarment.label}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingGarment(null)}
+                className="text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveGarmentEdits} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Item Label
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editGarmentName}
+                  onChange={(e) => setEditGarmentName(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-semibold focus:outline-none focus:border-[#5C1A32]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                    Default Meters (m)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    required
+                    value={editGarmentMeters}
+                    onChange={(e) => setEditGarmentMeters(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                    Base Tailoring Price (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    required
+                    value={editGarmentBaseTailoring}
+                    onChange={(e) => setEditGarmentBaseTailoring(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-mono text-[#5C1A32] font-bold focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#5C1A32]/10">
+                <button
+                  type="button"
+                  onClick={() => setEditingGarment(null)}
+                  className="px-4 py-2 border border-gray-300 text-xs font-semibold rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold uppercase tracking-wider rounded"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Add Sub-Division Section Modal */}
+      {showAddSectionModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#5C1A32]/20 overflow-hidden">
+            <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-[#5C1A32]" />
+                <h3 className="text-base font-bold text-[#1B1512]" style={serif}>
+                  Add Sub-Division Section ({selectedGarment?.label})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddSectionModal(false)}
+                className="text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSection} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Sub-Division Section Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Neckline Pattern, Sleeve Style, Bodice Cut"
+                  value={newSectionLabel}
+                  onChange={(e) => setNewSectionLabel(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-semibold focus:outline-none focus:border-[#5C1A32]"
+                />
+                <p className="text-[11px] text-[#8A7968] mt-1">
+                  This section will appear as a step for customers customizing{' '}
+                  {selectedGarment?.label}.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#5C1A32]/10">
+                <button
+                  type="button"
+                  onClick={() => setShowAddSectionModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-xs font-semibold rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold uppercase tracking-wider rounded"
+                >
+                  Add Sub-Division
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Add Style Option Modal */}
+      {showAddOptionModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#5C1A32]/20 overflow-hidden">
+            <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
+              <div className="flex items-center gap-2">
+                <Scissors className="h-4 w-4 text-[#5C1A32]" />
+                <h3 className="text-base font-bold text-[#1B1512]" style={serif}>
+                  Add Style Option &amp; Tailoring Amount
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddOptionModal(false)}
+                className="text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateOption} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Style Option Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Princess Cut, Boat Neck, Puff Sleeve, Anarkali Flare"
+                  value={newOptionLabel}
+                  onChange={(e) => setNewOptionLabel(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-semibold focus:outline-none focus:border-[#5C1A32]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Tailoring Amount / Stitching Charge (₹) *
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base font-bold text-[#5C1A32]">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    placeholder="e.g. 250 (or 0 if included in base)"
+                    value={newOptionTailoringPrice}
+                    onChange={(e) => setNewOptionTailoringPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-mono font-bold text-[#5C1A32] focus:outline-none focus:border-[#5C1A32]"
+                  />
+                </div>
+                <p className="text-[11px] text-[#8A7968] mt-1">
+                  This tailoring fee will be displayed to customers and automatically added to the
+                  billing summary.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#5C1A32]/10">
+                <button
+                  type="button"
+                  onClick={() => setShowAddOptionModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-xs font-semibold rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold uppercase tracking-wider rounded"
+                >
+                  Add Option
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Add Sub-Option Modal */}
+      {showAddSubOptionModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#5C1A32]/20 overflow-hidden">
+            <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
+              <div className="flex items-center gap-2">
+                <Scissors className="h-4 w-4 text-[#5C1A32]" />
+                <h3 className="text-base font-bold text-[#1B1512]" style={serif}>
+                  Add Sub-Option Pill
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddSubOptionModal(false)}
+                className="text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubOption} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Sub-Option Label *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 2 Dart, 3 Dart, 4 Dart, Extra Flounce"
+                  value={newSubOptionLabel}
+                  onChange={(e) => setNewSubOptionLabel(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-semibold focus:outline-none focus:border-[#5C1A32]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                  Sub-Option Tailoring Amount (₹) *
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base font-bold text-[#5C1A32]">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    placeholder="e.g. 150"
+                    value={newSubOptionTailoringPrice}
+                    onChange={(e) => setNewSubOptionTailoringPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded text-sm font-mono font-bold text-[#5C1A32] focus:outline-none focus:border-[#5C1A32]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#5C1A32]/10">
+                <button
+                  type="button"
+                  onClick={() => setShowAddSubOptionModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-xs font-semibold rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold uppercase tracking-wider rounded"
+                >
+                  Save Sub-Option
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Amazon India Format Tax Invoice Modal */}
       {invoiceOrder && (

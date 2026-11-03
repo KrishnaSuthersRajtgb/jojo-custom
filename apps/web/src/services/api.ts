@@ -5,7 +5,7 @@ const TOKEN_KEY = 'jojo_token';
 const SESSION_KEY = 'jojo_session_user';
 
 interface RequestOptions extends RequestInit {
-  params?: Record<string, string | number | undefined>;
+  params?: Record<string, string | number | undefined> | undefined;
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -61,7 +61,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   const isJson = response.headers.get('content-type')?.includes('application/json');
   const data: unknown = isJson ? await response.json() : null;
 
+  // Auto-capture refreshed JWT from server if provided
+  const freshToken = response.headers.get('x-fresh-token');
+  if (freshToken) {
+    localStorage.setItem(TOKEN_KEY, freshToken);
+  }
+
   if (!response.ok) {
+    // If unauthorized and not on login endpoint, remove stale token so fallback kicks in
+    if (response.status === 401 && !url.includes('/api/auth/login')) {
+      localStorage.removeItem(TOKEN_KEY);
+    }
     const errorMsg =
       (data as { error?: string } | null)?.error ??
       `Request failed with status ${response.status.toString()}`;
@@ -78,6 +88,7 @@ export interface SignupPayload {
   gender: string;
   phoneNumber: string;
   password: string;
+  referralCode?: string | undefined;
 }
 
 export interface LoginPayload {
@@ -90,7 +101,11 @@ export interface AuthUser {
   email: string;
   gender: string;
   phoneNumber: string;
-  role?: string;
+  role?: string | undefined;
+  referralCode?: string | undefined;
+  referredBy?: string | undefined;
+  referralCount?: number | undefined;
+  loyaltyCredits?: number | undefined;
 }
 
 export interface AuthResponse {
@@ -233,6 +248,7 @@ export interface OrderItem {
   placedAt: string;
   trackingNumber?: string;
   courier?: string;
+  statusHistory?: Array<{ status: string; timestamp: string | Date; note?: string }>;
 }
 
 export const orderApi = {
@@ -272,10 +288,11 @@ export const orderApi = {
     status?: string,
     trackingNumber?: string,
     courier?: string,
+    note?: string,
   ): Promise<{ data: OrderItem }> => {
     return request<{ data: OrderItem }>(`/api/orders/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status, trackingNumber, courier }),
+      method: 'PUT',
+      body: JSON.stringify({ status, trackingNumber, courier, note }),
     });
   },
 };
@@ -461,6 +478,13 @@ export const cronApi = {
 };
 
 // ── User Management APIs ──────────────────────────────────────────────────
+export interface AdminNote {
+  note: string;
+  addedAt: string;
+}
+
+export type CustomerFlag = 'none' | 'VIP' | 'Needs Attention' | 'Blocked';
+
 export interface RegisteredUser {
   _id: string;
   username: string;
@@ -468,6 +492,8 @@ export interface RegisteredUser {
   gender: string;
   phoneNumber: string;
   role: string;
+  adminNotes?: AdminNote[];
+  flag?: CustomerFlag;
   createdAt: string;
   updatedAt: string;
 }
@@ -487,6 +513,24 @@ export const userApi = {
     return request<{ data: RegisteredUser; message: string }>('/api/auth/role', {
       method: 'PATCH',
       body: JSON.stringify(payload),
+    });
+  },
+  addNote: async (
+    userId: string,
+    note: string,
+  ): Promise<{ data: RegisteredUser; message: string }> => {
+    return request<{ data: RegisteredUser; message: string }>(`/api/auth/users/${userId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+  updateFlag: async (
+    userId: string,
+    flag: CustomerFlag | null,
+  ): Promise<{ data: RegisteredUser; message: string }> => {
+    return request<{ data: RegisteredUser; message: string }>(`/api/auth/users/${userId}/flag`, {
+      method: 'PATCH',
+      body: JSON.stringify({ flag }),
     });
   },
 };
@@ -555,5 +599,224 @@ export const reviewApi = {
   },
   deleteReview: async (id: string): Promise<{ message: string }> => {
     return request<{ message: string }>(`/api/reviews/${id}`, { method: 'DELETE' });
+  },
+};
+
+// ── Wishlist APIs ─────────────────────────────────────────────────────────
+export interface WishlistItem {
+  fabricId: string;
+  fabricName: string;
+  tone: string;
+  hex: string;
+  pricePerMeter: number;
+  addedAt?: string | Date;
+}
+
+export interface WishlistData {
+  userId: string;
+  items: WishlistItem[];
+  updatedAt?: string;
+}
+
+export const wishlistApi = {
+  getWishlist: async (): Promise<{ data: WishlistData }> => {
+    return request<{ data: WishlistData }>('/api/wishlist', {
+      method: 'GET',
+    });
+  },
+
+  addItem: async (payload: {
+    fabricId: string;
+    fabricName: string;
+    tone?: string;
+    hex?: string;
+    pricePerMeter?: number;
+  }): Promise<{ data: WishlistData }> => {
+    return request<{ data: WishlistData }>('/api/wishlist/add', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  removeItem: async (fabricId: string): Promise<{ data: WishlistData }> => {
+    return request<{ data: WishlistData }>(`/api/wishlist/${fabricId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// ── Analytics APIs ────────────────────────────────────────────────────────
+export interface DailyOrderStat {
+  date: string;
+  displayDate: string;
+  count: number;
+  revenue: number;
+}
+
+export interface FabricRevenueStat {
+  fabricName: string;
+  revenue: number;
+  ordersCount: number;
+}
+
+export interface GarmentStat {
+  garment: string;
+  count: number;
+  revenue: number;
+}
+
+export interface CityStat {
+  city: string;
+  count: number;
+  revenue: number;
+}
+
+export interface SalesStats {
+  ordersPerDay: DailyOrderStat[];
+  revenueByFabric: FabricRevenueStat[];
+  topGarments: GarmentStat[];
+  ordersByCity: CityStat[];
+  totalRevenue: number;
+  totalOrders: number;
+  pendingOrders: number;
+  deliveredOrders: number;
+}
+
+export const analyticsApi = {
+  getSalesStats: async (): Promise<{ data: SalesStats }> => {
+    return request<{ data: SalesStats }>('/api/analytics/sales');
+  },
+};
+
+// ── Corporate Inquiry APIs ────────────────────────────────────────────────
+export type CorporateInquiryStatus = 'New' | 'In Progress' | 'Quoted' | 'Closed';
+
+export interface CorporateInquiryItem {
+  _id: string;
+  organizationName: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  garmentType: string;
+  estimatedQuantity: number;
+  deliveryCity: string;
+  targetDate: string;
+  specialRequirements?: string;
+  status: CorporateInquiryStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCorporateInquiryPayload {
+  organizationName: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  garmentType: string;
+  estimatedQuantity: number;
+  deliveryCity: string;
+  targetDate: string;
+  specialRequirements?: string;
+}
+
+export const corporateInquiryApi = {
+  submit: async (
+    payload: CreateCorporateInquiryPayload,
+  ): Promise<{ success: boolean; data: CorporateInquiryItem; message: string }> => {
+    return request<{ success: boolean; data: CorporateInquiryItem; message: string }>(
+      '/api/corporate-inquiry',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+  getAll: async (): Promise<{ data: CorporateInquiryItem[] }> => {
+    return request<{ data: CorporateInquiryItem[] }>('/api/corporate-inquiry');
+  },
+  updateStatus: async (
+    id: string,
+    status: CorporateInquiryStatus,
+  ): Promise<{ data: CorporateInquiryItem; message: string }> => {
+    return request<{ data: CorporateInquiryItem; message: string }>(
+      `/api/corporate-inquiry/${id}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      },
+    );
+  },
+};
+
+export interface MoodBoardItem {
+  _id?: string;
+  id?: string;
+  imageUrl: string;
+  caption: string;
+  fabricName: string;
+  garmentType: string;
+  priceRange: string;
+  fabricId?: string | undefined;
+  garmentId?: string | undefined;
+  active: boolean;
+  createdAt?: string | Date;
+}
+
+export const moodboardApi = {
+  getItems: async (all = false): Promise<{ data: MoodBoardItem[] }> => {
+    return request<{ data: MoodBoardItem[] }>('/api/moodboard', {
+      params: all ? { all: 'true' } : undefined,
+    });
+  },
+  createItem: async (
+    payload: Omit<MoodBoardItem, '_id' | 'id' | 'createdAt'>,
+  ): Promise<{ data: MoodBoardItem; message: string }> => {
+    return request<{ data: MoodBoardItem; message: string }>('/api/moodboard', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateItem: async (
+    id: string,
+    payload: Partial<MoodBoardItem>,
+  ): Promise<{ data: MoodBoardItem; message: string }> => {
+    return request<{ data: MoodBoardItem; message: string }>(`/api/moodboard/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteItem: async (id: string): Promise<{ message: string }> => {
+    return request<{ message: string }>(`/api/moodboard/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export interface ReferralStats {
+  referralCode: string;
+  referralCount: number;
+  loyaltyCredits: number;
+  referredBy?: string | null;
+}
+
+export const referralApi = {
+  getCode: async (): Promise<{ data: { referralCode: string } }> => {
+    return request<{ data: { referralCode: string } }>('/api/referral/code');
+  },
+
+  applyCode: async (
+    referralCode: string,
+  ): Promise<{ data: { message: string; referrerUsername?: string } }> => {
+    return request<{ data: { message: string; referrerUsername?: string } }>(
+      '/api/referral/apply',
+      {
+        method: 'POST',
+        body: JSON.stringify({ referralCode }),
+      },
+    );
+  },
+
+  getStats: async (): Promise<{ data: ReferralStats }> => {
+    return request<{ data: ReferralStats }>('/api/referral/stats');
   },
 };

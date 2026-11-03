@@ -13,6 +13,7 @@ export interface IAddress extends Document {
   state: string;
   pincode: string;
   type: AddressType;
+  label?: string;
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -70,6 +71,11 @@ const AddressSchema = new Schema<IAddress>(
       type: String,
       enum: ['home', 'work', 'other'],
       default: 'home',
+    },
+    label: {
+      type: String,
+      default: 'Home',
+      trim: true,
     },
     isDefault: {
       type: Boolean,

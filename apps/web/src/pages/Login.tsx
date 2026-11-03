@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
+import SEOMeta from '../components/SEOMeta';
 import { useAuth } from '../context/AuthContext';
 
 // ── Design tokens (same family as Home.jsx) ────────────────────────────────
@@ -42,6 +43,10 @@ export default function LoginPage() {
 
   return (
     <div className="w-full bg-[#FAF7F2] min-h-[calc(100vh-7rem)] flex flex-col justify-center py-16 px-6">
+      <SEOMeta
+        title="Login | JoJo Flora Couture Atelier Portal"
+        description="Sign in to your JoJo Flora patron account to manage fittings, orders, and bespoke couture designs."
+      />
       <div className="max-w-md w-full mx-auto">
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-full border border-[#B8935A]/60 bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">

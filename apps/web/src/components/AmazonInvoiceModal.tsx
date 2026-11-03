@@ -1,5 +1,6 @@
 import { Printer, Download, X, ShieldCheck, FileDown } from 'lucide-react';
 import { API_BASE_URL } from '../services';
+import { getEstimatedDeliveryDate, formatDeliveryDate } from '../utils/deliveryEstimate';
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -25,6 +26,11 @@ interface InvoiceModalProps {
         tailoringPrice?: number;
       }> | null;
       accessories?: Array<{ label: string; price: number }>;
+      estimatedDeliveryDate?: string | undefined;
+      isGift?: boolean | undefined;
+      giftRecipientName?: string | undefined;
+      giftMessage?: string | undefined;
+      giftWrapFee?: number | undefined;
     };
     address?: {
       fullName?: string;
@@ -117,6 +123,9 @@ export default function AmazonInvoiceModal({ isOpen, onClose, order }: InvoiceMo
     ? new Date(order.placedAt).toLocaleDateString('en-IN')
     : new Date().toLocaleDateString('en-IN');
   const invoiceDate = new Date().toLocaleDateString('en-IN');
+  const estimatedDelivery =
+    details.estimatedDeliveryDate ||
+    formatDeliveryDate(getEstimatedDeliveryDate(details.garment || 'blouse'));
 
   const items = [
     {
@@ -161,6 +170,19 @@ export default function AmazonInvoiceModal({ isOpen, onClose, order }: InvoiceMo
       totalAmount: p,
     });
   });
+
+  if (details.isGift || (details.giftWrapFee && details.giftWrapFee > 0)) {
+    const p = details.giftWrapFee || 150;
+    items.push({
+      title: 'Artisanal Gift Wrapping & Bespoke Message Note',
+      desc: details.giftRecipientName
+        ? `Recipient: ${details.giftRecipientName}${details.giftMessage ? ` — "${details.giftMessage}"` : ''}`
+        : 'Luxury presentation wrapping with wax seal',
+      qty: 1,
+      unitPrice: p,
+      totalAmount: p,
+    });
+  }
 
   const amountWords = numberToWords(grandTotal);
 
@@ -335,6 +357,9 @@ export default function AmazonInvoiceModal({ isOpen, onClose, order }: InvoiceMo
               )}
               <p>
                 <span className="font-bold">Delivery Partner:</span> BlueDart Express Couture
+              </p>
+              <p>
+                <span className="font-bold">Estimated Delivery:</span> {estimatedDelivery}
               </p>
             </div>
           </div>

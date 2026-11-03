@@ -10,6 +10,11 @@ import { pricingRouter } from './routes/pricing.routes.js';
 import { cronRouter } from './routes/cron.routes.js';
 import { healthRouter } from './routes/health.router.js';
 import { reviewRouter } from './routes/review.routes.js';
+import { analyticsRouter } from './routes/analytics.routes.js';
+import { corporateInquiryRouter } from './routes/corporateInquiry.routes.js';
+import { wishlistRouter } from './routes/wishlist.routes.js';
+import { moodboardRouter } from './routes/moodboard.routes.js';
+import { referralRouter } from './routes/referral.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { authLimiter, apiLimiter, corsOptions } from './middleware/security.middleware.js';
 
@@ -46,6 +51,11 @@ app.use('/api/franchise', franchiseRouter);
 app.use('/api/pricing', pricingRouter);
 app.use('/api/cron', cronRouter);
 app.use('/api/reviews', reviewRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/corporate-inquiry', corporateInquiryRouter);
+app.use('/api/wishlist', wishlistRouter);
+app.use('/api/moodboard', moodboardRouter);
+app.use('/api/referral', referralRouter);
 
 // Direct route aliases (without /api prefix)
 app.use('/auth', authLimiter, authRouter);
@@ -56,6 +66,11 @@ app.use('/franchise', franchiseRouter);
 app.use('/pricing', pricingRouter);
 app.use('/cron', cronRouter);
 app.use('/reviews', reviewRouter);
+app.use('/analytics', analyticsRouter);
+app.use('/corporate-inquiry', corporateInquiryRouter);
+app.use('/wishlist', wishlistRouter);
+app.use('/moodboard', moodboardRouter);
+app.use('/referral', referralRouter);
 
 // 404 handler
 app.use((_req, res) => {

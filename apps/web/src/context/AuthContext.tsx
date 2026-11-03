@@ -7,6 +7,7 @@ export interface SignupPayload {
   gender: string;
   phoneNumber: string;
   password: string;
+  referralCode?: string | undefined;
 }
 
 export interface LoginPayload {
@@ -19,7 +20,11 @@ export interface AuthUser {
   email: string;
   gender: string;
   phoneNumber: string;
-  role?: string;
+  role?: string | undefined;
+  referralCode?: string | undefined;
+  referredBy?: string | undefined;
+  referralCount?: number | undefined;
+  loyaltyCredits?: number | undefined;
 }
 
 export interface UpdateProfilePayload {
@@ -62,6 +67,18 @@ function toSafeUser(stored: StoredUser): AuthUser {
   if (stored.role) {
     safe.role = stored.role;
   }
+  if (stored.referralCode) {
+    safe.referralCode = stored.referralCode;
+  }
+  if (stored.referredBy) {
+    safe.referredBy = stored.referredBy;
+  }
+  if (typeof stored.referralCount === 'number') {
+    safe.referralCount = stored.referralCount;
+  }
+  if (typeof stored.loyaltyCredits === 'number') {
+    safe.loyaltyCredits = stored.loyaltyCredits;
+  }
   return safe;
 }
 
@@ -95,6 +112,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           if (res.data.role) {
             freshUser.role = res.data.role;
+          }
+          const rawData = res.data as unknown as Record<string, unknown>;
+          if (typeof rawData['referralCode'] === 'string') {
+            freshUser.referralCode = rawData['referralCode'];
+          }
+          if (typeof rawData['referredBy'] === 'string') {
+            freshUser.referredBy = rawData['referredBy'];
+          }
+          if (typeof rawData['referralCount'] === 'number') {
+            freshUser.referralCount = rawData['referralCount'];
+          }
+          if (typeof rawData['loyaltyCredits'] === 'number') {
+            freshUser.loyaltyCredits = rawData['loyaltyCredits'];
           }
           setUser(freshUser);
           localStorage.setItem(SESSION_KEY, JSON.stringify(freshUser));

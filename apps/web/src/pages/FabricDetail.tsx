@@ -1,7 +1,9 @@
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Minus, Plus, ShoppingCart, Scissors, Star } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingCart, Scissors, Star, Heart } from 'lucide-react';
+import SEOMeta from '../components/SEOMeta';
 import { FABRICS } from '../data/fabrics';
+import { useWishlist } from '../context/WishlistContext';
 import { pricingService, PRICING_UPDATED_EVENT } from '../services/pricingService';
 import {
   garmentStyleService,
@@ -24,8 +26,9 @@ const METER_MIN = 0.5;
 const METER_MAX = 20;
 
 export default function FabricDetail() {
-  const { tone, fabricId } = useParams<{ tone: string; fabricId: string }>();
+  const { tone, fabricId } = useParams<{ tone?: string; fabricId?: string }>();
   const navigate = useNavigate();
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [, setPriceTick] = useState(0);
   const [garments, setGarments] = useState<GarmentItem[]>(() => garmentStyleService.getGarments());
 
@@ -49,7 +52,9 @@ export default function FabricDetail() {
     };
   }, []);
 
-  const fabric = FABRICS.find((f) => f.id === fabricId && f.tone === tone);
+  const fabric =
+    FABRICS.find((f) => f.id === fabricId && (!tone || f.tone === tone)) ||
+    FABRICS.find((f) => f.id === fabricId);
 
   const defaultGarment = garments[0] ?? {
     id: 'blouse',
@@ -192,6 +197,7 @@ export default function FabricDetail() {
 
   return (
     <div className="w-full bg-[#FAF7F2] min-h-screen py-6">
+      <SEOMeta title={`${fabric.name} | JoJo Flora Couture`} description={fabric.description} />
       <section className="w-full px-4 sm:px-6 pt-8 pb-6">
         <div className="max-w-5xl mx-auto">
           <button
@@ -217,6 +223,29 @@ export default function FabricDetail() {
                   background: `linear-gradient(135deg, ${fabric.hex} 0%, ${fabric.hex}CC 55%, #1B1512 100%)`,
                 }}
               >
+                {/* Wishlist Heart Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    void toggleWishlist({
+                      fabricId: fabric.id,
+                      fabricName: fabric.name,
+                      tone: fabric.tone,
+                      hex: fabric.hex,
+                      pricePerMeter: fabric.pricePerMeter,
+                    });
+                  }}
+                  className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/90 hover:bg-white text-[#1B1512] shadow-md transition-all hover:scale-110"
+                  aria-label={isWishlisted(fabric.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                >
+                  <Heart
+                    className={`h-5 w-5 transition-colors ${
+                      isWishlisted(fabric.id)
+                        ? 'fill-red-600 text-red-600'
+                        : 'text-[#1B1512]/70 hover:text-red-500'
+                    }`}
+                  />
+                </button>
                 <div className="relative z-10 p-5 sm:p-6">
                   <h1
                     className="text-2xl sm:text-3xl lg:text-4xl italic text-[#F6F1E7] drop-shadow-sm"
@@ -448,6 +477,31 @@ export default function FabricDetail() {
                     <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-black/60 text-white px-2 py-0.5 rounded">
                       {related.tone}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void toggleWishlist({
+                          fabricId: related.id,
+                          fabricName: related.name,
+                          tone: related.tone,
+                          hex: related.hex,
+                          pricePerMeter: related.pricePerMeter,
+                        });
+                      }}
+                      className="absolute top-2 right-2 p-1 rounded-full bg-white/80 hover:bg-white text-[#1B1512] shadow-sm transition-all hover:scale-110 z-10"
+                      aria-label={
+                        isWishlisted(related.id) ? 'Remove from wishlist' : 'Add to wishlist'
+                      }
+                    >
+                      <Heart
+                        className={`h-3.5 w-3.5 transition-colors ${
+                          isWishlisted(related.id)
+                            ? 'fill-red-600 text-red-600'
+                            : 'text-[#1B1512]/70 hover:text-red-500'
+                        }`}
+                      />
+                    </button>
                   </div>
                   <div className="p-3 flex-1 flex flex-col justify-between">
                     <div>

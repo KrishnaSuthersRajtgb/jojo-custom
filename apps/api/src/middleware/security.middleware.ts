@@ -49,8 +49,10 @@ export const apiLimiter = rateLimit({
  */
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:4173',
   'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
   'http://127.0.0.1:4173',
   process.env['CLIENT_URL'],
 ].filter(Boolean) as string[];
@@ -66,5 +68,6 @@ export const corsOptions: CorsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-username', 'x-user-key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-username', 'x-user-key', 'x-admin'],
+  exposedHeaders: ['x-fresh-token'],
 };

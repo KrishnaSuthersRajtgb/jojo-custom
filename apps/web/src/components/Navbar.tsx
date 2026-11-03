@@ -20,8 +20,11 @@ import {
   ArrowRight,
   Sparkles,
   ExternalLink,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDarkMode } from '../context/DarkModeContext';
 
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
@@ -41,6 +44,7 @@ interface NavbarProps {
 export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDark, toggleDark } = useDarkMode();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [recentOrders, setRecentOrders] = useState<
@@ -93,7 +97,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
       </div>
 
       {/* ── 2. Haute-Couture Main Navigation ─────────────────────────────── */}
-      <nav className="w-full h-20 px-6 md:px-12 flex items-center justify-between border-b border-[#E7DFCE]/70 bg-[#FAF7F2]/95 backdrop-blur-md transition-all">
+      <nav className="w-full h-20 px-6 md:px-12 flex items-center justify-between border-b border-[#E7DFCE]/70 dark:border-[#2A231E] bg-[#FAF7F2]/95 dark:bg-[#13100E]/95 backdrop-blur-md transition-all">
         {/* Left Links */}
         <div className="hidden lg:flex items-center gap-8">
           <button
@@ -102,8 +106,8 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
             }}
             className={`text-[11px] tracking-[0.22em] uppercase font-medium transition-colors ${
               isActive('/custom-outfit')
-                ? 'text-[#5C1A32] font-semibold'
-                : 'text-[#1B1512]/80 hover:text-[#5C1A32]'
+                ? 'text-[#5C1A32] dark:text-[#B8935A] font-semibold'
+                : 'text-[#1B1512]/80 dark:text-[#E8DFC8]/80 hover:text-[#5C1A32] dark:hover:text-[#B8935A]'
             }`}
           >
             Bespoke
@@ -114,8 +118,8 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
             }}
             className={`text-[11px] tracking-[0.22em] uppercase font-medium transition-colors ${
               isActive('/fabrics')
-                ? 'text-[#5C1A32] font-semibold'
-                : 'text-[#1B1512]/80 hover:text-[#5C1A32]'
+                ? 'text-[#5C1A32] dark:text-[#B8935A] font-semibold'
+                : 'text-[#1B1512]/80 dark:text-[#E8DFC8]/80 hover:text-[#5C1A32] dark:hover:text-[#B8935A]'
             }`}
           >
             Fabric Library
@@ -126,8 +130,8 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
             }}
             className={`text-[11px] tracking-[0.22em] uppercase font-medium transition-colors ${
               isActive('/franchise')
-                ? 'text-[#5C1A32] font-semibold'
-                : 'text-[#1B1512]/80 hover:text-[#5C1A32]'
+                ? 'text-[#5C1A32] dark:text-[#B8935A] font-semibold'
+                : 'text-[#1B1512]/80 dark:text-[#E8DFC8]/80 hover:text-[#5C1A32] dark:hover:text-[#B8935A]'
             }`}
           >
             Franchise
@@ -142,7 +146,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
           className="flex flex-col items-center justify-center text-center group cursor-pointer"
         >
           <span
-            className="text-2xl md:text-3xl text-[#1B1512] font-normal tracking-[0.28em] transition-transform duration-300 group-hover:scale-[1.02]"
+            className="text-2xl md:text-3xl text-[#1B1512] dark:text-[#FAF7F2] font-normal tracking-[0.28em] transition-transform duration-300 group-hover:scale-[1.02]"
             style={serif}
           >
             JOJO
@@ -166,6 +170,20 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
               <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#5C1A32] text-[#FAF7F2] text-[10px] font-bold flex items-center justify-center">
                 {recentOrders.length}
               </span>
+            )}
+          </button>
+
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={toggleDark}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label="Toggle dark mode"
+            className="p-2 text-[#1B1512]/75 hover:text-[#5C1A32] dark:text-[#E8DFC8] dark:hover:text-[#B8935A] transition-colors rounded-full hover:bg-[#5C1A32]/5 dark:hover:bg-white/5"
+          >
+            {isDark ? (
+              <Sun className="h-[18px] w-[18px] text-[#B8935A]" strokeWidth={1.5} />
+            ) : (
+              <Moon className="h-[18px] w-[18px] text-[#5C1A32]" strokeWidth={1.5} />
             )}
           </button>
 
@@ -254,7 +272,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
             onClick={() => {
               void navigate('/measurements');
             }}
-            className="hidden sm:inline-flex items-center justify-center border border-[#1B1512]/35 text-[#1B1512] hover:bg-[#5C1A32] hover:text-[#FAF7F2] hover:border-[#5C1A32] text-[10px] md:text-[11px] uppercase tracking-[0.2em] font-medium px-5 py-2.5 rounded-none transition-all duration-300 shadow-sm"
+            className="hidden sm:inline-flex items-center justify-center border border-[#1B1512]/35 dark:border-[#E8DFC8]/35 text-[#1B1512] dark:text-[#FAF7F2] hover:bg-[#5C1A32] hover:text-[#FAF7F2] hover:border-[#5C1A32] text-[10px] md:text-[11px] uppercase tracking-[0.2em] font-medium px-5 py-2.5 rounded-none transition-all duration-300 shadow-sm"
           >
             Book A Fitting
           </button>
@@ -262,7 +280,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 text-[#1B1512] hover:text-[#5C1A32]"
+            className="lg:hidden p-2 text-[#1B1512] dark:text-[#FAF7F2] hover:text-[#5C1A32]"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -272,13 +290,13 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#FAF7F2] border-b border-[#E7DFCE] px-6 py-6 space-y-4 shadow-xl">
+        <div className="lg:hidden bg-[#FAF7F2] dark:bg-[#13100E] border-b border-[#E7DFCE] dark:border-[#2A231E] px-6 py-6 space-y-4 shadow-xl">
           <button
             onClick={() => {
               setMobileMenuOpen(false);
               void navigate('/custom-outfit');
             }}
-            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] hover:text-[#5C1A32]"
+            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] dark:text-[#FAF7F2] hover:text-[#5C1A32] dark:hover:text-[#B8935A]"
           >
             Bespoke Atelier
           </button>
@@ -287,7 +305,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
               setMobileMenuOpen(false);
               void navigate('/fabrics');
             }}
-            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] hover:text-[#5C1A32]"
+            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] dark:text-[#FAF7F2] hover:text-[#5C1A32] dark:hover:text-[#B8935A]"
           >
             Fabric Library
           </button>
@@ -296,7 +314,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
               setMobileMenuOpen(false);
               void navigate('/franchise');
             }}
-            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] hover:text-[#5C1A32]"
+            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] dark:text-[#FAF7F2] hover:text-[#5C1A32] dark:hover:text-[#B8935A]"
           >
             Franchise
           </button>
@@ -305,7 +323,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
               setMobileMenuOpen(false);
               void navigate('/measurements');
             }}
-            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] hover:text-[#5C1A32]"
+            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] dark:text-[#FAF7F2] hover:text-[#5C1A32] dark:hover:text-[#B8935A]"
           >
             Book A Fitting
           </button>
@@ -314,18 +332,18 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
               setMobileMenuOpen(false);
               void navigate('/order-tracking');
             }}
-            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] hover:text-[#5C1A32]"
+            className="block w-full text-left text-xs uppercase tracking-[0.2em] font-medium py-2 text-[#1B1512] dark:text-[#FAF7F2] hover:text-[#5C1A32] dark:hover:text-[#B8935A]"
           >
             My Orders
           </button>
           {!user && (
-            <div className="pt-4 border-t border-[#E7DFCE] flex gap-4">
+            <div className="pt-4 border-t border-[#E7DFCE] dark:border-[#2A231E] flex gap-4">
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onLogin?.();
                 }}
-                className="text-xs uppercase tracking-[0.18em] font-semibold text-[#1B1512] hover:text-[#5C1A32]"
+                className="text-xs uppercase tracking-[0.18em] font-semibold text-[#1B1512] dark:text-[#FAF7F2] hover:text-[#5C1A32] dark:hover:text-[#B8935A]"
               >
                 Sign In
               </button>
@@ -335,7 +353,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
                   setMobileMenuOpen(false);
                   onSignIn?.();
                 }}
-                className="text-xs uppercase tracking-[0.18em] font-semibold text-[#5C1A32] hover:underline"
+                className="text-xs uppercase tracking-[0.18em] font-semibold text-[#5C1A32] dark:text-[#B8935A] hover:underline"
               >
                 Register
               </button>

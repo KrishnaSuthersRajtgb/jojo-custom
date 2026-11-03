@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import SEOMeta from '../components/SEOMeta';
+import { useAuth, type SignupPayload } from '../context/AuthContext';
 
 // ── Design tokens (same family as Home.jsx) ────────────────────────────────
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
@@ -17,6 +18,7 @@ export default function SignupPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +50,17 @@ export default function SignupPage() {
 
     setSubmitting(true);
     try {
-      await signup({ username, email, gender, phoneNumber, password });
+      const payload: SignupPayload = {
+        username,
+        email,
+        gender,
+        phoneNumber,
+        password,
+      };
+      if (referralCode.trim()) {
+        payload.referralCode = referralCode.trim().toUpperCase();
+      }
+      await signup(payload);
       void navigate('/login', { replace: true, state: { justSignedUp: true } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed. Please try again.');
@@ -59,6 +71,10 @@ export default function SignupPage() {
 
   return (
     <div className="w-full bg-[#FAF7F2] min-h-[calc(100vh-7rem)] flex flex-col justify-center py-16 px-6">
+      <SEOMeta
+        title="Create Account | JoJo Flora Couture"
+        description="Join the JoJo Flora atelier to commission bespoke outfits, track master tailoring, and save your measurements."
+      />
       <div className="max-w-lg w-full mx-auto">
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-full border border-[#B8935A]/60 bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">
@@ -201,6 +217,24 @@ export default function SignupPage() {
                   className="w-full px-4 py-2.5 bg-[#FAF7F2] border border-[#5C1A32]/20 text-sm text-[#1B1512] focus:outline-none focus:border-[#5C1A32] focus:bg-white transition-colors"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold tracking-wider text-[#1B1512] uppercase mb-1.5">
+                Referral Code{' '}
+                <span className="text-[#8A7968] font-normal lowercase">
+                  (optional — earn ₹200 on first order)
+                </span>
+              </label>
+              <input
+                type="text"
+                value={referralCode}
+                onChange={(e) => {
+                  setReferralCode(e.target.value.toUpperCase());
+                }}
+                placeholder="e.g. JOJO-SARAH-4912"
+                className="w-full px-4 py-2.5 bg-[#FAF7F2] border border-[#5C1A32]/20 text-sm text-[#1B1512] focus:outline-none focus:border-[#5C1A32] focus:bg-white transition-colors uppercase tracking-wider"
+              />
             </div>
 
             <button

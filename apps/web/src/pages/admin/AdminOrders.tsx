@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Package,
   User,
@@ -9,6 +10,7 @@ import {
   ChevronDown,
   ShieldCheck,
   ImagePlus,
+  ArrowLeft,
 } from 'lucide-react';
 import type { Address } from '../../context/AddressContext';
 import { orderApi } from '../../services';
@@ -167,11 +169,24 @@ export default function AdminOrders() {
 
   return (
     <div className="w-full bg-[#FAF7F2] min-h-screen">
-      <section className="w-full px-6 py-12">
+      <section className="w-full px-4 sm:px-6 py-6 sm:py-12">
         <div className="max-w-5xl mx-auto">
+          <div className="mb-4">
+            <Link
+              to="/admin"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase text-[#5C1A32] hover:text-[#451325] hover:underline transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Atelier Portal</span>
+            </Link>
+          </div>
+
           <div className="flex items-center gap-2.5 mb-2">
             <ShieldCheck className="h-6 w-6 text-[#5C1A32]" />
-            <h1 className="text-3xl sm:text-4xl text-[#1B1512] font-normal" style={serif}>
+            <h1
+              className="text-2xl sm:text-3xl md:text-4xl text-[#1B1512] font-normal"
+              style={serif}
+            >
               Atelier · All Orders
             </h1>
           </div>
@@ -179,28 +194,28 @@ export default function AdminOrders() {
             Centralized registry of client bespoke garments &amp; payments
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-8">
-            <div className="bg-white border border-[#5C1A32]/12 p-6 shadow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5 mt-6 sm:mt-8">
+            <div className="bg-white border border-[#5C1A32]/12 p-4 sm:p-6 shadow-sm">
               <p className="text-[10px] font-semibold tracking-wider text-[#544B45] uppercase mb-1">
                 Total Orders
               </p>
-              <p className="text-3xl text-[#1B1512] font-normal" style={serif}>
+              <p className="text-2xl sm:text-3xl text-[#1B1512] font-normal" style={serif}>
                 {orders.length}
               </p>
             </div>
-            <div className="bg-white border border-[#5C1A32]/12 p-6 shadow-sm">
+            <div className="bg-white border border-[#5C1A32]/12 p-4 sm:p-6 shadow-sm">
               <p className="text-[10px] font-semibold tracking-wider text-[#544B45] uppercase mb-1">
                 Paid Orders
               </p>
-              <p className="text-3xl text-[#1B1512] font-normal" style={serif}>
+              <p className="text-2xl sm:text-3xl text-[#1B1512] font-normal" style={serif}>
                 {orders.filter((o) => o.paymentId).length}
               </p>
             </div>
-            <div className="bg-white border border-[#5C1A32]/12 p-6 shadow-sm">
+            <div className="bg-white border border-[#5C1A32]/12 p-4 sm:p-6 shadow-sm">
               <p className="text-[10px] font-semibold tracking-wider text-[#544B45] uppercase mb-1">
                 Revenue Collected
               </p>
-              <p className="text-3xl text-[#5C1A32] font-normal" style={serif}>
+              <p className="text-2xl sm:text-3xl text-[#5C1A32] font-normal" style={serif}>
                 {formatRupees(totalRevenue)}
               </p>
             </div>
@@ -208,10 +223,10 @@ export default function AdminOrders() {
         </div>
       </section>
 
-      <section className="w-full px-6 pb-20">
-        <div className="max-w-5xl mx-auto space-y-5">
+      <section className="w-full px-4 sm:px-6 pb-20">
+        <div className="max-w-5xl mx-auto space-y-4 sm:space-y-5">
           {orders.length === 0 ? (
-            <div className="bg-white border border-[#5C1A32]/15 p-12 text-center shadow-sm">
+            <div className="bg-white border border-[#5C1A32]/15 p-8 sm:p-12 text-center shadow-sm">
               <Package className="h-8 w-8 text-[#5C1A32]/30 mx-auto mb-3" />
               <p className="text-[#544B45] text-sm">No orders registered in the system yet.</p>
             </div>
@@ -229,11 +244,11 @@ export default function AdminOrders() {
                     onClick={() => {
                       setExpandedId(isOpen ? null : order.id);
                     }}
-                    className="w-full text-left px-5 py-4 flex items-center justify-between gap-4"
+                    className="w-full text-left p-4 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer hover:bg-[#FAF7F2]/40 transition-colors"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-[#1B1512] truncate">
+                        <p className="font-semibold text-sm sm:text-base text-[#1B1512] truncate">
                           {d.fabricName} · {d.garmentLabel ?? d.garment}
                         </p>
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#4A413B] bg-[#5C1A32]/10 rounded-full px-2 py-0.5">
@@ -241,28 +256,33 @@ export default function AdminOrders() {
                           {order.username}
                         </span>
                       </div>
-                      <p className="text-xs text-[#4A413B]/60 mt-0.5">
+                      <p className="text-xs text-[#4A413B]/60 mt-0.5 line-clamp-1 sm:line-clamp-none">
                         Placed {formatDate(order.placedAt)} · Deliver to {order.address.fullName},{' '}
                         {order.address.city}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {order.paymentId ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-[#5C1A32] bg-[#5C1A32]/5 border border-[#5C1A32]/15 rounded-full px-2.5 py-1">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Paid
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#5C1A32]/8 w-full sm:w-auto">
+                      <div className="flex items-center gap-2">
+                        {order.paymentId ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-[#5C1A32] bg-[#5C1A32]/5 border border-[#5C1A32]/15 rounded-full px-2.5 py-1">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Paid
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-[#B8935A] bg-[#B8935A]/10 border border-[#B8935A]/25 rounded-full px-2.5 py-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            Pending
+                          </span>
+                        )}
+                        <span
+                          className="text-base sm:text-lg text-[#5C1A32] font-semibold"
+                          style={serif}
+                        >
+                          {formatRupees(d.total)}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-[#B8935A] bg-[#B8935A]/10 border border-[#B8935A]/25 rounded-full px-2.5 py-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          Pending
-                        </span>
-                      )}
-                      <span className="text-lg text-[#5C1A32]" style={serif}>
-                        {formatRupees(d.total)}
-                      </span>
+                      </div>
                       <ChevronDown
-                        className={`h-4 w-4 text-[#4A413B]/50 transition-transform ${
+                        className={`h-4 w-4 text-[#4A413B]/50 transition-transform shrink-0 ${
                           isOpen ? 'rotate-180' : ''
                         }`}
                       />
@@ -270,7 +290,7 @@ export default function AdminOrders() {
                   </button>
 
                   {isOpen && (
-                    <div className="border-t border-[#5C1A32]/10 px-5 py-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div className="border-t border-[#5C1A32]/10 p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
                       {/* Left: delivery, style, body type, reference photo, invoice */}
                       <div className="space-y-4">
                         <div>
@@ -386,12 +406,15 @@ export default function AdminOrders() {
                               Size Details Used
                             </h3>
                           </div>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                             {Object.entries(d.measurementValues).map(([label, value], idx) => (
-                              <div key={label} className="flex items-center gap-2 text-sm">
+                              <div
+                                key={label}
+                                className="flex items-center gap-2 text-sm bg-[#FAF7F2] sm:bg-transparent p-2 sm:p-0 rounded border sm:border-0 border-[#5C1A32]/10"
+                              >
                                 <span className="w-4 text-xs text-[#4A413B]/50">{idx + 1}</span>
-                                <span className="flex-1 text-[#4A413B]">{label}</span>
-                                <span className="font-medium text-[#1B1512]">
+                                <span className="flex-1 text-[#4A413B] truncate">{label}</span>
+                                <span className="font-medium text-[#1B1512] shrink-0">
                                   {value && value.trim() !== '' ? value : '0.0'} in
                                 </span>
                               </div>

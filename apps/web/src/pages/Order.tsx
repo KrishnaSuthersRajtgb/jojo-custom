@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,10 +14,14 @@ import {
   ShieldCheck,
   Truck,
   CheckCircle2,
+  Gift,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { useAddresses, type AddressType } from '../context/AddressContext';
 import { useAuth } from '../context/AuthContext';
 import { getCoutureSketchForGarment } from '../utils/coutureSketches';
+import { getEstimatedDeliveryDate, formatDeliveryDate } from '../utils/deliveryEstimate';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx)
 //   ink      #1B1512  headings, primary text
@@ -92,6 +97,11 @@ interface CustomOutfitOrderState {
   fabric?: CustomFabric | null;
   referenceImage?: CustomReferenceImage | null;
   grandTotal?: number;
+  isGift?: boolean;
+  giftRecipientName?: string;
+  giftMessage?: string;
+  giftWrapFee?: number;
+  estimatedDeliveryDate?: string;
 }
 
 type IncomingOrderState = DirectOrderState | CustomOutfitOrderState;
@@ -126,6 +136,11 @@ interface NormalizedOrder {
   measurementValues?: Record<string, string> | null | undefined;
   bodyType?: string | null | undefined;
   referenceImage?: CustomReferenceImage | null | undefined;
+  isGift?: boolean;
+  giftRecipientName?: string;
+  giftMessage?: string;
+  giftWrapFee?: number;
+  estimatedDeliveryDate?: string;
 }
 
 function normalizeOrder(
@@ -133,6 +148,7 @@ function normalizeOrder(
   bodyType: string | null,
 ): NormalizedOrder | null {
   if (isDirectOrder(state)) {
+    const estDate = formatDeliveryDate(getEstimatedDeliveryDate(state.garment));
     return {
       isCustom: false,
       fabricId: state.fabricId,
@@ -145,6 +161,9 @@ function normalizeOrder(
       accessories: [],
       accessoriesTotal: 0,
       total: state.total,
+      isGift: false,
+      giftWrapFee: 0,
+      estimatedDeliveryDate: estDate,
     };
   }
 
@@ -161,6 +180,10 @@ function normalizeOrder(
     0,
   );
   const totalTailoring = custom.totalTailoring ?? baseTailoringPrice + styleTailoring;
+  const giftWrapFee = custom.giftWrapFee ?? (custom.isGift ? 150 : 0);
+  const estDate =
+    custom.estimatedDeliveryDate ??
+    formatDeliveryDate(getEstimatedDeliveryDate(fabric?.garment ?? custom.productId ?? 'blouse'));
 
   return {
     isCustom: true,
@@ -178,7 +201,7 @@ function normalizeOrder(
     selections: custom.selections,
     accessories,
     accessoriesTotal,
-    total: custom.grandTotal ?? fabricTotal + accessoriesTotal + totalTailoring,
+    total: custom.grandTotal ?? fabricTotal + accessoriesTotal + totalTailoring + giftWrapFee,
     // custom.measurementValues comes from ProductSummary.tsx's router
     // state; bodyType isn't part of that flow's state, so it's read
     // from the same localStorage key MeasurementSidebar.tsx/
@@ -186,6 +209,11 @@ function normalizeOrder(
     measurementValues: custom.measurementValues,
     bodyType,
     referenceImage: custom.referenceImage,
+    isGift: custom.isGift ?? false,
+    giftRecipientName: custom.giftRecipientName ?? '',
+    giftMessage: custom.giftMessage ?? '',
+    giftWrapFee,
+    estimatedDeliveryDate: estDate,
   };
 }
 
@@ -206,7 +234,8 @@ export default function Order() {
   const storedBodyType = localStorage.getItem(bodyTypeKey);
 
   const orderDetails = incoming ? normalizeOrder(incoming, storedBodyType) : null;
-  const { defaultAddress } = useAddresses();
+  const { addresses, defaultAddress } = useAddresses();
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
 
   // Guard: someone landed on /order directly without going through Buy Now
   // or Customize to JOJO
@@ -214,12 +243,18 @@ export default function Order() {
     return <Navigate to="/fabrics" replace />;
   }
 
+  const activeAddress =
+    (selectedAddressId ? addresses.find((a) => a.id === selectedAddressId) : null) ??
+    defaultAddress ??
+    addresses[0] ??
+    null;
+
   const handlePlaceOrder = () => {
-    if (!defaultAddress) {
+    if (!activeAddress) {
       void navigate('/addresses');
       return;
     }
-    void navigate('/payment', { state: { orderDetails, address: defaultAddress } });
+    void navigate('/payment', { state: { orderDetails, address: activeAddress } });
   };
 
   const illustration = getCoutureSketchForGarment(
@@ -420,6 +455,41 @@ export default function Order() {
                       </p>
                     </div>
                   )}
+
+                  {/* Estimated Delivery Date (Feature 1) */}
+                  <div className="py-3 flex items-center justify-between text-xs bg-[#FAF7F2] -mx-5 px-5 border-t border-[#5C1A32]/10">
+                    <span className="flex items-center gap-2 font-semibold text-[#1B1512]">
+                      <Calendar className="h-4 w-4 text-[#B8935A]" />
+                      Estimated Ready &amp; Dispatched By:
+                    </span>
+                    <span className="font-bold text-[#5C1A32]">
+                      {orderDetails.estimatedDeliveryDate}
+                    </span>
+                  </div>
+
+                  {/* Gift Wrap Section in Order Details (Feature 2) */}
+                  {orderDetails.isGift && (
+                    <div className="py-3 bg-pink-50/60 -mx-5 px-5 border-t border-pink-200/60 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs font-bold text-[#5C1A32]">
+                        <span className="flex items-center gap-1.5">
+                          <Gift className="h-4 w-4 text-[#B8935A]" />
+                          Artisanal Gift Wrapping &amp; Personalized Note Included
+                        </span>
+                        <span>+{formatRupees(orderDetails.giftWrapFee || 150)}</span>
+                      </div>
+                      {orderDetails.giftRecipientName && (
+                        <p className="text-xs text-[#1B1512]">
+                          <span className="text-[#8A7968]">Recipient:</span>{' '}
+                          <strong>{orderDetails.giftRecipientName}</strong>
+                        </p>
+                      )}
+                      {orderDetails.giftMessage && (
+                        <p className="text-xs italic bg-white/90 p-2 rounded border border-pink-100 text-[#4A413B]">
+                          "{orderDetails.giftMessage}"
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -430,45 +500,74 @@ export default function Order() {
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-[#5C1A32]" />
                   <h2 className="text-xs font-bold tracking-[0.2em] text-[#1B1512] uppercase">
-                    Delivery Destination
+                    Delivery Destination {addresses.length > 0 ? `(${addresses.length} Saved)` : ''}
                   </h2>
                 </div>
-                {defaultAddress && (
-                  <button
-                    onClick={() => {
-                      void navigate('/addresses');
-                    }}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#5C1A32] hover:underline"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Change Address
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    void navigate('/addresses');
+                  }}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#5C1A32] hover:underline"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Manage Addresses
+                </button>
               </div>
 
-              {defaultAddress ? (
-                (() => {
-                  const TypeIcon = TYPE_META[defaultAddress.type].icon;
-                  return (
-                    <div className="p-4 rounded-lg bg-[#FAF7F2] border border-[#5C1A32]/10 space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-[#5C1A32] uppercase mb-1">
-                        <TypeIcon className="h-3.5 w-3.5 text-[#B8935A]" />
-                        <span>{TYPE_META[defaultAddress.type].label} DESTINATION</span>
-                      </div>
-                      <p className="font-bold text-sm text-[#1B1512]">{defaultAddress.fullName}</p>
-                      <p className="text-xs text-[#544B45] leading-relaxed">
-                        {defaultAddress.line1}
-                        {defaultAddress.line2 ? `, ${defaultAddress.line2}` : ''}
-                        {defaultAddress.landmark ? `, Near ${defaultAddress.landmark}` : ''}
-                        <br />
-                        {defaultAddress.city}, {defaultAddress.state} - {defaultAddress.pincode}
-                      </p>
-                      <p className="text-xs text-[#544B45] font-semibold pt-1">
-                        Contact: {defaultAddress.phone}
-                      </p>
-                    </div>
-                  );
-                })()
+              {addresses.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-[#544B45]">
+                    Select destination for this bespoke commission:
+                  </p>
+                  <div className="space-y-2.5">
+                    {addresses.map((addr) => {
+                      const isSelected = activeAddress?.id === addr.id;
+                      const TypeIcon = TYPE_META[addr.type].icon;
+                      return (
+                        <label
+                          key={addr.id}
+                          className={`flex items-start gap-3 p-3.5 rounded-lg border cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-[#5C1A32]/5 border-[#5C1A32] ring-1 ring-[#5C1A32]/20'
+                              : 'bg-[#FAF7F2] border-[#5C1A32]/10 hover:border-[#5C1A32]/30'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="checkout_selected_address"
+                            checked={isSelected}
+                            onChange={() => setSelectedAddressId(addr.id)}
+                            className="w-4 h-4 mt-0.5 text-[#5C1A32] accent-[#5C1A32] cursor-pointer"
+                          />
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest text-[#5C1A32] uppercase bg-[#5C1A32]/10 px-2 py-0.5 rounded">
+                                <TypeIcon className="h-3 w-3 text-[#B8935A]" />
+                                {addr.label || TYPE_META[addr.type].label}
+                              </span>
+                              {addr.isDefault && (
+                                <span className="text-[10px] text-[#8A7968] font-medium">
+                                  (Default)
+                                </span>
+                              )}
+                              <span className="font-bold text-xs text-[#1B1512] truncate">
+                                {addr.fullName}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#544B45] leading-relaxed">
+                              {addr.line1}
+                              {addr.line2 ? `, ${addr.line2}` : ''}
+                              {addr.landmark ? `, Near ${addr.landmark}` : ''}
+                              {' · '}
+                              {addr.city}, {addr.state} - {addr.pincode}
+                            </p>
+                            <p className="text-[11px] text-[#736357]">Contact: {addr.phone}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
               ) : (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-dashed border-[#5C1A32]/30 p-4 bg-[#FAF7F2]/50">
                   <p className="text-xs text-[#544B45]">
@@ -571,9 +670,31 @@ export default function Order() {
                   </div>
                 )}
 
+                {/* Gift Wrapping line item (Feature 2) */}
+                {orderDetails.isGift && (
+                  <div className="flex items-center justify-between text-[#5C1A32]">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Gift className="h-3.5 w-3.5 text-[#B8935A]" />
+                      Gift Wrapping
+                    </span>
+                    <span className="font-semibold font-mono">
+                      +{formatRupees(orderDetails.giftWrapFee || 150)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-[#544B45]">
                   <span>Insured Express Courier</span>
                   <span className="font-semibold text-emerald-700">FREE</span>
+                </div>
+
+                {/* Estimated Delivery line item (Feature 1) */}
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-[#5C1A32]/10 text-[#5C1A32]">
+                  <span className="flex items-center gap-1 font-medium">
+                    <Clock className="h-3.5 w-3.5 text-[#B8935A]" />
+                    Estimated Ready By:
+                  </span>
+                  <span className="font-bold text-xs">{orderDetails.estimatedDeliveryDate}</span>
                 </div>
               </div>
 
@@ -595,7 +716,7 @@ export default function Order() {
                 onClick={handlePlaceOrder}
                 className="w-full py-3.5 px-6 rounded-lg bg-[#5C1A32] hover:bg-[#431224] text-white text-sm font-bold uppercase tracking-wider shadow-sm transition-all hover:shadow-md flex items-center justify-center gap-2 group"
               >
-                <span>{defaultAddress ? 'Proceed to Payment' : 'Add Address to Continue'}</span>
+                <span>{activeAddress ? 'Proceed to Payment' : 'Add Address to Continue'}</span>
                 <ArrowLeft className="h-4 w-4 rotate-180 group-hover:translate-x-1 transition-transform" />
               </button>
 

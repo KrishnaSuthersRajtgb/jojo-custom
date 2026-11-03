@@ -9,9 +9,11 @@ import {
   Sparkles,
   Scissors,
   CheckCircle,
+  Gift,
 } from 'lucide-react';
 
 import { getCoutureSketchForGarment } from '../utils/coutureSketches';
+import { getEstimatedDeliveryDate, formatDeliveryDate } from '../utils/deliveryEstimate';
 import AmazonInvoiceModal from '../components/AmazonInvoiceModal';
 
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
@@ -80,7 +82,20 @@ export default function ProductSummary() {
   const fabric = state.fabric ?? null;
   const referenceImage = state.referenceImage ?? null;
   const fabricTotal = fabric?.fabricTotal ?? 0;
-  const grandTotal = accessoriesTotal + fabricTotal + totalTailoring;
+
+  // Gift wrap options (Feature 2)
+  const [isGift, setIsGift] = useState(false);
+  const [giftRecipientName, setGiftRecipientName] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
+  const GIFT_WRAP_FEE = 150;
+  const giftFee = isGift ? GIFT_WRAP_FEE : 0;
+
+  const grandTotal = accessoriesTotal + fabricTotal + totalTailoring + giftFee;
+
+  // Estimated delivery calculation (Feature 1)
+  const garmentId = productId || state.fabric?.garment || 'blouse';
+  const estimatedDeliveryDate = getEstimatedDeliveryDate(garmentId);
+  const formattedDeliveryDate = formatDeliveryDate(estimatedDeliveryDate);
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
@@ -103,6 +118,11 @@ export default function ProductSummary() {
         fabric,
         referenceImage,
         grandTotal,
+        estimatedDeliveryDate: formattedDeliveryDate,
+        isGift,
+        giftRecipientName: isGift ? giftRecipientName : '',
+        giftMessage: isGift ? giftMessage : '',
+        giftWrapFee: giftFee,
       },
     });
   };
@@ -123,6 +143,11 @@ export default function ProductSummary() {
       total: grandTotal,
       accessories,
       selections,
+      estimatedDeliveryDate: formattedDeliveryDate,
+      isGift,
+      giftRecipientName: isGift ? giftRecipientName : '',
+      giftMessage: isGift ? giftMessage : '',
+      giftWrapFee: giftFee,
     },
     address: {
       fullName: 'Atelier Patron',
@@ -353,6 +378,73 @@ export default function ProductSummary() {
               </div>
             )}
 
+            {/* Atelier Gift Concierge (Feature 2) */}
+            <div className="rounded-xl bg-white border border-[#5C1A32]/15 shadow-sm p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#5C1A32]/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-[#B8935A]" />
+                  <h2 className="text-xs font-bold tracking-widest text-[#1B1512] uppercase">
+                    Atelier Gift Concierge
+                  </h2>
+                </div>
+                <span className="text-xs font-semibold text-[#5C1A32]">
+                  {isGift ? '+₹150' : 'Optional'}
+                </span>
+              </div>
+
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isGift}
+                  onChange={(e) => setIsGift(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#5C1A32] focus:ring-[#5C1A32]"
+                />
+                <div className="text-xs">
+                  <span className="font-semibold text-[#1B1512] block">
+                    🎁 This is a Gift (+₹150)
+                  </span>
+                  <span className="text-[#8A7968]">
+                    Delivered in luxury velvet-lined gift wrap with a satin ribbon and a
+                    personalized handwritten greeting card.
+                  </span>
+                </div>
+              </label>
+
+              {isGift && (
+                <div className="pt-2 space-y-3 bg-[#FAF7F2] p-4 rounded-lg border border-[#5C1A32]/10">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1B1512] mb-1">
+                      Recipient Name
+                    </label>
+                    <input
+                      type="text"
+                      value={giftRecipientName}
+                      onChange={(e) => setGiftRecipientName(e.target.value)}
+                      placeholder="e.g. Priya Sundaram"
+                      maxLength={60}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#5C1A32]/20 rounded-md focus:outline-none focus:border-[#5C1A32]"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1B1512]">
+                        Gift Message (Max 150 chars)
+                      </label>
+                      <span className="text-[10px] text-[#8A7968]">{giftMessage.length}/150</span>
+                    </div>
+                    <textarea
+                      value={giftMessage}
+                      onChange={(e) => setGiftMessage(e.target.value)}
+                      placeholder="Write your heartfelt bespoke wishes..."
+                      maxLength={150}
+                      rows={3}
+                      className="w-full px-3 py-2 text-xs bg-white border border-[#5C1A32]/20 rounded-md focus:outline-none focus:border-[#5C1A32] resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Craftsmanship & Delivery Guarantees */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-lg bg-emerald-50/60 border border-emerald-200/60 p-4 flex items-start gap-3 text-xs text-emerald-950">
@@ -451,6 +543,13 @@ export default function ProductSummary() {
                     </span>
                   </div>
 
+                  {isGift && (
+                    <div className="flex items-center justify-between text-[#5C1A32] font-medium">
+                      <span>🎁 Artisanal Gift Wrapping &amp; Message</span>
+                      <span className="font-mono font-semibold">+{formatRupees(giftFee)}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-xs text-[#8A7968] pt-1 border-t border-dashed border-[#5C1A32]/10">
                     <span>Taxable Value:</span>
                     <span className="font-mono">{formatRupees(Math.round(grandTotal / 1.05))}</span>
@@ -465,6 +564,15 @@ export default function ProductSummary() {
                     <span>Insured Courier Shipping</span>
                     <span className="uppercase font-bold">Free</span>
                   </div>
+                </div>
+
+                {/* Estimated Delivery Date (Feature 1) */}
+                <div className="flex items-center justify-between text-xs text-[#5C1A32] bg-[#FAF7F2] p-3 rounded-lg border border-[#5C1A32]/15">
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <Clock className="h-4 w-4 text-[#B8935A]" />
+                    Estimated Ready By:
+                  </span>
+                  <span className="font-bold text-xs text-[#1B1512]">{formattedDeliveryDate}</span>
                 </div>
 
                 {/* Grand Total Box */}

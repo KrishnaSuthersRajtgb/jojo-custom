@@ -15,6 +15,7 @@ export interface Address {
   state: string;
   pincode: string;
   type: AddressType;
+  label?: string;
   isDefault: boolean;
 }
 
@@ -76,6 +77,9 @@ export function AddressProvider({ children }: { children: ReactNode }) {
     const newAddress: Address = {
       id: tempId,
       ...input,
+      label:
+        input.label ||
+        (input.type === 'work' ? 'Office' : input.type === 'other' ? 'Other' : 'Home'),
       isDefault: addresses.length === 0,
     };
     persist([...addresses, newAddress]);

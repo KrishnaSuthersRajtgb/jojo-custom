@@ -33,6 +33,8 @@ interface AddressFormState {
   state: string;
   pincode: string;
   type: AddressType;
+  label: string;
+  saveAsNew?: boolean;
 }
 
 const EMPTY_FORM: AddressFormState = {
@@ -45,6 +47,8 @@ const EMPTY_FORM: AddressFormState = {
   state: '',
   pincode: '',
   type: 'home',
+  label: 'Home',
+  saveAsNew: false,
 };
 
 const TYPE_META: Record<AddressType, { label: string; icon: typeof Home }> = {
@@ -216,6 +220,10 @@ export default function Address() {
       state: address.state,
       pincode: address.pincode,
       type: address.type,
+      label:
+        address.label ||
+        (address.type === 'work' ? 'Office' : address.type === 'other' ? 'Other' : 'Home'),
+      saveAsNew: false,
     });
     setEditingId(address.id);
     setPincodeStatus(null);
@@ -258,7 +266,7 @@ export default function Address() {
       return;
     }
 
-    if (editingId) {
+    if (editingId && !form.saveAsNew) {
       updateAddress(editingId, form);
       showToast('Address updated successfully');
     } else {
@@ -339,19 +347,31 @@ export default function Address() {
                   <div
                     key={address.id}
                     className={`relative flex flex-col rounded-sm border bg-white shadow-sm p-5 transition-colors ${
-                      address.isDefault ? 'border-[#5C1A32]' : 'border-[#5C1A32]/12'
+                      address.isDefault
+                        ? 'border-[#5C1A32] ring-1 ring-[#5C1A32]/20'
+                        : 'border-[#5C1A32]/12'
                     }`}
                   >
-                    {address.isDefault && (
-                      <span className="absolute top-4 right-4 inline-flex items-center gap-1 text-[11px] font-semibold text-[#5C1A32] bg-[#5C1A32]/8 px-2 py-0.5 rounded-full">
-                        <Check className="h-3 w-3" />
-                        Default
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.15em] text-[#1B1512] uppercase mb-2">
-                      <TypeIcon className="h-3.5 w-3.5 text-[#B8935A]" />
-                      {TYPE_META[address.type].label}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="selected_address_default"
+                          checked={address.isDefault}
+                          onChange={() => handleSetDefault(address.id)}
+                          className="w-4 h-4 text-[#5C1A32] accent-[#5C1A32] cursor-pointer"
+                        />
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.15em] text-[#1B1512] uppercase">
+                          <TypeIcon className="h-3.5 w-3.5 text-[#B8935A]" />
+                          <span>{address.label || TYPE_META[address.type].label}</span>
+                        </div>
+                      </label>
+                      {address.isDefault && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#5C1A32] bg-[#5C1A32]/8 px-2 py-0.5 rounded-full">
+                          <Check className="h-3 w-3" />
+                          Default
+                        </span>
+                      )}
                     </div>
 
                     <p className="font-semibold text-[#1B1512]">{address.fullName}</p>
@@ -615,29 +635,56 @@ export default function Address() {
                 </div>
 
                 <div>
-                  <label className={LABEL_CLASSES}>Address Type</label>
-                  <div className="flex gap-2">
+                  <label className={LABEL_CLASSES}>Address Type &amp; Label</label>
+                  <div className="flex gap-2 mb-2">
                     {(Object.keys(TYPE_META) as AddressType[]).map((t) => {
                       const Icon = TYPE_META[t].icon;
+                      const typeLabel = TYPE_META[t].label;
                       return (
                         <button
                           key={t}
                           type="button"
                           onClick={() => {
                             handleChange('type', t);
+                            setForm((prev) => ({ ...prev, label: typeLabel }));
                           }}
-                          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-sm border px-3 py-2.5 text-xs font-medium transition-colors ${
+                          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-sm border px-3 py-2 text-xs font-medium transition-colors ${
                             form.type === t
                               ? 'bg-[#5C1A32] border-[#5C1A32] text-[#F6F1E7]'
                               : 'border-[#5C1A32]/20 text-[#4A413B] hover:border-[#5C1A32]'
                           }`}
                         >
                           <Icon className="h-3.5 w-3.5" />
-                          {TYPE_META[t].label}
+                          {typeLabel}
                         </button>
                       );
                     })}
                   </div>
+                  <input
+                    type="text"
+                    placeholder="Custom Label (e.g. Home, Office, Studio, Other)"
+                    value={form.label}
+                    onChange={(e) => {
+                      handleChange('label', e.target.value);
+                    }}
+                    className={INPUT_CLASSES}
+                  />
+                </div>
+
+                <div className="sm:col-span-2 pt-1">
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-[#1B1512]">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.saveAsNew)}
+                      onChange={(e) => {
+                        setForm((prev) => ({ ...prev, saveAsNew: e.target.checked }));
+                      }}
+                      className="w-4 h-4 rounded text-[#5C1A32] accent-[#5C1A32]"
+                    />
+                    <span className="font-medium">
+                      Save as new address {editingId ? 'instead of updating current' : ''}
+                    </span>
+                  </label>
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import SEOMeta from '../components/SEOMeta';
 import {
   ArrowRight,
   ArrowLeft,
@@ -180,6 +181,10 @@ export default function Franchise() {
   if (submitted) {
     return (
       <div className="w-full bg-[#FAF7F2] min-h-[70vh] flex items-center py-12">
+        <SEOMeta
+          title="Franchise Opportunity | JoJo Flora Couture"
+          description="Partner with JoJo Flora Couture to bring bespoke luxury Indian tailoring to your city."
+        />
         <section className="w-full px-6 py-8">
           <div className="max-w-md mx-auto text-center bg-white border border-[#5C1A32]/12 rounded-sm shadow-sm p-10">
             <div className="h-14 w-14 rounded-full bg-[#5C1A32]/10 text-[#5C1A32] flex items-center justify-center mx-auto mb-6">
@@ -210,6 +215,10 @@ export default function Franchise() {
 
   return (
     <div className="w-full bg-[#FAF7F2] py-8">
+      <SEOMeta
+        title="Franchise Opportunity | JoJo Flora Couture"
+        description="Partner with JoJo Flora Couture to bring bespoke luxury Indian tailoring to your city."
+      />
       {/* ---------------- HERO ---------------- */}
       <section className="w-full px-6 pb-14">
         <div className="max-w-4xl mx-auto text-center">

@@ -5,3 +5,8 @@ export * from './order.controller.js';
 export * from './franchise.controller.js';
 export * from './health.controller.js';
 export * from './review.controller.js';
+export * from './analytics.controller.js';
+export * from './corporateInquiry.controller.js';
+export * from './wishlist.controller.js';
+export * from './moodboard.controller.js';
+export * from './referral.controller.js';

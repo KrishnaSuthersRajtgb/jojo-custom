@@ -1,5 +1,11 @@
 import type { Request, Response } from 'express';
-import { Order, type OrderDetails, type OrderAddress, type OrderStatus } from '../model/index.js';
+import {
+  Order,
+  User,
+  type OrderDetails,
+  type OrderAddress,
+  type OrderStatus,
+} from '../model/index.js';
 
 export class OrderController {
   /**
@@ -30,6 +36,7 @@ export class OrderController {
         id ??
         `ORD_${Date.now().toString()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
+      const initialStatus = 'confirmed';
       const order = await Order.create({
         id: generatedId,
         username,
@@ -37,9 +44,36 @@ export class OrderController {
         address,
         paymentId: paymentId ?? null,
         paymentStatus: paymentId ? 'paid' : 'pending',
-        status: 'placed',
+        status: initialStatus,
+        statusHistory: [
+          {
+            status: initialStatus,
+            timestamp: new Date(),
+            note: 'Order confirmed & sent to atelier',
+          },
+        ],
         placedAt: new Date(),
       });
+
+      // When a referred user places their first order, credit both users ₹200 as loyalty credits
+      try {
+        const orderCount = await Order.countDocuments({ username });
+        if (orderCount === 1) {
+          const buyer = await User.findOne({ username });
+          if (buyer && buyer.referredBy) {
+            buyer.loyaltyCredits = (buyer.loyaltyCredits || 0) + 200;
+            await buyer.save();
+
+            const referrer = await User.findOne({ username: buyer.referredBy });
+            if (referrer) {
+              referrer.loyaltyCredits = (referrer.loyaltyCredits || 0) + 200;
+              await referrer.save();
+            }
+          }
+        }
+      } catch (refErr) {
+        console.error('[order] First order referral reward error:', refErr);
+      }
 
       res.status(201).json({ data: order });
     } catch (error) {
@@ -113,35 +147,23 @@ export class OrderController {
 
   /**
    * Update order status (for admin).
-   * PATCH /api/orders/:id/status
+   * PUT/PATCH /api/orders/:id/status
    */
   async updateOrderStatus(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { status, trackingNumber, courier } = req.body as {
+      const { status, trackingNumber, courier, note } = req.body as {
         status?: OrderStatus;
         trackingNumber?: string;
         courier?: string;
+        note?: string;
       };
 
-      const validStatuses: OrderStatus[] = [
-        'placed',
-        'packed',
-        'dispatched',
-        'delivered',
-        'confirmed',
-        'processing',
-        'shipped',
-        'cancelled',
-      ];
-
-      if (!id || (!status && trackingNumber === undefined && courier === undefined)) {
+      if (
+        !id ||
+        (!status && trackingNumber === undefined && courier === undefined && note === undefined)
+      ) {
         res.status(400).json({ error: 'Valid update data is required.' });
-        return;
-      }
-
-      if (status && !validStatuses.includes(status)) {
-        res.status(400).json({ error: 'Valid status is required.' });
         return;
       }
 
@@ -150,15 +172,37 @@ export class OrderController {
       if (trackingNumber !== undefined) updateFields.trackingNumber = trackingNumber;
       if (courier !== undefined) updateFields.courier = courier;
 
+      const updateQuery: Record<string, unknown> = {
+        $set: updateFields,
+      };
+
+      if (status) {
+        updateQuery.$push = {
+          statusHistory: {
+            status,
+            timestamp: new Date(),
+            note: note || '',
+          },
+        };
+      }
+
       const order = await Order.findOneAndUpdate(
         { $or: [{ id }, { paymentId: id }] },
-        { $set: updateFields },
+        updateQuery,
         { new: true },
       );
 
       if (!order) {
         // Return 200 with updated status even if order was stored only locally
-        res.status(200).json({ data: { id, ...updateFields } });
+        res.status(200).json({
+          data: {
+            id,
+            ...updateFields,
+            ...(status
+              ? { statusHistory: [{ status, timestamp: new Date(), note: note || '' }] }
+              : {}),
+          },
+        });
         return;
       }
 

@@ -14,12 +14,15 @@ import {
   Tag,
   Check,
   X,
+  Gift,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { orderApi, cronApi } from '../services';
 import { couponService, type AtelierCoupon } from '../services/couponService';
 import type { Address } from '../context/AddressContext';
 import { getCoutureSketchForGarment } from '../utils/coutureSketches';
+import { getEstimatedDeliveryDate, formatDeliveryDate } from '../utils/deliveryEstimate';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx)
 //   ink      #1B1512  headings, primary text
@@ -74,6 +77,11 @@ interface OrderDetails {
   measurementValues?: Record<string, string> | null;
   bodyType?: string | null;
   referenceImage?: ReferenceImage | null;
+  isGift?: boolean;
+  giftRecipientName?: string;
+  giftMessage?: string;
+  giftWrapFee?: number;
+  estimatedDeliveryDate?: string;
 }
 
 interface PaymentState {
@@ -272,6 +280,11 @@ export default function Payment() {
       .catch(() => {
         // Local order was already saved
       });
+
+    // Record coupon usage
+    if (appliedCoupon) {
+      couponService.recordUsage(appliedCoupon.code, user?.username || user?.email);
+    }
   };
 
   const handlePay = () => {
@@ -604,13 +617,32 @@ export default function Payment() {
               </div>
 
               {/* Delivery Destination Snapshot */}
-              <div className="pt-4 border-t border-[#5C1A32]/10 flex items-start gap-3 bg-[#FAF7F2] p-3.5 rounded-lg">
-                <MapPin className="h-4 w-4 text-[#5C1A32] shrink-0 mt-0.5" />
-                <div className="text-xs text-[#544B45]">
-                  <span className="font-bold text-[#1B1512]">Dispatching To:</span>{' '}
-                  {address.fullName} · {address.line1}, {address.city}, {address.state} -{' '}
-                  {address.pincode} (Tel: {address.phone})
+              <div className="pt-4 border-t border-[#5C1A32]/10 space-y-2">
+                <div className="flex items-start gap-3 bg-[#FAF7F2] p-3.5 rounded-lg">
+                  <MapPin className="h-4 w-4 text-[#5C1A32] shrink-0 mt-0.5" />
+                  <div className="text-xs text-[#544B45]">
+                    <span className="font-bold text-[#1B1512]">Dispatching To:</span>{' '}
+                    {address.fullName} · {address.line1}, {address.city}, {address.state} -{' '}
+                    {address.pincode} (Tel: {address.phone})
+                  </div>
                 </div>
+
+                {orderDetails.isGift && (
+                  <div className="flex items-start gap-3 bg-pink-50/60 p-3.5 rounded-lg border border-pink-200/60">
+                    <Gift className="h-4 w-4 text-[#B8935A] shrink-0 mt-0.5" />
+                    <div className="text-xs text-[#544B45]">
+                      <span className="font-bold text-[#5C1A32]">🎁 Gift Presentation For:</span>{' '}
+                      <strong className="text-[#1B1512]">
+                        {orderDetails.giftRecipientName || 'Recipient'}
+                      </strong>
+                      {orderDetails.giftMessage && (
+                        <p className="mt-1 italic text-[#4A413B] bg-white/80 p-2 rounded border border-pink-100">
+                          "{orderDetails.giftMessage}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -704,9 +736,38 @@ export default function Payment() {
                     </span>
                   </div>
                 ) : null}
+
+                {orderDetails.isGift && (
+                  <div className="flex items-center justify-between text-[#5C1A32]">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Gift className="h-3.5 w-3.5 text-[#B8935A]" />
+                      Gift Wrapping
+                    </span>
+                    <span className="font-semibold font-mono">
+                      +₹{orderDetails.giftWrapFee || 150}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-[#544B45]">
                   <span>Delivery &amp; Logistics</span>
                   <span className="font-semibold text-emerald-700">FREE</span>
+                </div>
+
+                {/* Estimated Delivery (Feature 1) */}
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-[#5C1A32]/10 text-[#5C1A32]">
+                  <span className="flex items-center gap-1 font-medium">
+                    <Clock className="h-3.5 w-3.5 text-[#B8935A]" />
+                    Estimated Ready By:
+                  </span>
+                  <span className="font-bold text-xs">
+                    {orderDetails.estimatedDeliveryDate ||
+                      formatDeliveryDate(
+                        getEstimatedDeliveryDate(
+                          orderDetails.garment || orderDetails.productId || 'blouse',
+                        ),
+                      )}
+                  </span>
                 </div>
 
                 {discountAmount > 0 && (

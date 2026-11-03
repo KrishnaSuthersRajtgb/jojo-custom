@@ -6,6 +6,11 @@ import { useAddresses } from '../context/AddressContext';
 import { measurementApi } from '../services';
 import { MEASUREMENTS_UPDATED_EVENT } from '../components/MeasurementSidebar';
 import BodyTypeSelector from '../components/BodyTypeSelector';
+import SizeChartModal, {
+  BLOUSE_SIZE_DATA,
+  CHUDI_SIZE_DATA,
+  PANT_SIZE_DATA,
+} from '../components/SizeChartModal';
 
 // ── Design tokens (matches Home.tsx / Navbar.tsx / Footer.tsx / FabricDetail.tsx / Order.tsx / Payment.tsx / OrderTracking.tsx / CustomOutfit.tsx / ProductStyle.tsx / ProductAccessories.tsx / ProductSummary.tsx / Address.tsx)
 //   ink      #1B1512  headings, primary text
@@ -66,7 +71,11 @@ const PANT_FIELDS: FieldDef[] = [
   { key: 'croch', label: 'Croch' },
 ];
 
-const SECTIONS: { title: string; storageSuffix: string; fields: FieldDef[] }[] = [
+const SECTIONS: {
+  title: string;
+  storageSuffix: 'blouse' | 'chudi' | 'pant';
+  fields: FieldDef[];
+}[] = [
   { title: 'Blouse', storageSuffix: 'blouse', fields: BLOUSE_FIELDS },
   { title: 'Chudi', storageSuffix: 'chudi', fields: CHUDI_FIELDS },
   { title: 'Pant', storageSuffix: 'pant', fields: PANT_FIELDS },
@@ -88,6 +97,36 @@ export default function MeasurementPage() {
     pant: emptyValues(PANT_FIELDS),
   }));
   const [saved, setSaved] = useState(false);
+  const [showSizeChart, setShowSizeChart] = useState(false);
+  const [sizeChartGarment, setSizeChartGarment] = useState<'blouse' | 'chudi' | 'pant'>('blouse');
+  const [sizeToast, setSizeToast] = useState<string | null>(null);
+
+  const handleApplySizeFromChart = (
+    garment: 'blouse' | 'chudi' | 'pant',
+    sizeValues: Record<string, string>,
+  ) => {
+    setValues((prev) => ({
+      ...prev,
+      [garment]: {
+        ...prev[garment],
+        ...sizeValues,
+      },
+    }));
+    setSaved(false);
+    setSizeToast(`Standard ${garment.toUpperCase()} measurements applied!`);
+    setTimeout(() => setSizeToast(null), 3500);
+  };
+
+  const handleQuickApply = (garment: 'blouse' | 'chudi' | 'pant', sizeName: string) => {
+    let dataset = BLOUSE_SIZE_DATA;
+    if (garment === 'chudi') dataset = CHUDI_SIZE_DATA;
+    if (garment === 'pant') dataset = PANT_SIZE_DATA;
+
+    const row = dataset.find((r) => r.size === sizeName);
+    if (row) {
+      handleApplySizeFromChart(garment, row.values);
+    }
+  };
 
   useEffect(() => {
     const raw = localStorage.getItem(storageKey);
@@ -555,41 +594,125 @@ export default function MeasurementPage() {
           {/* TAB 2: SELF-MEASURE TAPE ENTRY */}
           {activeTab === 'self-measure' && (
             <div>
+              {/* Toast for applied size */}
+              {sizeToast && (
+                <div className="fixed bottom-6 right-6 z-50 bg-[#1B1512] text-[#FAF7F2] border border-[#B8935A]/50 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in text-xs font-semibold">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <span>{sizeToast}</span>
+                </div>
+              )}
+
               <BodyTypeSelector />
 
+              {/* Client-Friendly Atelier Size Chart Hero Banner */}
+              <div className="bg-white border border-[#5C1A32]/15 rounded-xl p-4 sm:p-5 shadow-xs mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-[#5C1A32]/10 text-[#5C1A32] flex items-center justify-center shrink-0 border border-[#5C1A32]/15">
+                    <Ruler className="h-5 w-5 text-[#5C1A32]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base sm:text-lg font-bold text-[#1B1512]" style={serif}>
+                        Atelier Standard Size Chart &amp; Fit Guide
+                      </h3>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-[#B8935A]/15 text-[#8C6524] border border-[#B8935A]/30">
+                        Blouse · Chudi · Pant (XS–3XL)
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#544B45] mt-1">
+                      Don't have a tape measure handy? Inspect standard Indian body sizing in
+                      inches/cm or click any size to 1-click auto-fill your measurement inputs
+                      below.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSizeChartGarment('blouse');
+                    setShowSizeChart(true);
+                  }}
+                  className="px-4 py-2.5 bg-[#5C1A32] hover:bg-[#431224] text-white text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0 shadow-xs cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-[#B8935A]" />
+                  <span>Open Size Chart</span>
+                </button>
+              </div>
+
+              {/* 3 Columns: Blouse, Chudi, Pant */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {SECTIONS.map((section) => (
                   <div
                     key={section.storageSuffix}
-                    className="bg-white rounded-sm border border-[#5C1A32]/12 shadow-sm overflow-hidden"
+                    className="bg-white rounded-xl border border-[#5C1A32]/12 shadow-xs overflow-hidden flex flex-col justify-between"
                   >
-                    <div className="px-4 py-3 border-b border-[#5C1A32]/10">
-                      <h2 className="text-[11px] font-semibold tracking-[0.2em] text-[#1B1512] uppercase">
-                        {section.title}
-                      </h2>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      {section.fields.map((field, idx) => (
-                        <div key={field.key} className="flex items-center gap-3">
-                          <span className="w-5 text-xs font-semibold text-[#B8935A]">
-                            {idx + 1}
+                    <div>
+                      {/* Section Header */}
+                      <div className="px-4 py-3 bg-[#FAF7F2] border-b border-[#5C1A32]/10 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-xs font-bold tracking-[0.15em] text-[#1B1512] uppercase">
+                            {section.title}
+                          </h2>
+                          <span className="text-[10px] text-[#A89F95]">
+                            ({section.fields.length} points)
                           </span>
-                          <label className="flex-1 text-sm text-[#2A211D]">{field.label}</label>
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={values[section.storageSuffix]?.[field.key] ?? ''}
-                              onChange={(e) => {
-                                handleChange(section.storageSuffix, field.key, e.target.value);
-                              }}
-                              className="w-16 rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-[#1B1512] text-center focus:outline-none focus:ring-2 focus:ring-[#5C1A32]/40 focus:border-[#5C1A32]"
-                              placeholder="0.0"
-                            />
-                            <span className="text-xs text-[#4A413B]/60">in</span>
-                          </div>
                         </div>
-                      ))}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSizeChartGarment(section.storageSuffix);
+                            setShowSizeChart(true);
+                          }}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#5C1A32] hover:text-[#431224] bg-white border border-[#5C1A32]/20 hover:border-[#5C1A32] px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                          title={`Open standard size chart for ${section.title}`}
+                        >
+                          <Ruler className="h-3 w-3 text-[#B8935A]" />
+                          <span>Size Chart</span>
+                        </button>
+                      </div>
+
+                      {/* Quick Standard Size Auto-Fill Pills */}
+                      <div className="px-3.5 py-2 bg-[#FAF7F2]/40 border-b border-[#5C1A32]/8 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="text-[10px] uppercase font-bold text-[#8A7968] mr-1">
+                          Quick Size:
+                        </span>
+                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((sz) => (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() => handleQuickApply(section.storageSuffix, sz)}
+                            className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-white border border-[#5C1A32]/15 hover:border-[#5C1A32] hover:bg-[#5C1A32] hover:text-white text-[#1B1512] transition-colors shadow-2xs cursor-pointer"
+                            title={`Auto-fill standard ${sz} measurements for ${section.title}`}
+                          >
+                            {sz}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="p-4 space-y-3">
+                        {section.fields.map((field, idx) => (
+                          <div key={field.key} className="flex items-center gap-3">
+                            <span className="w-5 text-xs font-semibold text-[#B8935A]">
+                              {idx + 1}
+                            </span>
+                            <label className="flex-1 text-sm text-[#2A211D]">{field.label}</label>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={values[section.storageSuffix]?.[field.key] ?? ''}
+                                onChange={(e) => {
+                                  handleChange(section.storageSuffix, field.key, e.target.value);
+                                }}
+                                className="w-16 rounded-sm border border-[#5C1A32]/20 px-2 py-1.5 text-sm text-[#1B1512] text-center focus:outline-none focus:ring-2 focus:ring-[#5C1A32]/40 focus:border-[#5C1A32]"
+                                placeholder="0.0"
+                              />
+                              <span className="text-xs text-[#4A413B]/60">in</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -614,6 +737,14 @@ export default function MeasurementPage() {
           )}
         </div>
       </section>
+
+      {/* Interactive Size Chart Modal with Blouse, Chudi & Pant Tabs */}
+      <SizeChartModal
+        isOpen={showSizeChart}
+        onClose={() => setShowSizeChart(false)}
+        initialGarment={sizeChartGarment}
+        onApplySize={handleApplySizeFromChart}
+      />
     </div>
   );
 }

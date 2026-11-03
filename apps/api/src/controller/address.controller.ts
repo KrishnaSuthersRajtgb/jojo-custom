@@ -34,19 +34,31 @@ export class AddressController {
         return;
       }
 
-      const { fullName, phone, line1, line2, landmark, city, state, pincode, type, isDefault } =
-        req.body as {
-          fullName?: string;
-          phone?: string;
-          line1?: string;
-          line2?: string;
-          landmark?: string;
-          city?: string;
-          state?: string;
-          pincode?: string;
-          type?: 'home' | 'work' | 'other';
-          isDefault?: boolean;
-        };
+      const {
+        fullName,
+        phone,
+        line1,
+        line2,
+        landmark,
+        city,
+        state,
+        pincode,
+        type,
+        label,
+        isDefault,
+      } = req.body as {
+        fullName?: string;
+        phone?: string;
+        line1?: string;
+        line2?: string;
+        landmark?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        type?: 'home' | 'work' | 'other';
+        label?: string;
+        isDefault?: boolean;
+      };
 
       if (!fullName || !phone || !line1 || !city || !state || !pincode) {
         res.status(400).json({ error: 'Required address fields are missing.' });
@@ -60,6 +72,9 @@ export class AddressController {
         await Address.updateMany({ username }, { isDefault: false });
       }
 
+      const computedLabel =
+        label?.trim() || (type === 'work' ? 'Office' : type === 'other' ? 'Other' : 'Home');
+
       const address = await Address.create({
         username,
         fullName,
@@ -71,6 +86,7 @@ export class AddressController {
         state,
         pincode,
         type: type ?? 'home',
+        label: computedLabel,
         isDefault: shouldBeDefault,
       });
 
@@ -111,6 +127,7 @@ export class AddressController {
         state: string;
         pincode: string;
         type: 'home' | 'work' | 'other';
+        label: string;
       }>;
 
       Object.assign(address, updates);

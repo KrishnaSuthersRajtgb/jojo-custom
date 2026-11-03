@@ -1,0 +1,13 @@
+{
+  "name": "JoJo Flora Couture",
+  "short_name": "JoJo Flora",
+  "description": "Luxury bespoke Indian couture tailored to your exact measurements",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F6F1E7",
+  "theme_color": "#5C1A32",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "64x64", "type": "image/x-icon" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

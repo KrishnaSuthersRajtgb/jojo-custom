@@ -24,7 +24,11 @@ orderRouter.get('/:id', (req, res) => {
   void orderController.getOrderById(req, res);
 });
 
-// Status updates
+// Status updates (supports both PUT and PATCH)
+orderRouter.put('/:id/status', (req, res) => {
+  void orderController.updateOrderStatus(req, res);
+});
+
 orderRouter.patch('/:id/status', (req, res) => {
   void orderController.updateOrderStatus(req, res);
 });

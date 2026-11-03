@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import SEOMeta from '../components/SEOMeta';
 import {
   ArrowRight,
   Star,
@@ -95,6 +96,10 @@ export default function Home() {
 
   return (
     <div className="w-full bg-[#FAF7F2] text-[#1B1512] selection:bg-[#5C1A32] selection:text-[#FAF7F2]">
+      <SEOMeta
+        title="JoJo Flora Couture | Luxury Bespoke Indian Couture"
+        description="Luxury bespoke Indian couture tailored to your exact measurements with pure handlooms, silks, and master craftsmanship."
+      />
       {/* ---------------- 1. EDITORIAL COUTURE HERO (100000 Lakhs Luxury Aesthetic) ---------------- */}
       <section
         className="w-full px-6 sm:px-10 lg:px-16 pt-12 pb-20 relative overflow-hidden"
@@ -446,6 +451,38 @@ export default function Home() {
       </section>
 
       <TapeRule tone="wine" />
+
+      {/* ---------------- LOOKBOOK & STYLE INSPIRATIONS CTA ---------------- */}
+      <section className="w-full px-6 sm:px-10 lg:px-16 py-16 bg-gradient-to-r from-[#1B1512] via-[#2D1B22] to-[#1B1512] text-[#FAF7F2] relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#B8935A_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+          <div className="space-y-3 text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#B8935A]/20 border border-[#B8935A]/40 text-[#D4AF37] text-[10px] font-semibold tracking-[0.25em] uppercase rounded-full">
+              <Sparkles className="h-3 w-3 text-[#B8935A]" />
+              ATELIER MOOD BOARD
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-normal text-[#FAF7F2]" style={serif}>
+              Looking for inspiration?
+            </h2>
+            <p className="text-xs sm:text-sm text-[#E8DFC8] font-light max-w-xl leading-relaxed">
+              Explore our curated lookbook gallery of heirloom silk sarees, bridal blouses, and
+              tailored ensembles designed to spark your bespoke imagination.
+            </p>
+          </div>
+
+          <div className="shrink-0">
+            <Link
+              to="/style-inspirations"
+              className="group inline-flex items-center gap-3 bg-[#B8935A] hover:bg-[#8C6524] text-[#1B1512] hover:text-white px-8 py-4 rounded text-xs font-semibold uppercase tracking-[0.18em] shadow-lg transition-all duration-300"
+            >
+              <span>Explore Lookbook</span>
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <TapeRule tone="brass" />
 
       {/* ---------------- 5. BESPOKE REVIEWS ---------------- */}
       <section className="w-full px-6 sm:px-10 lg:px-16 py-24 bg-[#FAF7F2]">

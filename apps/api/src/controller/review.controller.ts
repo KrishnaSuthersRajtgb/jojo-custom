@@ -50,6 +50,68 @@ export class ReviewController {
   }
 
   /**
+   * Get user's own reviews
+   * GET /api/reviews/user
+   */
+  async getUserReviews(req: Request, res: Response): Promise<void> {
+    try {
+      const username = req.user?.username;
+      const userId = req.user?.id;
+
+      if (!username && !userId) {
+        res.status(401).json({ error: 'Unauthorized.' });
+        return;
+      }
+
+      const filter: Record<string, string> = {};
+      if (userId) {
+        filter.userId = userId;
+      } else if (username) {
+        filter.username = username;
+      }
+
+      const reviews = await Review.find(filter).sort({ createdAt: -1 });
+
+      res.status(200).json({ data: reviews });
+    } catch (error) {
+      console.error('[reviews] Get user reviews error:', error);
+      res.status(500).json({ error: 'Failed to fetch user reviews.' });
+    }
+  }
+
+  /**
+   * Get approved reviews for a specific fabric
+   * GET /api/reviews/:fabricId
+   */
+  async getFabricReviews(req: Request, res: Response): Promise<void> {
+    try {
+      const { fabricId } = req.params;
+      const { limit = '20' } = req.query as { limit?: string };
+
+      if (!fabricId) {
+        res.status(400).json({ error: 'fabricId is required.' });
+        return;
+      }
+
+      const reviews = await Review.find({ fabricId, status: 'approved' })
+        .sort({ createdAt: -1 })
+        .limit(Math.min(parseInt(limit, 10) || 20, 100));
+
+      const count = reviews.length;
+      const avg = count > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / count : 0;
+      const stats = {
+        count,
+        average: Math.round(avg * 10) / 10,
+      };
+
+      res.status(200).json({ data: reviews, stats });
+    } catch (error) {
+      console.error('[reviews] Get fabric reviews error:', error);
+      res.status(500).json({ error: 'Failed to fetch fabric reviews.' });
+    }
+  }
+
+  /**
    * Admin: Get all reviews (including pending/flagged)
    * GET /api/reviews/admin
    */

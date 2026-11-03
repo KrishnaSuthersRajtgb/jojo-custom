@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { DarkModeProvider } from './context/DarkModeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AddressProvider } from './context/AddressContext';
+import { WishlistProvider } from './context/WishlistContext';
+import { CompareProvider } from './context/CompareContext';
 import { pricingService } from './services/pricingService';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
@@ -23,6 +26,9 @@ import ProductStyle from './pages/ProductStyle';
 import ProductAccessories from './pages/ProductAccessories';
 import ProductSummary from './pages/ProductSummary';
 import Franchise from './pages/Franchise';
+import CorporateInquiry from './pages/CorporateInquiry';
+import MoodBoard from './pages/MoodBoard';
+import FabricCompare from './pages/FabricCompare';
 import Footer from './components/Footer';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -52,7 +58,7 @@ function AppContent() {
   const navbarUser = user ? { name: user.username, email: user.email } : null;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-[#13100E] dark:text-[#FAF7F2] flex flex-col transition-colors duration-200">
       <ScrollToTop />
       {!isAdminRoute && (
         <Navbar
@@ -74,6 +80,7 @@ function AppContent() {
             <Route path="/fabrics" element={<Fabrics />} />
             {/* <Route path="/fabrics/:tone" element={<FabricsByTone />} /> */}
             <Route path="/fabrics/:tone/:fabricId" element={<FabricDetail />} />
+            <Route path="/fabric/:fabricId" element={<FabricDetail />} />
             <Route path="/addresses" element={<Address />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
@@ -108,6 +115,9 @@ function AppContent() {
             <Route path="/custom-outfit/:productId/accessories" element={<ProductAccessories />} />
             <Route path="/custom-outfit/:productId/summary" element={<ProductSummary />} />
             <Route path="/franchise" element={<Franchise />} />
+            <Route path="/corporate-inquiry" element={<CorporateInquiry />} />
+            <Route path="/style-inspirations" element={<MoodBoard />} />
+            <Route path="/compare" element={<FabricCompare />} />
             <Route
               path="/color-wheel"
               element={
@@ -147,13 +157,19 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AddressProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </AddressProvider>
-    </AuthProvider>
+    <DarkModeProvider>
+      <AuthProvider>
+        <AddressProvider>
+          <WishlistProvider>
+            <CompareProvider>
+              <BrowserRouter>
+                <AppContent />
+              </BrowserRouter>
+            </CompareProvider>
+          </WishlistProvider>
+        </AddressProvider>
+      </AuthProvider>
+    </DarkModeProvider>
   );
 }
 

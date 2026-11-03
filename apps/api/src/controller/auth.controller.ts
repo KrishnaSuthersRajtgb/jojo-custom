@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User } from '../model/index.js';
+import { generateReferralCode } from './referral.controller.js';
 
 const JWT_SECRET = process.env['JWT_SECRET'] ?? 'jojo-flora-super-secret-jwt-key';
 
@@ -12,12 +13,13 @@ export class AuthController {
    */
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const { username, email, gender, phoneNumber, password } = req.body as {
+      const { username, email, gender, phoneNumber, password, referralCode } = req.body as {
         username?: string;
         email?: string;
         gender?: string;
         phoneNumber?: string;
         password?: string;
+        referralCode?: string;
       };
 
       if (!username || !email || !gender || !phoneNumber || !password) {
@@ -43,14 +45,49 @@ export class AuthController {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
+      // Auto-generate unique referral code
+      let myCode = generateReferralCode(username);
+      while (await User.findOne({ referralCode: myCode })) {
+        myCode = generateReferralCode(username);
+      }
+
+      let referredBy: string | undefined = undefined;
+      if (referralCode && typeof referralCode === 'string' && referralCode.trim()) {
+        const cleanRef = referralCode.trim().toUpperCase();
+        const referrer = await User.findOne({ referralCode: cleanRef });
+        if (referrer && referrer.username !== username) {
+          referredBy = referrer.username;
+          referrer.referralCount = (referrer.referralCount || 0) + 1;
+          await referrer.save();
+        }
+      }
+
       // Create user
-      const user = await User.create({
+      const newUserData: {
+        username: string;
+        email: string;
+        gender: string;
+        phoneNumber: string;
+        password: string;
+        referralCode: string;
+        referredBy?: string;
+        referralCount: number;
+        loyaltyCredits: number;
+      } = {
         username,
         email: email.toLowerCase(),
         gender,
         phoneNumber,
         password: hashedPassword,
-      });
+        referralCode: myCode,
+        referralCount: 0,
+        loyaltyCredits: 0,
+      };
+      if (referredBy) {
+        newUserData.referredBy = referredBy;
+      }
+
+      const user = await User.create(newUserData);
 
       // Generate token
       const token = jwt.sign(
@@ -68,6 +105,9 @@ export class AuthController {
             gender: user.gender,
             phoneNumber: user.phoneNumber,
             role: user.role,
+            referralCode: user.referralCode,
+            referralCount: user.referralCount,
+            loyaltyCredits: user.loyaltyCredits,
           },
         },
       });
@@ -109,6 +149,15 @@ export class AuthController {
         return;
       }
 
+      if (!user.referralCode) {
+        let code = generateReferralCode(user.username);
+        while (await User.findOne({ referralCode: code })) {
+          code = generateReferralCode(user.username);
+        }
+        user.referralCode = code;
+        await user.save();
+      }
+
       const token = jwt.sign(
         { id: user._id.toString(), username: user.username, email: user.email, role: user.role },
         JWT_SECRET,
@@ -124,6 +173,9 @@ export class AuthController {
             gender: user.gender,
             phoneNumber: user.phoneNumber,
             role: user.role,
+            referralCode: user.referralCode,
+            referralCount: user.referralCount,
+            loyaltyCredits: user.loyaltyCredits,
           },
         },
       });
@@ -289,6 +341,81 @@ export class AuthController {
     } catch (error) {
       console.error('[auth] Update role error:', error);
       res.status(500).json({ error: 'Failed to update user role.' });
+    }
+  }
+
+  /**
+   * Admin: Add note to user profile.
+   * POST /api/auth/users/:id/notes
+   */
+  async addAdminNote(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { note } = req.body as { note?: string };
+
+      if (!note || !note.trim()) {
+        res.status(400).json({ error: 'Note text is required.' });
+        return;
+      }
+
+      const user = await User.findById(id);
+      if (!user) {
+        res.status(404).json({ error: 'User not found.' });
+        return;
+      }
+
+      if (!user.adminNotes) {
+        user.adminNotes = [];
+      }
+
+      user.adminNotes.unshift({
+        note: note.trim(),
+        addedAt: new Date(),
+      });
+
+      await user.save();
+
+      res.status(200).json({
+        data: user,
+        message: 'Admin note added successfully.',
+      });
+    } catch (error) {
+      console.error('[auth] Add admin note error:', error);
+      res.status(500).json({ error: 'Failed to add admin note.' });
+    }
+  }
+
+  /**
+   * Admin: Update customer flag (VIP, Needs Attention, Blocked, none).
+   * PATCH /api/auth/users/:id/flag
+   */
+  async updateCustomerFlag(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { flag } = req.body as { flag?: 'none' | 'VIP' | 'Needs Attention' | 'Blocked' };
+
+      const validFlags = ['none', 'VIP', 'Needs Attention', 'Blocked'];
+      if (!flag || !validFlags.includes(flag)) {
+        res.status(400).json({ error: `Valid flag (${validFlags.join(', ')}) is required.` });
+        return;
+      }
+
+      const user = await User.findById(id);
+      if (!user) {
+        res.status(404).json({ error: 'User not found.' });
+        return;
+      }
+
+      user.flag = flag;
+      await user.save();
+
+      res.status(200).json({
+        data: user,
+        message: `Customer flag updated to "${flag}".`,
+      });
+    } catch (error) {
+      console.error('[auth] Update customer flag error:', error);
+      res.status(500).json({ error: 'Failed to update customer flag.' });
     }
   }
 }

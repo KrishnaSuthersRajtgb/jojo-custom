@@ -39,3 +39,11 @@ authRouter.patch('/role', (req, res) => {
 authRouter.delete('/users/:id', (req, res) => {
   void authController.deleteUser(req, res);
 });
+
+authRouter.post('/users/:id/notes', (req, res) => {
+  void authController.addAdminNote(req, res);
+});
+
+authRouter.patch('/users/:id/flag', (req, res) => {
+  void authController.updateCustomerFlag(req, res);
+});

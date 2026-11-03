@@ -32,7 +32,27 @@ import {
   Layers,
   Edit2,
   Check,
+  BarChart2,
+  StickyNote,
+  Building2,
+  Calendar,
+  Menu,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 
 import {
   BANNER_STORAGE_KEY,
@@ -49,10 +69,15 @@ import {
   cronApi,
   userApi,
   reviewApi,
+  analyticsApi,
+  corporateInquiryApi,
   type CronStatusData,
   type CronRunStats,
   type RegisteredUser,
   type ReviewItem,
+  type SalesStats,
+  type CorporateInquiryItem,
+  type CustomerFlag,
 } from '../../services';
 import AmazonInvoiceModal from '../../components/AmazonInvoiceModal';
 import AtelierJobCardModal from '../../components/AtelierJobCardModal';
@@ -142,6 +167,7 @@ const ORDERS_KEY_PREFIX = 'jojo_orders_';
 
 type AdminTab =
   | 'dashboard'
+  | 'analytics'
   | 'fabrics'
   | 'accessories'
   | 'garments'
@@ -153,6 +179,8 @@ type AdminTab =
   | 'users'
   | 'reviews'
   | 'banner';
+
+const CHART_COLORS = ['#5C1A32', '#B8935A', '#8B4513', '#D4A574', '#7B2D3E', '#3D1020', '#C5A059'];
 
 function formatRupees(amount: number): string {
   return `₹${amount.toLocaleString('en-IN')}`;
@@ -220,6 +248,12 @@ export default function AdminDashboard() {
   const isAdmin = currentUser?.role === 'admin';
 
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const selectTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+    setMobileMenuOpen(false);
+  };
   const [orders, setOrders] = useState<AdminOrderRow[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
@@ -347,6 +381,24 @@ export default function AdminDashboard() {
   const [newCouponValue, setNewCouponValue] = useState('15');
   const [newCouponMin, setNewCouponMin] = useState('1500');
   const [newCouponDesc, setNewCouponDesc] = useState('');
+  const [newCouponMaxUsage, setNewCouponMaxUsage] = useState('50');
+  const [newCouponExpiry, setNewCouponExpiry] = useState('');
+
+  // ── Sales Analytics State ────────────────────────────────────────────────
+  const [salesStats, setSalesStats] = useState<SalesStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  // ── Customer CRM Notes & Flags State ─────────────────────────────────────
+  const [selectedUserForNotes, setSelectedUserForNotes] = useState<RegisteredUser | null>(null);
+  const [newUserNote, setNewUserNote] = useState('');
+  const [savingUserNote, setSavingUserNote] = useState(false);
+  const [updatingUserFlag, setUpdatingUserFlag] = useState(false);
+
+  // ── Corporate Inquiries State ───────────────────────────────────────────
+  const [corporateInquiries, setCorporateInquiries] = useState<CorporateInquiryItem[]>([]);
+  const [loadingInquiries, setLoadingInquiries] = useState(false);
+  const [corporateStatusFilter, setCorporateStatusFilter] = useState<string>('all');
+  const [ordersSubView, setOrdersSubView] = useState<'bespoke' | 'corporate'>('bespoke');
 
   // ── Garment Items & Sub-Divisions Catalog State ──────────────────────────
   const [garmentsList, setGarmentsList] = useState<GarmentItem[]>(() =>
@@ -485,12 +537,38 @@ export default function AdminDashboard() {
     }
   };
 
+  const refreshSalesStats = async () => {
+    setLoadingStats(true);
+    try {
+      const res = await analyticsApi.getSalesStats();
+      setSalesStats(res.data);
+    } catch (e) {
+      console.warn('Failed to load sales stats:', e);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const refreshCorporateInquiries = async () => {
+    setLoadingInquiries(true);
+    try {
+      const res = await corporateInquiryApi.getAll();
+      setCorporateInquiries(res.data);
+    } catch (e) {
+      console.warn('Failed to load corporate inquiries:', e);
+    } finally {
+      setLoadingInquiries(false);
+    }
+  };
+
   useEffect(() => {
     void refreshOrders();
     refreshPricing();
     void refreshCron();
     void refreshUsers();
     void refreshReviews();
+    void refreshSalesStats();
+    void refreshCorporateInquiries();
     setCoupons(couponService.getCoupons());
 
     const interval = setInterval(() => {
@@ -499,6 +577,15 @@ export default function AdminDashboard() {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      void refreshSalesStats();
+    }
+    if (activeTab === 'orders') {
+      void refreshCorporateInquiries();
+    }
+  }, [activeTab]);
 
   // ── Metrics Calculation ─────────────────────────────────────────────────
   const metrics = useMemo(() => {
@@ -915,6 +1002,7 @@ export default function AdminDashboard() {
       showToast('Please enter a valid discount value.');
       return;
     }
+    const maxVal = parseInt(newCouponMaxUsage, 10);
     const newCoupon: AtelierCoupon = {
       code: newCouponCode.trim().toUpperCase(),
       discountType: newCouponType,
@@ -925,13 +1013,25 @@ export default function AdminDashboard() {
         `${val.toString()}${newCouponType === 'percentage' ? '%' : '₹'} atelier privilege discount`,
       active: true,
       usesCount: 0,
+      usageCount: 0,
+      maxUsage: isNaN(maxVal) || maxVal <= 0 ? 100 : maxVal,
+      expiresAt: newCouponExpiry ? newCouponExpiry : undefined,
+      usedBy: [],
     };
     couponService.addCoupon(newCoupon);
     setCoupons(couponService.getCoupons());
     setShowAddCouponModal(false);
     setNewCouponCode('');
     setNewCouponDesc('');
+    setNewCouponExpiry('');
+    setNewCouponMaxUsage('50');
     showToast(`Created promo code "${newCoupon.code}"! Live at checkout.`);
+  };
+
+  const handleUpdateCouponExpiry = (code: string, newDate: string) => {
+    const updated = couponService.updateCoupon(code, { expiresAt: newDate || undefined });
+    setCoupons(updated);
+    showToast(`Expiry updated for code "${code}".`);
   };
 
   const handleToggleCoupon = (code: string) => {
@@ -944,6 +1044,54 @@ export default function AdminDashboard() {
     const updated = couponService.deleteCoupon(code);
     setCoupons(updated);
     showToast(`Promo code "${code}" removed.`);
+  };
+
+  // ── CRM Notes & Flag Handlers ──────────────────────────────────────────
+  const handleAddUserNote = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedUserForNotes || !newUserNote.trim()) return;
+    setSavingUserNote(true);
+    try {
+      const res = await userApi.addNote(selectedUserForNotes._id, newUserNote.trim());
+      setSelectedUserForNotes(res.data);
+      setRegisteredUsers((prev) => prev.map((u) => (u._id === res.data._id ? res.data : u)));
+      setNewUserNote('');
+      showToast('Client CRM note recorded.');
+    } catch {
+      showToast('Failed to save client note.');
+    } finally {
+      setSavingUserNote(false);
+    }
+  };
+
+  const handleUpdateCustomerFlag = async (userId: string, flag: CustomerFlag) => {
+    setUpdatingUserFlag(true);
+    try {
+      const res = await userApi.updateFlag(userId, flag);
+      if (selectedUserForNotes && selectedUserForNotes._id === userId) {
+        setSelectedUserForNotes(res.data);
+      }
+      setRegisteredUsers((prev) => prev.map((u) => (u._id === res.data._id ? res.data : u)));
+      showToast(`Client classification updated to "${flag}".`);
+    } catch {
+      showToast('Failed to update client classification.');
+    } finally {
+      setUpdatingUserFlag(false);
+    }
+  };
+
+  // ── Corporate Inquiry Handlers ──────────────────────────────────────────
+  const handleUpdateInquiryStatus = async (
+    id: string,
+    status: 'New' | 'In Progress' | 'Quoted' | 'Closed',
+  ) => {
+    try {
+      const res = await corporateInquiryApi.updateStatus(id, status);
+      setCorporateInquiries((prev) => prev.map((item) => (item._id === id ? res.data : item)));
+      showToast(`Inquiry marked as "${status}".`);
+    } catch {
+      showToast('Failed to update inquiry status.');
+    }
   };
 
   // ── Garment Items & Sub-Divisions Handlers ──────────────────────────────
@@ -1216,7 +1364,22 @@ export default function AdminDashboard() {
       {/* =================================================================== */}
       {/* 1. COMPACT VERTICAL SIDEBAR (Clean & Space-Efficient)                */}
       {/* =================================================================== */}
-      <aside className="w-full md:w-64 bg-[#1B1512] text-[#FAF7F2] border-r border-[#B8935A]/20 flex flex-col shrink-0 md:h-screen z-30">
+      {/* Mobile Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs transition-opacity"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* =================================================================== */}
+      {/* 1. COMPACT VERTICAL SIDEBAR (Clean & Space-Efficient)                */}
+      {/* =================================================================== */}
+      <aside
+        className={`fixed md:static inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#1B1512] text-[#FAF7F2] border-r border-[#B8935A]/20 flex flex-col shrink-0 h-screen transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
         {/* Brand Header */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between">
           <div>
@@ -1236,7 +1399,7 @@ export default function AdminDashboard() {
         {/* Vertical Nav Links */}
         <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
           <button
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => selectTab('dashboard')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
               activeTab === 'dashboard'
                 ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1248,7 +1411,19 @@ export default function AdminDashboard() {
           </button>
 
           <button
-            onClick={() => setActiveTab('fabrics')}
+            onClick={() => selectTab('analytics')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
+              activeTab === 'analytics'
+                ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
+                : 'text-[#A89F95] hover:text-[#FAF7F2] hover:bg-white/5'
+            }`}
+          >
+            <BarChart2 className="h-4 w-4 text-[#B8935A]" />
+            <span>Analytics</span>
+          </button>
+
+          <button
+            onClick={() => selectTab('fabrics')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
               activeTab === 'fabrics'
                 ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1265,7 +1440,7 @@ export default function AdminDashboard() {
           </button>
 
           <button
-            onClick={() => setActiveTab('accessories')}
+            onClick={() => selectTab('accessories')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
               activeTab === 'accessories'
                 ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1282,7 +1457,7 @@ export default function AdminDashboard() {
           </button>
 
           <button
-            onClick={() => setActiveTab('garments')}
+            onClick={() => selectTab('garments')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
               activeTab === 'garments'
                 ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1299,7 +1474,7 @@ export default function AdminDashboard() {
           </button>
 
           <button
-            onClick={() => setActiveTab('orders')}
+            onClick={() => selectTab('orders')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
               activeTab === 'orders'
                 ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1316,7 +1491,7 @@ export default function AdminDashboard() {
           </button>
 
           <button
-            onClick={() => setActiveTab('coupons')}
+            onClick={() => selectTab('coupons')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
               activeTab === 'coupons'
                 ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1336,7 +1511,7 @@ export default function AdminDashboard() {
           {isAdmin && (
             <>
               <button
-                onClick={() => setActiveTab('users')}
+                onClick={() => selectTab('users')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
                   activeTab === 'users'
                     ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1353,7 +1528,7 @@ export default function AdminDashboard() {
               </button>
 
               <button
-                onClick={() => setActiveTab('roles')}
+                onClick={() => selectTab('roles')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
                   activeTab === 'roles'
                     ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1370,7 +1545,7 @@ export default function AdminDashboard() {
               </button>
 
               <button
-                onClick={() => setActiveTab('reviews')}
+                onClick={() => selectTab('reviews')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
                   activeTab === 'reviews'
                     ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1387,7 +1562,7 @@ export default function AdminDashboard() {
               </button>
 
               <button
-                onClick={() => setActiveTab('failedPayments')}
+                onClick={() => selectTab('failedPayments')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
                   activeTab === 'failedPayments'
                     ? 'bg-rose-900 text-[#FAF7F2] font-semibold shadow-xs'
@@ -1406,7 +1581,7 @@ export default function AdminDashboard() {
               </button>
 
               <button
-                onClick={() => setActiveTab('visuals')}
+                onClick={() => selectTab('visuals')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
                   activeTab === 'visuals'
                     ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1418,7 +1593,7 @@ export default function AdminDashboard() {
               </button>
 
               <button
-                onClick={() => setActiveTab('banner')}
+                onClick={() => selectTab('banner')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs font-medium tracking-wider uppercase transition-all ${
                   activeTab === 'banner'
                     ? 'bg-[#5C1A32] text-[#FAF7F2] font-semibold shadow-xs'
@@ -1463,15 +1638,43 @@ export default function AdminDashboard() {
       {/* 2. MAIN COMPACT CONTENT AREA - Sticky Main Detail Header & Scrollable Body */}
       {/* =================================================================== */}
       <main className="flex-1 min-w-0 h-screen flex flex-col overflow-hidden bg-[#F8F5F0]">
+        {/* Mobile Top Navigation Header */}
+        <div className="md:hidden shrink-0 z-20 bg-[#1B1512] text-[#FAF7F2] px-4 py-3 flex items-center justify-between border-b border-[#B8935A]/20 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-[#FAF7F2] border border-white/10 text-xs font-semibold uppercase tracking-wider transition-colors"
+            aria-label="Open Navigation Menu"
+          >
+            <Menu className="h-4 w-4 text-[#B8935A]" />
+            <span>Menu</span>
+          </button>
+
+          <div className="text-center">
+            <div className="text-[9px] tracking-[0.25em] uppercase font-semibold text-[#B8935A]">
+              ATELIER PORTAL
+            </div>
+            <h2 className="text-sm font-normal text-[#FAF7F2] tracking-tight" style={serif}>
+              JoJo Boutique
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded bg-[#5C1A32] text-[#FAF7F2]">
+              {activeTab}
+            </span>
+          </div>
+        </div>
         {/* Sticky Top Action Bar & Header Detail */}
-        <header className="shrink-0 z-20 bg-[#F8F5F0] px-5 md:px-8 pt-5 pb-3 border-b border-[#5C1A32]/10 shadow-xs">
-          <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <header className="shrink-0 z-10 bg-[#F8F5F0] px-3 sm:px-5 md:px-8 pt-3 sm:pt-5 pb-3 border-b border-[#5C1A32]/10 shadow-xs">
+          <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-3 sm:p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div>
               <span className="text-[10px] uppercase font-semibold tracking-wider text-[#A89F95]">
                 ATELIER MANAGEMENT / {activeTab.toUpperCase()}
               </span>
               <h1 className="text-xl font-normal text-[#1B1512]" style={serif}>
                 {activeTab === 'dashboard' && 'Operations Overview'}
+                {activeTab === 'analytics' && 'Sales Analytics & Atelier Intelligence'}
                 {activeTab === 'fabrics' &&
                   `Fabric Pricing & Inventory (${allFabrics.length} Total SKUs)`}
                 {activeTab === 'accessories' && 'Accessories & Embellishments Pricing'}
@@ -1543,12 +1746,12 @@ export default function AdminDashboard() {
         </header>
 
         {/* Scrollable Data Body (Only Down Data Scrolls) */}
-        <div className="flex-1 overflow-y-auto px-5 md:px-8 py-5 space-y-6">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-5 md:px-8 py-4 sm:py-5 space-y-6">
           {/* ── OVERVIEW TAB ──────────────────────────────────────────────── */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               {/* 4 Compact Stat Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-2xs">
                   <span className="text-[10px] uppercase font-semibold text-[#A89F95] block">
                     Total Revenue
@@ -1651,7 +1854,7 @@ export default function AdminDashboard() {
                         setSelectedOrder(o);
                         setActiveTab('orders');
                       }}
-                      className="p-4 flex items-center justify-between hover:bg-[#FAF7F2]/60 cursor-pointer transition-colors"
+                      className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 hover:bg-[#FAF7F2]/60 cursor-pointer transition-colors"
                     >
                       <div>
                         <div className="flex items-center gap-2">
@@ -1676,6 +1879,341 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── SALES ANALYTICS TAB (Feature 1) ── */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              {/* Header Actions / Controls */}
+              <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-medium text-[#1B1512]" style={serif}>
+                    Executive Performance &amp; Atelier Intelligence
+                  </h2>
+                  <p className="text-xs text-[#544B45]">
+                    Real-time transaction volume, fabric revenue attribution, and couture trend
+                    distribution
+                  </p>
+                </div>
+                <button
+                  onClick={() => void refreshSalesStats()}
+                  disabled={loadingStats}
+                  className="px-3.5 py-1.5 bg-[#FAF7F2] border border-[#5C1A32]/20 hover:border-[#5C1A32] text-[#1B1512] rounded text-xs font-medium flex items-center gap-2 cursor-pointer transition-colors"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 text-[#B8935A] ${loadingStats ? 'animate-spin' : ''}`}
+                  />
+                  <span>Refresh Metrics</span>
+                </button>
+              </div>
+
+              {/* 4 Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-[#A89F95] mb-2">
+                    <span className="text-xs font-medium uppercase tracking-wider">
+                      Total Orders
+                    </span>
+                    <Package className="h-4 w-4 text-[#B8935A]" />
+                  </div>
+                  <div className="text-2xl font-semibold text-[#1B1512]" style={serif}>
+                    {salesStats ? salesStats.totalOrders : '—'}
+                  </div>
+                  <div className="text-[11px] text-[#A89F95] mt-1">
+                    Lifetime bespoke client orders
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-[#A89F95] mb-2">
+                    <span className="text-xs font-medium uppercase tracking-wider">
+                      Total Revenue
+                    </span>
+                    <Sparkles className="h-4 w-4 text-[#B8935A]" />
+                  </div>
+                  <div className="text-2xl font-semibold text-[#5C1A32]" style={serif}>
+                    {salesStats ? formatRupees(salesStats.totalRevenue) : '—'}
+                  </div>
+                  <div className="text-[11px] text-[#A89F95] mt-1">
+                    Cumulative atelier transaction volume
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-[#A89F95] mb-2">
+                    <span className="text-xs font-medium uppercase tracking-wider">
+                      Pending Orders
+                    </span>
+                    <AlertTriangle className="h-4 w-4 text-[#F97316]" />
+                  </div>
+                  <div className="text-2xl font-semibold text-[#B8935A]" style={serif}>
+                    {salesStats ? salesStats.pendingOrders : '—'}
+                  </div>
+                  <div className="text-[11px] text-[#A89F95] mt-1">
+                    In cutting, stitching, or packaging
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-[#A89F95] mb-2">
+                    <span className="text-xs font-medium uppercase tracking-wider">
+                      Delivered Orders
+                    </span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div className="text-2xl font-semibold text-emerald-700" style={serif}>
+                    {salesStats ? salesStats.deliveredOrders : '—'}
+                  </div>
+                  <div className="text-[11px] text-[#A89F95] mt-1">
+                    Successfully fulfilled to patrons
+                  </div>
+                </div>
+              </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Line Chart: Orders Per Day (Last 30 Days) */}
+                <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#1B1512]" style={serif}>
+                        Orders Trend (Last 30 Days)
+                      </h3>
+                      <p className="text-[11px] text-[#A89F95]">
+                        Daily bespoke order volume over time
+                      </p>
+                    </div>
+                    <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded bg-[#FAF7F2] text-[#5C1A32] border border-[#5C1A32]/15">
+                      30 Day Window
+                    </span>
+                  </div>
+                  <div className="h-64 w-full">
+                    {salesStats && salesStats.ordersPerDay.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={salesStats.ordersPerDay}
+                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#FAF7F2" vertical={false} />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fontSize: 10, fill: '#A89F95' }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#E5E7EB' }}
+                          />
+                          <YAxis
+                            allowDecimals={false}
+                            tick={{ fontSize: 10, fill: '#A89F95' }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#E5E7EB' }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#1B1512',
+                              borderColor: '#B8935A',
+                              color: '#FAF7F2',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                            }}
+                            labelStyle={{ color: '#B8935A', fontWeight: 'bold' }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="count"
+                            name="Orders"
+                            stroke="#5C1A32"
+                            strokeWidth={2.5}
+                            dot={{ fill: '#B8935A', r: 3 }}
+                            activeDot={{ r: 5, fill: '#5C1A32', stroke: '#B8935A', strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-xs text-[#A89F95]">
+                        No order volume recorded in the last 30 days
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bar Chart: Top 5 Fabrics by Revenue */}
+                <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#1B1512]" style={serif}>
+                        Top Fabrics by Revenue
+                      </h3>
+                      <p className="text-[11px] text-[#A89F95]">
+                        Highest grossing textiles &amp; weaves
+                      </p>
+                    </div>
+                    <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded bg-[#FAF7F2] text-[#B8935A] border border-[#B8935A]/30">
+                      INR Revenue
+                    </span>
+                  </div>
+                  <div className="h-64 w-full">
+                    {salesStats && salesStats.revenueByFabric.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={salesStats.revenueByFabric.slice(0, 5)}
+                          margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#FAF7F2" vertical={false} />
+                          <XAxis
+                            dataKey="fabricName"
+                            tick={{ fontSize: 10, fill: '#544B45' }}
+                            interval={0}
+                            angle={-15}
+                            textAnchor="end"
+                            tickLine={false}
+                            axisLine={{ stroke: '#E5E7EB' }}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 10, fill: '#A89F95' }}
+                            tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                            tickLine={false}
+                            axisLine={{ stroke: '#E5E7EB' }}
+                          />
+                          <Tooltip
+                            formatter={(val: unknown) => [
+                              val != null ? formatRupees(Number(val)) : '—',
+                              'Revenue',
+                            ]}
+                            contentStyle={{
+                              backgroundColor: '#1B1512',
+                              borderColor: '#B8935A',
+                              color: '#FAF7F2',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                            }}
+                          />
+                          <Bar dataKey="totalRevenue" fill="#B8935A" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-xs text-[#A89F95]">
+                        No fabric sales revenue data available yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pie Chart: Garment Type Distribution */}
+                <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#1B1512]" style={serif}>
+                        Garment Type Distribution
+                      </h3>
+                      <p className="text-[11px] text-[#A89F95]">
+                        Breakdown of couture silhouettes tailored
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-64 w-full">
+                    {salesStats && salesStats.topGarments.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={salesStats.topGarments}
+                            dataKey="count"
+                            nameKey="garment"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            innerRadius={45}
+                            paddingAngle={3}
+                          >
+                            {salesStats.topGarments.map((entry, index) => (
+                              <Cell
+                                key={`cell-${entry.garment}`}
+                                fill={CHART_COLORS[index % CHART_COLORS.length] ?? '#5C1A32'}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#1B1512',
+                              borderColor: '#B8935A',
+                              color: '#FAF7F2',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={36}
+                            formatter={(value: string) => (
+                              <span className="text-xs text-[#1B1512] capitalize font-medium">
+                                {value}
+                              </span>
+                            )}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-xs text-[#A89F95]">
+                        No garment distribution data available yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Geographic Breakdown: Orders By City */}
+                <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-5 shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#1B1512]" style={serif}>
+                        Geographic Distribution
+                      </h3>
+                      <p className="text-[11px] text-[#A89F95]">
+                        Delivery destinations across metropolitan areas
+                      </p>
+                    </div>
+                    <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded bg-[#FAF7F2] text-[#5C1A32] border border-[#5C1A32]/15">
+                      Top Cities
+                    </span>
+                  </div>
+
+                  <div className="h-64 overflow-y-auto space-y-2.5 pr-1">
+                    {salesStats && salesStats.ordersByCity.length > 0 ? (
+                      salesStats.ordersByCity.map((item, idx) => {
+                        const maxCityCount = Math.max(
+                          ...salesStats.ordersByCity.map((c) => c.count),
+                          1,
+                        );
+                        const pct = Math.round((item.count / maxCityCount) * 100);
+                        return (
+                          <div
+                            key={item.city || idx}
+                            className="p-2.5 bg-[#FAF7F2] rounded border border-[#5C1A32]/5"
+                          >
+                            <div className="flex justify-between items-center text-xs mb-1">
+                              <span className="font-semibold text-[#1B1512]">
+                                {item.city || 'Unspecified City'}
+                              </span>
+                              <span className="text-[#5C1A32] font-semibold">
+                                {item.count} orders
+                              </span>
+                            </div>
+                            <div className="w-full bg-[#E8DFC8]/40 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="bg-[#B8935A] h-1.5 rounded-full transition-all"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-xs text-[#A89F95]">
+                        No city distribution data recorded yet
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1770,7 +2308,7 @@ export default function AdminDashboard() {
               {/* Fabrics Table */}
               <div className="bg-white border border-[#5C1A32]/12 rounded-lg shadow-2xs overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs min-w-[640px]">
                     <thead className="bg-[#FAF7F2] border-b border-[#5C1A32]/15 text-[#5C1A32] uppercase tracking-wider text-[10px]">
                       <tr>
                         <th className="py-2.5 px-3">Swatch</th>
@@ -1889,8 +2427,8 @@ export default function AdminDashboard() {
 
               {/* Modal: Add New Fabric */}
               {showAddFabricModal && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="bg-white max-w-md w-full border border-[#5C1A32]/30 rounded-lg p-6 shadow-2xl space-y-4">
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                  <div className="bg-white max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#5C1A32]/30 rounded-lg p-4 sm:p-6 shadow-2xl space-y-4 my-auto">
                     <div className="flex justify-between items-center border-b border-[#5C1A32]/10 pb-3">
                       <h3 className="text-base font-normal text-[#1B1512]" style={serif}>
                         Add New Fabric SKU to Library
@@ -2020,7 +2558,7 @@ export default function AdminDashboard() {
           {/* ── ACCESSORIES PRICING TAB ───────────────────────────────────── */}
           {activeTab === 'accessories' && (
             <div className="space-y-4">
-              <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-2xs flex items-center justify-between">
+              <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-[#1B1512]">
                     Accessories & Embellishments Amount
@@ -2116,8 +2654,8 @@ export default function AdminDashboard() {
 
               {/* Add Accessory Modal */}
               {showAddAccModal && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="bg-white max-w-md w-full border border-[#5C1A32]/30 rounded-lg p-6 shadow-2xl space-y-4">
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                  <div className="bg-white max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#5C1A32]/30 rounded-lg p-4 sm:p-6 shadow-2xl space-y-4 my-auto">
                     <div className="flex justify-between items-center border-b border-[#5C1A32]/10 pb-3">
                       <h3 className="text-base font-normal text-[#1B1512]" style={serif}>
                         Add New Accessory Option
@@ -2213,391 +2751,650 @@ export default function AdminDashboard() {
           {/* ── ORDERS & USER DATA TAB (Clean, Spacious & Never Hidden) ─────── */}
           {activeTab === 'orders' && (
             <div className="space-y-4">
-              <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs uppercase font-semibold text-[#1B1512]">
-                    Filter by Payment:
+              {/* Sub-tab Switcher: Modern Mobile Segmented Control */}
+              <div className="grid grid-cols-2 p-1 bg-[#1B1512]/5 rounded-xl gap-1">
+                <button
+                  type="button"
+                  onClick={() => setOrdersSubView('bespoke')}
+                  className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    ordersSubView === 'bespoke'
+                      ? 'bg-white text-[#5C1A32] shadow-xs'
+                      : 'text-[#544B45] hover:text-[#1B1512]'
+                  }`}
+                >
+                  <Package className="h-3.5 w-3.5 text-[#B8935A]" />
+                  <span className="truncate">Bespoke Orders ({orders.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrdersSubView('corporate')}
+                  className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    ordersSubView === 'corporate'
+                      ? 'bg-white text-[#5C1A32] shadow-xs'
+                      : 'text-[#544B45] hover:text-[#1B1512]'
+                  }`}
+                >
+                  <Building2 className="h-3.5 w-3.5 text-[#B8935A]" />
+                  <span className="truncate">
+                    Corporate Inquiries ({corporateInquiries.length})
                   </span>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) =>
-                      setStatusFilter(e.target.value as 'all' | 'paid' | 'pending' | 'failed')
-                    }
-                    className="bg-[#FAF7F2] border border-[#5C1A32]/20 px-2.5 py-1.5 rounded text-xs text-[#1B1512]"
-                  >
-                    <option value="all">All Orders ({orders.length})</option>
-                    <option value="paid">Paid & Confirmed</option>
-                    <option value="pending">Pending Checkout</option>
-                    <option value="failed">Failed Payment</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <button
-                    onClick={handleExportOrdersCsv}
-                    className="px-3.5 py-1.5 bg-[#1B1512] hover:bg-[#5C1A32] text-white text-xs font-semibold rounded shadow-xs flex items-center gap-1.5 transition-colors"
-                    title="Export currently filtered orders to CSV for dispatch and accounting"
-                  >
-                    <Download className="h-3.5 w-3.5 text-[#B8935A]" />
-                    <span>Export CSV</span>
-                  </button>
-
-                  <button
-                    onClick={() => void refreshOrders()}
-                    className="inline-flex items-center gap-1.5 text-xs text-[#5C1A32] font-semibold hover:underline"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Refresh
-                  </button>
-                </div>
+                </button>
               </div>
 
-              {/* Orders Table */}
-              <div className="bg-white border border-[#5C1A32]/12 rounded-lg shadow-2xs overflow-hidden">
-                {loadingOrders ? (
-                  <div className="p-12 text-center text-xs text-[#544B45]">
-                    <RefreshCw className="h-5 w-5 animate-spin mx-auto text-[#B8935A] mb-2" />
-                    Loading bespoke orders...
-                  </div>
-                ) : orders.length === 0 ? (
-                  <div className="p-12 text-center text-[#544B45]">
-                    <Package className="h-8 w-8 mx-auto text-[#B8935A] mb-2 opacity-60" />
-                    <p className="font-semibold text-sm">No orders found.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-[#5C1A32]/10">
-                    {orders
-                      .filter((o) => {
-                        if (statusFilter === 'all') return true;
-                        if (statusFilter === 'paid')
-                          return o.paymentStatus === 'paid' || Boolean(o.paymentId);
-                        if (statusFilter === 'failed') return o.paymentStatus === 'failed';
-                        return o.paymentStatus === 'pending' && !o.paymentId;
-                      })
-                      .map((o) => (
-                        <div
-                          key={o.id}
-                          className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#FAF7F2]/40 transition-colors"
-                        >
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm text-[#1B1512]">
-                                {o.orderDetails.garment.toUpperCase()} — {o.orderDetails.fabricName}
-                              </span>
-                              <span className="text-[10px] font-mono bg-[#FAF7F2] border border-[#5C1A32]/15 px-1.5 py-0.5 rounded text-[#544B45]">
-                                {o.id}
-                              </span>
-                              {o.paymentStatus === 'failed' && (
-                                <span className="px-1.5 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-semibold rounded">
-                                  Failed
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-[#544B45]">
-                              Customer:{' '}
-                              <strong className="text-[#1B1512]">{o.address.fullName}</strong> (
-                              {o.address.phone}) · {o.address.city}, {o.address.state}
-                            </p>
+              {ordersSubView === 'bespoke' ? (
+                <div className="space-y-4">
+                  {/* Clean Responsive Filter & Action Bar */}
+                  <div className="bg-white border border-[#5C1A32]/12 rounded-xl p-3 sm:p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                      <span className="text-xs uppercase font-semibold text-[#1B1512] shrink-0">
+                        Filter:
+                      </span>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) =>
+                          setStatusFilter(e.target.value as 'all' | 'paid' | 'pending' | 'failed')
+                        }
+                        className="bg-[#FAF7F2] border border-[#5C1A32]/20 px-2.5 py-1.5 rounded-lg text-xs text-[#1B1512] flex-1 sm:flex-initial focus:outline-none focus:border-[#5C1A32] cursor-pointer"
+                      >
+                        <option value="all">All Orders ({orders.length})</option>
+                        <option value="paid">Paid & Confirmed</option>
+                        <option value="pending">Pending Checkout</option>
+                        <option value="failed">Failed Payment</option>
+                      </select>
+                    </div>
 
-                            {/* BlueDart AWB Tracking Editor */}
-                            <div className="flex items-center gap-2 pt-0.5">
-                              {editingAwbOrderId === o.id ? (
-                                <div className="flex items-center gap-1.5 bg-[#FAF7F2] p-1 rounded border border-[#5C1A32]/25">
-                                  <Truck className="h-3 w-3 text-[#5C1A32] ml-1" />
-                                  <input
-                                    type="text"
-                                    placeholder="e.g. BLU-882941"
-                                    value={awbInput}
-                                    onChange={(e) => setAwbInput(e.target.value)}
-                                    className="px-2 py-0.5 bg-white border border-[#5C1A32]/30 rounded text-xs font-mono uppercase w-32 focus:outline-none"
-                                  />
-                                  <button
-                                    onClick={() => void handleSaveAwb(o.id, o.username, o.status)}
-                                    disabled={savingAwb}
-                                    className="px-2 py-0.5 bg-[#5C1A32] text-white text-[10px] font-semibold rounded hover:bg-[#451325]"
-                                  >
-                                    {savingAwb ? 'Saving...' : 'Save'}
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditingAwbOrderId(null);
-                                      setAwbInput('');
-                                    }}
-                                    className="text-gray-400 hover:text-gray-600 text-[10px] px-1"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1.5 text-xs">
-                                  <span className="text-[11px] text-[#8A7968]">AWB Tracking:</span>
-                                  {o.trackingNumber ? (
-                                    <span className="font-mono font-bold text-[#1B1512] bg-[#FAF7F2] border border-[#5C1A32]/15 px-1.5 py-0.5 rounded text-[11px]">
-                                      {o.trackingNumber}
+                    <div className="flex items-center gap-2 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-[#5C1A32]/8 w-full sm:w-auto">
+                      <button
+                        onClick={handleExportOrdersCsv}
+                        className="flex-1 sm:flex-initial justify-center px-3.5 py-1.5 bg-[#1B1512] hover:bg-[#5C1A32] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title="Export currently filtered orders to CSV for dispatch and accounting"
+                      >
+                        <Download className="h-3.5 w-3.5 text-[#B8935A]" />
+                        <span>Export CSV</span>
+                      </button>
+
+                      <button
+                        onClick={() => void refreshOrders()}
+                        className="px-3 py-1.5 border border-[#5C1A32]/20 text-[#5C1A32] bg-[#FAF7F2] hover:bg-[#5C1A32]/5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span>Refresh</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Orders List / Cards */}
+                  <div className="bg-white border border-[#5C1A32]/12 rounded-xl shadow-2xs overflow-hidden">
+                    {loadingOrders ? (
+                      <div className="p-12 text-center text-xs text-[#544B45]">
+                        <RefreshCw className="h-5 w-5 animate-spin mx-auto text-[#B8935A] mb-2" />
+                        Loading bespoke orders...
+                      </div>
+                    ) : orders.length === 0 ? (
+                      <div className="p-12 text-center text-[#544B45]">
+                        <Package className="h-8 w-8 mx-auto text-[#B8935A] mb-2 opacity-60" />
+                        <p className="font-semibold text-sm">No orders found.</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-[#5C1A32]/10">
+                        {orders
+                          .filter((o) => {
+                            if (statusFilter === 'all') return true;
+                            if (statusFilter === 'paid')
+                              return o.paymentStatus === 'paid' || Boolean(o.paymentId);
+                            if (statusFilter === 'failed') return o.paymentStatus === 'failed';
+                            return o.paymentStatus === 'pending' && !o.paymentId;
+                          })
+                          .map((o) => (
+                            <div
+                              key={o.id}
+                              className="p-4 sm:p-5 flex flex-col gap-3.5 hover:bg-[#FAF7F2]/30 transition-colors"
+                            >
+                              {/* Row 1: Garment & Fabric Name + Price */}
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <h3 className="font-bold text-sm sm:text-base text-[#1B1512] truncate">
+                                    {o.orderDetails.garment.toUpperCase()} —{' '}
+                                    {o.orderDetails.fabricName}
+                                  </h3>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                    <span className="text-[10px] font-mono bg-[#FAF7F2] border border-[#5C1A32]/15 px-1.5 py-0.5 rounded text-[#544B45]">
+                                      {o.id}
                                     </span>
+                                    {o.paymentId ? (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold rounded">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        Paid
+                                      </span>
+                                    ) : o.paymentStatus === 'failed' ? (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-semibold rounded">
+                                        Failed
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold rounded">
+                                        Pending
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <span
+                                    className="text-base sm:text-lg font-bold text-[#5C1A32] block"
+                                    style={serif}
+                                  >
+                                    {formatRupees(o.orderDetails.total)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Row 2: Customer, Phone, Destination & BlueDart AWB */}
+                              <div className="text-xs text-[#544B45] space-y-1 bg-[#FAF7F2]/60 p-3 rounded-lg border border-[#5C1A32]/8">
+                                <p className="text-[#1B1512]">
+                                  Customer: <strong>{o.address.fullName}</strong> ({o.address.phone}
+                                  )
+                                </p>
+                                <p className="text-[#544B45] text-[11px] truncate">
+                                  {o.address.city}, {o.address.state}{' '}
+                                  {o.address.pincode ? `— ${o.address.pincode}` : ''}
+                                </p>
+
+                                {/* BlueDart AWB Tracking Editor */}
+                                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#5C1A32]/10 mt-1.5">
+                                  <span className="text-[10px] uppercase font-bold text-[#8A7968]">
+                                    AWB Tracking:
+                                  </span>
+                                  {editingAwbOrderId === o.id ? (
+                                    <div className="flex items-center gap-1 bg-white p-1 rounded border border-[#5C1A32]/25">
+                                      <Truck className="h-3 w-3 text-[#5C1A32]" />
+                                      <input
+                                        type="text"
+                                        placeholder="e.g. BLU-882941"
+                                        value={awbInput}
+                                        onChange={(e) => setAwbInput(e.target.value)}
+                                        className="px-1.5 py-0.5 bg-white border border-[#5C1A32]/20 rounded text-[11px] font-mono uppercase w-28 focus:outline-none"
+                                      />
+                                      <button
+                                        onClick={() =>
+                                          void handleSaveAwb(o.id, o.username, o.status)
+                                        }
+                                        disabled={savingAwb}
+                                        className="px-2 py-0.5 bg-[#5C1A32] text-white text-[10px] font-semibold rounded hover:bg-[#451325]"
+                                      >
+                                        {savingAwb ? '...' : 'Save'}
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setEditingAwbOrderId(null);
+                                          setAwbInput('');
+                                        }}
+                                        className="text-gray-400 hover:text-gray-600 text-[10px] px-1"
+                                      >
+                                        &times;
+                                      </button>
+                                    </div>
                                   ) : (
-                                    <span className="text-gray-400 italic text-[11px]">
-                                      Not assigned
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                      {o.trackingNumber ? (
+                                        <span className="font-mono font-bold text-[#1B1512] bg-white border border-[#5C1A32]/15 px-2 py-0.5 rounded text-[10px]">
+                                          {o.trackingNumber}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400 italic text-[11px]">
+                                          Not assigned
+                                        </span>
+                                      )}
+                                      <button
+                                        onClick={() => {
+                                          setEditingAwbOrderId(o.id);
+                                          setAwbInput(o.trackingNumber || '');
+                                        }}
+                                        className="text-[10px] text-[#5C1A32] font-semibold hover:underline flex items-center gap-0.5"
+                                      >
+                                        <Truck className="h-3 w-3 text-[#B8935A]" />
+                                        <span>
+                                          {o.trackingNumber ? 'Edit AWB' : '+ Assign AWB'}
+                                        </span>
+                                      </button>
+                                    </div>
                                   )}
-                                  <button
-                                    onClick={() => {
-                                      setEditingAwbOrderId(o.id);
-                                      setAwbInput(o.trackingNumber || '');
-                                    }}
-                                    className="text-[10px] text-[#5C1A32] font-semibold hover:underline flex items-center gap-0.5 ml-1"
-                                    title="Edit BlueDart AWB tracking number"
+                                </div>
+                              </div>
+
+                              {/* Row 3: Stage Selector & 3 Clean Balanced Action Buttons */}
+                              <div className="pt-2 border-t border-[#5C1A32]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                                  <span className="text-[10px] uppercase font-bold text-[#8A7968] shrink-0">
+                                    Stage:
+                                  </span>
+                                  <select
+                                    value={o.status ?? 'placed'}
+                                    onChange={(e) =>
+                                      void handleUpdateOrderStatus(
+                                        o.id,
+                                        o.username,
+                                        e.target.value as OrderStatus,
+                                      )
+                                    }
+                                    className="bg-[#FAF7F2] border border-[#5C1A32]/25 px-2 py-1 rounded-lg text-xs font-semibold text-[#1B1512] flex-1 sm:flex-initial focus:outline-none focus:border-[#5C1A32] cursor-pointer"
                                   >
-                                    <Truck className="h-3 w-3 text-[#B8935A]" />
-                                    {o.trackingNumber ? 'Edit AWB' : '+ Assign AWB'}
+                                    {ORDER_STATUS_STEPS.map((s) => (
+                                      <option key={s.value} value={s.value}>
+                                        {s.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {/* Clean 3-Button Layout - No Awkward Stacking on Mobile */}
+                                <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedOrder(o)}
+                                    className="px-2.5 sm:px-3 py-1.5 bg-[#1B1512] hover:bg-[#5C1A32] text-[#FAF7F2] text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                                    title="View full customer fitting & specification sheet"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                    <span className="truncate">View Sheet</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setJobCardOrder(o);
+                                      setShowJobCardModal(true);
+                                    }}
+                                    className="px-2.5 sm:px-3 py-1.5 bg-[#B8935A]/15 hover:bg-[#B8935A]/25 border border-[#B8935A]/40 text-[#8C6524] text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                    title="Print Master Tailor Cutting & Production Sheet"
+                                  >
+                                    <Scissors className="h-3.5 w-3.5 text-[#B8935A]" />
+                                    <span className="truncate">Job Card</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setInvoiceOrder(o);
+                                      setShowInvoiceModal(true);
+                                    }}
+                                    className="px-2.5 sm:px-3 py-1.5 bg-[#FAF7F2] hover:bg-[#5C1A32]/10 border border-[#5C1A32]/25 text-[#5C1A32] text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                    title="Download or preview Amazon-format Tax Invoice"
+                                  >
+                                    <FileText className="h-3.5 w-3.5" />
+                                    <span className="truncate">Invoice</span>
                                   </button>
                                 </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                  {/* EXPANDABLE SPECIFICATION MODAL (NO DATA HIDDEN, FULL VISIBILITY) */}
+                  {selectedOrder && (
+                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                      <div className="bg-white max-w-2xl w-full max-h-[92vh] overflow-y-auto border border-[#5C1A32]/30 rounded-xl p-4 sm:p-6 shadow-2xl space-y-5 my-auto flex flex-col justify-between">
+                        <div className="space-y-5">
+                          {/* Header */}
+                          <div className="flex justify-between items-start border-b border-[#5C1A32]/10 pb-4">
+                            <div>
+                              <span className="text-[10px] uppercase tracking-[0.25em] text-[#B8935A] font-semibold">
+                                BESPOKE SPECIFICATION & FITTINGS
+                              </span>
+                              <h3
+                                className="text-xl font-normal text-[#1B1512] mt-0.5"
+                                style={serif}
+                              >
+                                {selectedOrder.orderDetails.garment.toUpperCase()} —{' '}
+                                {selectedOrder.orderDetails.fabricName}
+                              </h3>
+                              <p className="text-xs text-[#544B45] font-mono mt-0.5">
+                                Order ID: {selectedOrder.id}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setSelectedOrder(null)}
+                              className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
+
+                          {/* Customer & Address Information */}
+                          <div className="bg-[#FAF7F2] p-4 rounded-lg border border-[#5C1A32]/10 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <span className="text-[10px] uppercase font-semibold text-[#A89F95] block mb-1">
+                                Client Contact
+                              </span>
+                              <p className="font-bold text-[#1B1512] text-sm">
+                                {selectedOrder.address.fullName}
+                              </p>
+                              <p className="text-[#544B45] mt-0.5">
+                                Phone: {selectedOrder.address.phone}
+                              </p>
+                              <p className="text-[#544B45]">
+                                User Account: @{selectedOrder.username}
+                              </p>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] uppercase font-semibold text-[#A89F95] block mb-1">
+                                Delivery Address
+                              </span>
+                              <p className="text-[#1B1512] font-medium leading-relaxed">
+                                {selectedOrder.address.line1}
+                                {selectedOrder.address.line2
+                                  ? `, ${selectedOrder.address.line2}`
+                                  : ''}
+                              </p>
+                              <p className="text-[#544B45]">
+                                {selectedOrder.address.city}, {selectedOrder.address.state} —{' '}
+                                {selectedOrder.address.pincode}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Master Tailor Measurements (ALL FIELDS VISIBLE & BEAUTIFULLY SPACED) */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2.5">
+                              <h4 className="text-xs uppercase font-semibold tracking-wider text-[#5C1A32]">
+                                Master Tailor Measurements
+                              </h4>
+                              {selectedOrder.orderDetails.bodyType && (
+                                <span className="text-[11px] font-semibold text-[#B8935A]">
+                                  Profile:{' '}
+                                  {BODY_TYPE_LABELS[selectedOrder.orderDetails.bodyType] ??
+                                    selectedOrder.orderDetails.bodyType}
+                                </span>
                               )}
                             </div>
+
+                            {selectedOrder.orderDetails.measurementValues &&
+                            Object.keys(selectedOrder.orderDetails.measurementValues).length > 0 ? (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-[#FAF7F2] p-4 rounded-lg border border-[#5C1A32]/10 text-xs">
+                                {Object.entries(selectedOrder.orderDetails.measurementValues).map(
+                                  ([key, val]) => (
+                                    <div
+                                      key={key}
+                                      className="bg-white p-2.5 rounded border border-[#5C1A32]/10"
+                                    >
+                                      <span className="text-[10px] uppercase tracking-wider text-[#A89F95] block truncate font-medium">
+                                        {key.replace(/([A-Z])/g, ' $1')}
+                                      </span>
+                                      <span className="text-sm font-bold text-[#1B1512] mt-0.5 block">
+                                        {val} in
+                                      </span>
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-[#544B45] italic p-3 bg-[#FAF7F2] rounded">
+                                Standard master artisan tailoring measurements applied.
+                              </p>
+                            )}
                           </div>
 
-                          <div className="flex items-center gap-2.5">
-                            <div className="text-right">
-                              <div className="text-sm font-semibold text-[#5C1A32]">
-                                {formatRupees(o.orderDetails.total)}
-                              </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="text-[9px] text-[#A89F95] uppercase font-semibold">
-                                  Stage:
-                                </span>
-                                <select
-                                  value={o.status ?? 'placed'}
-                                  onChange={(e) =>
-                                    void handleUpdateOrderStatus(
-                                      o.id,
-                                      o.username,
-                                      e.target.value as OrderStatus,
-                                    )
-                                  }
-                                  className="bg-[#FAF7F2] border border-[#5C1A32]/20 px-2 py-0.5 rounded text-xs text-[#1B1512]"
-                                >
-                                  {ORDER_STATUS_STEPS.map((s) => (
-                                    <option key={s.value} value={s.value}>
-                                      {s.label}
-                                    </option>
+                          {/* Add-ons & Reference Sketch */}
+                          {selectedOrder.orderDetails.accessories &&
+                            selectedOrder.orderDetails.accessories.length > 0 && (
+                              <div>
+                                <h4 className="text-xs uppercase font-semibold tracking-wider text-[#5C1A32] mb-1.5">
+                                  Selected Embellishments
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedOrder.orderDetails.accessories.map((a) => (
+                                    <span
+                                      key={a.id}
+                                      className="px-2.5 py-1 bg-[#FAF7F2] border border-[#5C1A32]/15 rounded text-xs text-[#1B1512]"
+                                    >
+                                      {a.label} (+₹{a.price})
+                                    </span>
                                   ))}
-                                </select>
+                                </div>
                               </div>
+                            )}
+
+                          {selectedOrder.orderDetails.referenceImage?.dataUrl && (
+                            <div>
+                              <h4 className="text-xs uppercase font-semibold tracking-wider text-[#5C1A32] mb-1.5">
+                                Uploaded Customer Reference Photo
+                              </h4>
+                              <img
+                                src={selectedOrder.orderDetails.referenceImage.dataUrl}
+                                alt="Customer Design Reference"
+                                className="max-h-56 rounded border border-[#5C1A32]/20 object-contain bg-black/5"
+                              />
                             </div>
-
-                            {/* Print Master Tailor Job Card */}
-                            <button
-                              onClick={() => {
-                                setJobCardOrder(o);
-                                setShowJobCardModal(true);
-                              }}
-                              className="px-3 py-1.5 bg-[#B8935A]/15 hover:bg-[#B8935A]/25 border border-[#B8935A]/40 text-[#8C6524] text-xs font-semibold uppercase tracking-wider rounded transition-colors flex items-center gap-1.5"
-                              title="Print Master Tailor Cutting & Production Sheet"
-                            >
-                              <Scissors className="h-3.5 w-3.5 text-[#B8935A]" />
-                              Job Card
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setInvoiceOrder(o);
-                                setShowInvoiceModal(true);
-                              }}
-                              className="px-3 py-1.5 bg-[#FAF7F2] hover:bg-[#5C1A32]/10 border border-[#5C1A32]/25 text-[#5C1A32] text-xs font-semibold uppercase tracking-wider rounded transition-colors flex items-center gap-1.5"
-                              title="Download or preview Amazon-format Tax Invoice"
-                            >
-                              <FileText className="h-3.5 w-3.5" />
-                              Invoice
-                            </button>
-
-                            <button
-                              onClick={() => setSelectedOrder(o)}
-                              className="px-3 py-1.5 bg-[#1B1512] hover:bg-[#5C1A32] text-[#FAF7F2] text-xs font-semibold uppercase tracking-wider rounded transition-colors flex items-center gap-1.5"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                              View Full Sheet
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-
-              {/* EXPANDABLE SPECIFICATION MODAL (NO DATA HIDDEN, FULL VISIBILITY) */}
-              {selectedOrder && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="bg-white max-w-2xl w-full max-h-[92vh] overflow-y-auto border border-[#5C1A32]/30 rounded-xl p-6 shadow-2xl space-y-6 flex flex-col justify-between">
-                    <div className="space-y-5">
-                      {/* Header */}
-                      <div className="flex justify-between items-start border-b border-[#5C1A32]/10 pb-4">
-                        <div>
-                          <span className="text-[10px] uppercase tracking-[0.25em] text-[#B8935A] font-semibold">
-                            BESPOKE SPECIFICATION & FITTINGS
-                          </span>
-                          <h3 className="text-xl font-normal text-[#1B1512] mt-0.5" style={serif}>
-                            {selectedOrder.orderDetails.garment.toUpperCase()} —{' '}
-                            {selectedOrder.orderDetails.fabricName}
-                          </h3>
-                          <p className="text-xs text-[#544B45] font-mono mt-0.5">
-                            Order ID: {selectedOrder.id}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => setSelectedOrder(null)}
-                          className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
-                      </div>
-
-                      {/* Customer & Address Information */}
-                      <div className="bg-[#FAF7F2] p-4 rounded-lg border border-[#5C1A32]/10 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <span className="text-[10px] uppercase font-semibold text-[#A89F95] block mb-1">
-                            Client Contact
-                          </span>
-                          <p className="font-bold text-[#1B1512] text-sm">
-                            {selectedOrder.address.fullName}
-                          </p>
-                          <p className="text-[#544B45] mt-0.5">
-                            Phone: {selectedOrder.address.phone}
-                          </p>
-                          <p className="text-[#544B45]">User Account: @{selectedOrder.username}</p>
-                        </div>
-
-                        <div>
-                          <span className="text-[10px] uppercase font-semibold text-[#A89F95] block mb-1">
-                            Delivery Address
-                          </span>
-                          <p className="text-[#1B1512] font-medium leading-relaxed">
-                            {selectedOrder.address.line1}
-                            {selectedOrder.address.line2 ? `, ${selectedOrder.address.line2}` : ''}
-                          </p>
-                          <p className="text-[#544B45]">
-                            {selectedOrder.address.city}, {selectedOrder.address.state} —{' '}
-                            {selectedOrder.address.pincode}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Master Tailor Measurements (ALL FIELDS VISIBLE & BEAUTIFULLY SPACED) */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2.5">
-                          <h4 className="text-xs uppercase font-semibold tracking-wider text-[#5C1A32]">
-                            Master Tailor Measurements
-                          </h4>
-                          {selectedOrder.orderDetails.bodyType && (
-                            <span className="text-[11px] font-semibold text-[#B8935A]">
-                              Profile:{' '}
-                              {BODY_TYPE_LABELS[selectedOrder.orderDetails.bodyType] ??
-                                selectedOrder.orderDetails.bodyType}
-                            </span>
                           )}
                         </div>
 
-                        {selectedOrder.orderDetails.measurementValues &&
-                        Object.keys(selectedOrder.orderDetails.measurementValues).length > 0 ? (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-[#FAF7F2] p-4 rounded-lg border border-[#5C1A32]/10 text-xs">
-                            {Object.entries(selectedOrder.orderDetails.measurementValues).map(
-                              ([key, val]) => (
-                                <div
-                                  key={key}
-                                  className="bg-white p-2.5 rounded border border-[#5C1A32]/10"
-                                >
-                                  <span className="text-[10px] uppercase tracking-wider text-[#A89F95] block truncate font-medium">
-                                    {key.replace(/([A-Z])/g, ' $1')}
-                                  </span>
-                                  <span className="text-sm font-bold text-[#1B1512] mt-0.5 block">
-                                    {val} in
-                                  </span>
-                                </div>
-                              ),
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-[#544B45] italic p-3 bg-[#FAF7F2] rounded">
-                            Standard master artisan tailoring measurements applied.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Add-ons & Reference Sketch */}
-                      {selectedOrder.orderDetails.accessories &&
-                        selectedOrder.orderDetails.accessories.length > 0 && (
+                        {/* Footer & Close */}
+                        <div className="pt-4 border-t border-[#5C1A32]/10 flex items-center justify-between text-xs mt-4">
                           <div>
-                            <h4 className="text-xs uppercase font-semibold tracking-wider text-[#5C1A32] mb-1.5">
-                              Selected Embellishments
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {selectedOrder.orderDetails.accessories.map((a) => (
-                                <span
-                                  key={a.id}
-                                  className="px-2.5 py-1 bg-[#FAF7F2] border border-[#5C1A32]/15 rounded text-xs text-[#1B1512]"
-                                >
-                                  {a.label} (+₹{a.price})
-                                </span>
-                              ))}
+                            <span className="text-[#A89F95] text-[10px] uppercase font-semibold block">
+                              Order Total
+                            </span>
+                            <div className="text-xl font-bold text-[#5C1A32]" style={serif}>
+                              {formatRupees(selectedOrder.orderDetails.total)}
                             </div>
                           </div>
-                        )}
 
-                      {selectedOrder.orderDetails.referenceImage?.dataUrl && (
-                        <div>
-                          <h4 className="text-xs uppercase font-semibold tracking-wider text-[#5C1A32] mb-1.5">
-                            Uploaded Customer Reference Photo
-                          </h4>
-                          <img
-                            src={selectedOrder.orderDetails.referenceImage.dataUrl}
-                            alt="Customer Design Reference"
-                            className="max-h-56 rounded border border-[#5C1A32]/20 object-contain bg-black/5"
-                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setJobCardOrder(selectedOrder);
+                                setShowJobCardModal(true);
+                              }}
+                              className="px-4 py-2 bg-[#B8935A] hover:bg-[#9a7844] text-white text-xs font-semibold rounded flex items-center gap-1.5 shadow-sm transition-colors"
+                              title="Print Haute Couture Master Tailor Cutting & Production Sheet"
+                            >
+                              <Scissors className="h-3.5 w-3.5" />
+                              Print Job Card
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setInvoiceOrder(selectedOrder);
+                                setShowInvoiceModal(true);
+                              }}
+                              className="px-4 py-2 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold rounded flex items-center gap-1.5 shadow-sm"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              Download Amazon Tax Invoice (PDF)
+                            </button>
+
+                            <button
+                              onClick={() => setSelectedOrder(null)}
+                              className="px-5 py-2 bg-[#1B1512] text-[#FAF7F2] text-xs font-semibold rounded hover:bg-[#5C1A32] transition-colors"
+                            >
+                              Close Sheet
+                            </button>
+                          </div>
                         </div>
-                      )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Metric summary */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-3 shadow-2xs">
+                      <span className="text-[10px] uppercase font-semibold text-[#A89F95] block">
+                        Total Inquiries
+                      </span>
+                      <div className="text-xl font-semibold text-[#1B1512] mt-0.5" style={serif}>
+                        {corporateInquiries.length}
+                      </div>
+                    </div>
+                    <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-3 shadow-2xs">
+                      <span className="text-[10px] uppercase font-semibold text-blue-600 block">
+                        New Leads
+                      </span>
+                      <div className="text-xl font-semibold text-blue-700 mt-0.5" style={serif}>
+                        {corporateInquiries.filter((i) => i.status === 'New').length}
+                      </div>
+                    </div>
+                    <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-3 shadow-2xs">
+                      <span className="text-[10px] uppercase font-semibold text-amber-600 block">
+                        In Negotiation
+                      </span>
+                      <div className="text-xl font-semibold text-amber-700 mt-0.5" style={serif}>
+                        {
+                          corporateInquiries.filter(
+                            (i) => i.status === 'In Progress' || i.status === 'Quoted',
+                          ).length
+                        }
+                      </div>
+                    </div>
+                    <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-3 shadow-2xs">
+                      <span className="text-[10px] uppercase font-semibold text-emerald-600 block">
+                        Closed / Won
+                      </span>
+                      <div className="text-xl font-semibold text-emerald-700 mt-0.5" style={serif}>
+                        {corporateInquiries.filter((i) => i.status === 'Closed').length}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Filter Row */}
+                  <div className="bg-white border border-[#5C1A32]/12 rounded-lg p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs uppercase font-semibold text-[#1B1512]">
+                        Filter by Status:
+                      </span>
+                      <select
+                        value={corporateStatusFilter}
+                        onChange={(e) => setCorporateStatusFilter(e.target.value)}
+                        className="bg-[#FAF7F2] border border-[#5C1A32]/20 px-2.5 py-1.5 rounded text-xs text-[#1B1512]"
+                      >
+                        <option value="all">All Inquiries ({corporateInquiries.length})</option>
+                        <option value="New">New</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Quoted">Quoted</option>
+                        <option value="Closed">Closed</option>
+                      </select>
                     </div>
 
-                    {/* Footer & Close */}
-                    <div className="pt-4 border-t border-[#5C1A32]/10 flex items-center justify-between text-xs mt-4">
-                      <div>
-                        <span className="text-[#A89F95] text-[10px] uppercase font-semibold block">
-                          Order Total
-                        </span>
-                        <div className="text-xl font-bold text-[#5C1A32]" style={serif}>
-                          {formatRupees(selectedOrder.orderDetails.total)}
-                        </div>
-                      </div>
+                    <button
+                      onClick={() => void refreshCorporateInquiries()}
+                      disabled={loadingInquiries}
+                      className="px-3.5 py-1.5 bg-[#FAF7F2] border border-[#5C1A32]/20 hover:border-[#5C1A32] text-[#1B1512] rounded text-xs font-medium flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 text-[#B8935A] ${loadingInquiries ? 'animate-spin' : ''}`}
+                      />
+                      <span>Refresh</span>
+                    </button>
+                  </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setJobCardOrder(selectedOrder);
-                            setShowJobCardModal(true);
-                          }}
-                          className="px-4 py-2 bg-[#B8935A] hover:bg-[#9a7844] text-white text-xs font-semibold rounded flex items-center gap-1.5 shadow-sm transition-colors"
-                          title="Print Haute Couture Master Tailor Cutting & Production Sheet"
-                        >
-                          <Scissors className="h-3.5 w-3.5" />
-                          Print Job Card
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setInvoiceOrder(selectedOrder);
-                            setShowInvoiceModal(true);
-                          }}
-                          className="px-4 py-2 bg-[#5C1A32] hover:bg-[#451325] text-white text-xs font-semibold rounded flex items-center gap-1.5 shadow-sm"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          Download Amazon Tax Invoice (PDF)
-                        </button>
-
-                        <button
-                          onClick={() => setSelectedOrder(null)}
-                          className="px-5 py-2 bg-[#1B1512] text-[#FAF7F2] text-xs font-semibold rounded hover:bg-[#5C1A32] transition-colors"
-                        >
-                          Close Sheet
-                        </button>
-                      </div>
+                  {/* Corporate Inquiries Table */}
+                  <div className="bg-white border border-[#5C1A32]/12 rounded-lg shadow-xs overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse min-w-[680px]">
+                        <thead>
+                          <tr className="bg-[#FAF7F2] border-b border-[#5C1A32]/10 text-[10px] uppercase tracking-wider text-[#A89F95]">
+                            <th className="p-3.5 font-semibold">Organization &amp; Contact</th>
+                            <th className="p-3.5 font-semibold">Garment &amp; Quantity</th>
+                            <th className="p-3.5 font-semibold">Destination &amp; Target Date</th>
+                            <th className="p-3.5 font-semibold">Special Requirements</th>
+                            <th className="p-3.5 font-semibold">Submitted</th>
+                            <th className="p-3.5 font-semibold">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#5C1A32]/5">
+                          {corporateInquiries
+                            .filter((item) =>
+                              corporateStatusFilter === 'all'
+                                ? true
+                                : item.status === corporateStatusFilter,
+                            )
+                            .map((item) => (
+                              <tr
+                                key={item._id}
+                                className="hover:bg-[#FAF7F2]/60 transition-colors"
+                              >
+                                <td className="p-3.5">
+                                  <div className="font-semibold text-[#1B1512] text-xs">
+                                    {item.organizationName}
+                                  </div>
+                                  <div className="text-[11px] text-[#544B45] mt-0.5">
+                                    {item.contactPerson}
+                                  </div>
+                                  <div className="text-[10px] text-[#A89F95]">
+                                    {item.email} · {item.phone}
+                                  </div>
+                                </td>
+                                <td className="p-3.5">
+                                  <span className="font-semibold text-[#5C1A32]">
+                                    {item.garmentType}
+                                  </span>
+                                  <div className="text-[11px] text-[#1B1512] font-medium mt-0.5">
+                                    Qty:{' '}
+                                    <strong className="text-[#B8935A]">
+                                      {item.estimatedQuantity}
+                                    </strong>{' '}
+                                    units
+                                  </div>
+                                </td>
+                                <td className="p-3.5">
+                                  <div className="text-xs text-[#1B1512] font-medium">
+                                    {item.deliveryCity}
+                                  </div>
+                                  <div className="text-[10px] text-[#A89F95] mt-0.5 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3 text-[#B8935A]" />
+                                    <span>{new Date(item.targetDate).toLocaleDateString()}</span>
+                                  </div>
+                                </td>
+                                <td className="p-3.5 max-w-xs">
+                                  <p className="text-[11px] text-[#544B45] line-clamp-2">
+                                    {item.specialRequirements || 'No special requirements noted.'}
+                                  </p>
+                                </td>
+                                <td className="p-3.5 whitespace-nowrap text-[10px] text-[#A89F95]">
+                                  {new Date(item.createdAt).toLocaleDateString()}
+                                </td>
+                                <td className="p-3.5 whitespace-nowrap">
+                                  <select
+                                    value={item.status}
+                                    onChange={(e) =>
+                                      void handleUpdateInquiryStatus(
+                                        item._id,
+                                        e.target.value as
+                                          | 'New'
+                                          | 'In Progress'
+                                          | 'Quoted'
+                                          | 'Closed',
+                                      )
+                                    }
+                                    className={`px-2.5 py-1 text-[11px] font-semibold rounded border cursor-pointer ${
+                                      item.status === 'New'
+                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                        : item.status === 'In Progress'
+                                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                          : item.status === 'Quoted'
+                                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    }`}
+                                  >
+                                    <option value="New">New</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Quoted">Quoted</option>
+                                    <option value="Closed">Closed</option>
+                                  </select>
+                                </td>
+                              </tr>
+                            ))}
+                          {corporateInquiries.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-xs text-[#A89F95]">
+                                No corporate or bulk inquiries submitted yet.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -2897,7 +3694,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left border-collapse text-xs min-w-[650px]">
                     <thead>
                       <tr className="bg-[#FAF7F2] border-b border-[#5C1A32]/10 uppercase text-[10px] font-semibold text-[#544B45]">
                         <th className="p-3.5">Client Profile</th>
@@ -2931,15 +3728,50 @@ export default function AdminDashboard() {
                             <tr key={u._id} className="hover:bg-[#FAF7F2]/50 transition-colors">
                               <td className="p-3.5">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="w-8 h-8 rounded-full bg-[#5C1A32]/10 text-[#5C1A32] font-bold flex items-center justify-center text-xs shrink-0">
-                                    {u.username.slice(0, 2).toUpperCase()}
+                                  <div className="relative">
+                                    <div className="w-8 h-8 rounded-full bg-[#5C1A32]/10 text-[#5C1A32] font-bold flex items-center justify-center text-xs shrink-0">
+                                      {u.username.slice(0, 2).toUpperCase()}
+                                    </div>
+                                    {u.flag && (
+                                      <span
+                                        className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
+                                          u.flag === 'VIP'
+                                            ? 'bg-[#B8935A]'
+                                            : u.flag === 'Needs Attention'
+                                              ? 'bg-[#F97316]'
+                                              : 'bg-[#EF4444]'
+                                        }`}
+                                        title={`Flagged: ${u.flag}`}
+                                      />
+                                    )}
                                   </div>
                                   <div>
-                                    <span className="font-bold text-[#1B1512] block">
-                                      {u.username}
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-[#1B1512] block">
+                                        {u.username}
+                                      </span>
+                                      {u.flag && (
+                                        <span
+                                          className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                                            u.flag === 'VIP'
+                                              ? 'bg-amber-50 text-[#B8935A] border-[#B8935A]/30'
+                                              : u.flag === 'Needs Attention'
+                                                ? 'bg-orange-50 text-orange-600 border-orange-200'
+                                                : 'bg-rose-50 text-rose-600 border-rose-200'
+                                          }`}
+                                        >
+                                          {u.flag}
+                                        </span>
+                                      )}
+                                    </div>
                                     <span className="text-[10px] text-[#8A7968]">
                                       ID: {u._id.slice(-6).toUpperCase()}
+                                      {u.adminNotes && u.adminNotes.length > 0 && (
+                                        <span className="ml-1 text-[#5C1A32] font-medium">
+                                          · {u.adminNotes.length} CRM{' '}
+                                          {u.adminNotes.length === 1 ? 'note' : 'notes'}
+                                        </span>
+                                      )}
                                     </span>
                                   </div>
                                 </div>
@@ -2986,27 +3818,36 @@ export default function AdminDashboard() {
                                 )}
                               </td>
                               <td className="p-3.5 text-right">
-                                <button
-                                  onClick={async () => {
-                                    if (
-                                      confirm(
-                                        `Are you sure you want to delete user "${u.username}"?`,
-                                      )
-                                    ) {
-                                      try {
-                                        await userApi.deleteUser(u._id);
-                                        showToast(`User ${u.username} deleted.`);
-                                        void refreshUsers();
-                                      } catch {
-                                        showToast('Failed to delete user.');
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => setSelectedUserForNotes(u)}
+                                    className="p-1.5 text-neutral-500 hover:text-[#5C1A32] hover:bg-[#FAF7F2] rounded transition-colors"
+                                    title="View &amp; Add Customer CRM Notes"
+                                  >
+                                    <StickyNote className="h-4 w-4 text-[#B8935A]" />
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (
+                                        confirm(
+                                          `Are you sure you want to delete user "${u.username}"?`,
+                                        )
+                                      ) {
+                                        try {
+                                          await userApi.deleteUser(u._id);
+                                          showToast(`User ${u.username} deleted.`);
+                                          void refreshUsers();
+                                        } catch {
+                                          showToast('Failed to delete user.');
+                                        }
                                       }
-                                    }
-                                  }}
-                                  className="p-1.5 text-neutral-400 hover:text-rose-600 rounded transition-colors"
-                                  title="Remove User Account"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                    }}
+                                    className="p-1.5 text-neutral-400 hover:text-rose-600 rounded transition-colors"
+                                    title="Remove User Account"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -3015,6 +3856,157 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
+
+              {/* Customer CRM Notes & Flag Modal */}
+              {selectedUserForNotes && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                  <div className="bg-white max-w-lg w-full max-h-[90vh] overflow-y-auto border border-[#5C1A32]/30 rounded-xl p-4 sm:p-6 shadow-2xl space-y-4 my-auto">
+                    <div className="flex justify-between items-start border-b border-[#5C1A32]/10 pb-3">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#B8935A] block">
+                          Client Relationship Management (CRM)
+                        </span>
+                        <h3 className="text-base font-semibold text-[#1B1512]" style={serif}>
+                          {selectedUserForNotes.username} · Notes &amp; Classification
+                        </h3>
+                        <p className="text-xs text-[#8A7968]">
+                          {selectedUserForNotes.email} ·{' '}
+                          {selectedUserForNotes.phoneNumber || 'No phone'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setSelectedUserForNotes(null)}
+                        className="text-neutral-400 hover:text-neutral-700 p-1"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Flag Selection */}
+                    <div>
+                      <label className="text-xs font-semibold text-[#1B1512] block mb-1.5">
+                        Client Classification Flag:
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {(['VIP', 'Needs Attention', 'Blocked'] as CustomerFlag[]).map((flag) => {
+                          const isSelected = selectedUserForNotes.flag === flag;
+                          return (
+                            <button
+                              key={flag}
+                              type="button"
+                              disabled={updatingUserFlag}
+                              onClick={() =>
+                                void handleUpdateCustomerFlag(selectedUserForNotes._id, flag)
+                              }
+                              className={`px-3 py-1 rounded text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                isSelected
+                                  ? flag === 'VIP'
+                                    ? 'bg-[#B8935A] text-white border-[#B8935A]'
+                                    : flag === 'Needs Attention'
+                                      ? 'bg-[#F97316] text-white border-[#F97316]'
+                                      : 'bg-[#EF4444] text-white border-[#EF4444]'
+                                  : 'bg-[#FAF7F2] text-[#544B45] border-[#5C1A32]/15 hover:border-[#5C1A32]/40'
+                              }`}
+                            >
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  flag === 'VIP'
+                                    ? 'bg-[#B8935A]'
+                                    : flag === 'Needs Attention'
+                                      ? 'bg-[#F97316]'
+                                      : 'bg-[#EF4444]'
+                                } ${isSelected ? 'ring-2 ring-white' : ''}`}
+                              />
+                              <span>{flag}</span>
+                            </button>
+                          );
+                        })}
+                        {selectedUserForNotes.flag && (
+                          <button
+                            type="button"
+                            disabled={updatingUserFlag}
+                            onClick={() =>
+                              void handleUpdateCustomerFlag(selectedUserForNotes._id, 'none')
+                            }
+                            className="px-2.5 py-1 text-xs text-neutral-500 hover:text-neutral-800 underline cursor-pointer"
+                          >
+                            Clear Flag
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Timestamped Notes History */}
+                    <div>
+                      <label className="text-xs font-semibold text-[#1B1512] block mb-1.5">
+                        Atelier Notes History ({selectedUserForNotes.adminNotes?.length || 0}):
+                      </label>
+                      <div className="max-h-48 overflow-y-auto space-y-2 border border-[#5C1A32]/10 rounded-lg p-3 bg-[#FAF7F2]">
+                        {selectedUserForNotes.adminNotes &&
+                        selectedUserForNotes.adminNotes.length > 0 ? (
+                          selectedUserForNotes.adminNotes.map((entry, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white p-2.5 rounded border border-[#5C1A32]/5 shadow-2xs"
+                            >
+                              <p className="text-xs text-[#1B1512] leading-relaxed whitespace-pre-wrap">
+                                {entry.note}
+                              </p>
+                              <div className="text-[10px] text-[#A89F95] mt-1 flex items-center justify-between">
+                                <span>
+                                  {new Date(entry.addedAt).toLocaleString('en-IN', {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short',
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-4 text-xs text-[#A89F95]">
+                            No administrative notes recorded for this patron yet.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Add New Note */}
+                    <form onSubmit={handleAddUserNote} className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-[#1B1512] block mb-1">
+                          Add Internal Atelier Note:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={newUserNote}
+                          onChange={(e) => setNewUserNote(e.target.value)}
+                          placeholder="Record client garment preferences, fitting adjustments, bridal notes..."
+                          className="w-full px-3 py-2 bg-white border border-[#5C1A32]/20 rounded text-xs text-[#1B1512] focus:outline-none focus:border-[#5C1A32]"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUserForNotes(null)}
+                          className="px-4 py-1.5 border border-[#5C1A32]/20 text-[#544B45] hover:bg-[#FAF7F2] rounded text-xs font-medium cursor-pointer"
+                        >
+                          Close
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={savingUserNote || !newUserNote.trim()}
+                          className="px-4 py-1.5 bg-[#5C1A32] hover:bg-[#451325] text-white rounded text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                        >
+                          <StickyNote className="h-3.5 w-3.5 text-[#B8935A]" />
+                          <span>{savingUserNote ? 'Saving...' : 'Add Note'}</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -3159,7 +4151,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left border-collapse text-xs min-w-[650px]">
                     <thead>
                       <tr className="bg-[#FAF7F2] border-b border-[#5C1A32]/10 uppercase text-[10px] font-bold text-[#544B45]">
                         <th className="p-3.5">Account Profile</th>
@@ -3384,74 +4376,134 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              {/* Coupons Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {coupons.map((coupon) => (
-                  <div
-                    key={coupon.code}
-                    className={`bg-white border rounded-xl p-5 shadow-2xs space-y-4 flex flex-col justify-between transition-all ${
-                      coupon.active ? 'border-[#5C1A32]/25' : 'border-gray-200 opacity-60'
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-base font-bold text-[#5C1A32] tracking-wider bg-[#FAF7F2] border border-[#5C1A32]/20 px-2.5 py-1 rounded-md">
-                          {coupon.code}
-                        </span>
-                        <button
-                          onClick={() => handleToggleCoupon(coupon.code)}
-                          className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border ${
-                            coupon.active
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-gray-100 text-gray-500 border-gray-300'
-                          }`}
-                        >
-                          {coupon.active ? 'Active' : 'Disabled'}
-                        </button>
-                      </div>
+              {/* Coupons Table & Management */}
+              <div className="bg-white border border-[#5C1A32]/12 rounded-lg shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs min-w-[650px]">
+                    <thead>
+                      <tr className="bg-[#FAF7F2] border-b border-[#5C1A32]/10 uppercase text-[10px] font-semibold text-[#544B45]">
+                        <th className="p-3.5">Promo Code</th>
+                        <th className="p-3.5">Discount Offer</th>
+                        <th className="p-3.5">Min Order</th>
+                        <th className="p-3.5">Times Used / Max Usage</th>
+                        <th className="p-3.5">Expiry Date</th>
+                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#5C1A32]/10">
+                      {coupons.map((coupon) => {
+                        const used = coupon.usageCount ?? coupon.usesCount ?? 0;
+                        const max = coupon.maxUsage ?? 100;
+                        const isExpired = Boolean(
+                          coupon.expiresAt &&
+                          new Date(coupon.expiresAt).getTime() < new Date().setHours(0, 0, 0, 0),
+                        );
+                        const isMaxed = used >= max;
+                        const statusBadge = isMaxed
+                          ? { label: 'Used Up', bg: 'bg-rose-50 text-rose-700 border-rose-200' }
+                          : isExpired
+                            ? {
+                                label: 'Expired',
+                                bg: 'bg-amber-50 text-amber-700 border-amber-200',
+                              }
+                            : coupon.active
+                              ? {
+                                  label: 'Active',
+                                  bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                }
+                              : {
+                                  label: 'Disabled',
+                                  bg: 'bg-gray-100 text-gray-600 border-gray-200',
+                                };
 
-                      <div className="pt-1">
-                        <div className="text-lg font-bold text-[#1B1512]">
-                          {coupon.discountType === 'percentage'
-                            ? `${coupon.discountValue}% OFF`
-                            : `₹${coupon.discountValue} FLAT OFF`}
-                        </div>
-                        <p className="text-xs text-[#544B45] mt-1 leading-relaxed">
-                          {coupon.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-[#5C1A32]/10 space-y-2 text-xs">
-                      <div className="flex items-center justify-between text-[#8A7968]">
-                        <span>Min Order Value:</span>
-                        <strong className="text-[#1B1512]">
-                          ₹{coupon.minOrderValue.toLocaleString('en-IN')}
-                        </strong>
-                      </div>
-                      <div className="flex items-center justify-between text-[#8A7968]">
-                        <span>Times Redeemed:</span>
-                        <span className="font-mono text-[#5C1A32] font-semibold">
-                          {coupon.usesCount} patrons
-                        </span>
-                      </div>
-
-                      <div className="pt-2 flex justify-end">
-                        <button
-                          onClick={() => {
-                            if (confirm(`Delete promo code "${coupon.code}"?`)) {
-                              handleDeleteCoupon(coupon.code);
-                            }
-                          }}
-                          className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                        return (
+                          <tr key={coupon.code} className="hover:bg-[#FAF7F2]/50 transition-colors">
+                            <td className="p-3.5">
+                              <span className="font-mono font-bold text-[#5C1A32] tracking-wider bg-[#FAF7F2] border border-[#5C1A32]/20 px-2 py-0.5 rounded text-xs inline-block">
+                                {coupon.code}
+                              </span>
+                              <p className="text-[11px] text-[#544B45] mt-1 max-w-xs">
+                                {coupon.description}
+                              </p>
+                            </td>
+                            <td className="p-3.5 font-semibold text-[#1B1512]">
+                              {coupon.discountType === 'percentage'
+                                ? `${coupon.discountValue}% OFF`
+                                : `₹${coupon.discountValue} FLAT OFF`}
+                            </td>
+                            <td className="p-3.5 text-[#544B45]">
+                              ₹{coupon.minOrderValue.toLocaleString('en-IN')}
+                            </td>
+                            <td className="p-3.5">
+                              <span className="font-mono font-semibold text-xs text-[#1B1512]">
+                                {used} / {max}
+                              </span>
+                              <div className="w-24 bg-gray-200 rounded-full h-1.5 mt-1 overflow-hidden">
+                                <div
+                                  className={`h-1.5 rounded-full ${isMaxed ? 'bg-rose-500' : 'bg-[#B8935A]'}`}
+                                  style={{
+                                    width: `${Math.min(100, Math.round((used / max) * 100))}%`,
+                                  }}
+                                />
+                              </div>
+                            </td>
+                            <td className="p-3.5">
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="date"
+                                  value={coupon.expiresAt ? coupon.expiresAt.slice(0, 10) : ''}
+                                  onChange={(e) =>
+                                    handleUpdateCouponExpiry(coupon.code, e.target.value)
+                                  }
+                                  className="text-[11px] bg-[#FAF7F2] border border-[#5C1A32]/20 rounded px-2 py-0.5 text-[#1B1512] focus:outline-none"
+                                />
+                              </div>
+                            </td>
+                            <td className="p-3.5">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusBadge.bg}`}
+                              >
+                                {statusBadge.label}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-right whitespace-nowrap">
+                              <button
+                                onClick={() => handleToggleCoupon(coupon.code)}
+                                className={`text-[10px] font-semibold px-2 py-1 rounded mr-2 border transition-colors ${
+                                  coupon.active
+                                    ? 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-neutral-300'
+                                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300'
+                                }`}
+                              >
+                                {coupon.active ? 'Disable' : 'Enable'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Delete promo code "${coupon.code}"?`)) {
+                                    handleDeleteCoupon(coupon.code);
+                                  }
+                                }}
+                                className="p-1.5 text-neutral-400 hover:text-rose-600 rounded transition-colors inline-flex items-center"
+                                title="Remove Promo Code"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {coupons.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-xs text-[#A89F95]">
+                            No atelier promo codes created yet. Click "Create Promo Code" to add
+                            one.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Create Coupon Modal */}
@@ -3546,6 +4598,34 @@ export default function AdminDashboard() {
                           onChange={(e) => setNewCouponDesc(e.target.value)}
                           className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded focus:outline-none"
                         />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                            Set Max Usage (Limit)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="50"
+                            value={newCouponMaxUsage}
+                            onChange={(e) => setNewCouponMaxUsage(e.target.value)}
+                            min="1"
+                            className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-[#8A7968] mb-1">
+                            Set Expiry Date
+                          </label>
+                          <input
+                            type="date"
+                            value={newCouponExpiry}
+                            onChange={(e) => setNewCouponExpiry(e.target.value)}
+                            className="w-full px-3 py-2 border border-[#5C1A32]/25 rounded focus:outline-none"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -4066,7 +5146,7 @@ export default function AdminDashboard() {
 
                           {/* Options Table */}
                           <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse text-xs">
+                            <table className="w-full text-left border-collapse text-xs min-w-[640px]">
                               <thead>
                                 <tr className="bg-[#FAF7F2]/50 border-b border-neutral-200 text-[#8A7968] font-bold uppercase text-[10px] tracking-wider">
                                   <th className="p-3 w-12 text-center">#</th>
@@ -4247,8 +5327,8 @@ export default function AdminDashboard() {
 
       {/* 1. Add Item Modal */}
       {showAddGarmentModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-[#5C1A32]/20 overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-[#5C1A32]/20 overflow-hidden my-auto">
             <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
               <div className="flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#5C1A32]" />
@@ -4370,8 +5450,8 @@ export default function AdminDashboard() {
 
       {/* 2. Edit Garment Modal */}
       {editingGarment && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#5C1A32]/20 overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#5C1A32]/20 overflow-hidden my-auto">
             <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
               <div className="flex items-center gap-2">
                 <Edit2 className="h-4 w-4 text-[#5C1A32]" />
@@ -4456,8 +5536,8 @@ export default function AdminDashboard() {
 
       {/* 3. Add Sub-Division Section Modal */}
       {showAddSectionModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#5C1A32]/20 overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#5C1A32]/20 overflow-hidden my-auto">
             <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
               <div className="flex items-center gap-2">
                 <Layers className="h-4 w-4 text-[#5C1A32]" />
@@ -4515,8 +5595,8 @@ export default function AdminDashboard() {
 
       {/* 4. Add Style Option Modal */}
       {showAddOptionModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#5C1A32]/20 overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#5C1A32]/20 overflow-hidden my-auto">
             <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
               <div className="flex items-center gap-2">
                 <Scissors className="h-4 w-4 text-[#5C1A32]" />
@@ -4593,8 +5673,8 @@ export default function AdminDashboard() {
 
       {/* 5. Add Sub-Option Modal */}
       {showAddSubOptionModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-[#5C1A32]/20 overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#5C1A32]/20 overflow-hidden my-auto">
             <div className="p-5 border-b border-[#5C1A32]/10 flex items-center justify-between bg-[#FAF7F2]">
               <div className="flex items-center gap-2">
                 <Scissors className="h-4 w-4 text-[#5C1A32]" />

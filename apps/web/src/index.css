@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* shadcn/ui CSS variables — Tailwind v4 CSS-first theme */
 @layer base {
   :root {

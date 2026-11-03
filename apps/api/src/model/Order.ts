@@ -59,7 +59,18 @@ export type OrderStatus =
   | 'confirmed'
   | 'processing'
   | 'shipped'
-  | 'cancelled';
+  | 'cancelled'
+  | 'cutting'
+  | 'stitching'
+  | 'qc-check'
+  | 'QC Check'
+  | (string & {});
+
+export interface StatusHistoryEntry {
+  status: string;
+  timestamp: Date;
+  note?: string;
+}
 
 export interface IOrder extends Document {
   id: string;
@@ -69,6 +80,7 @@ export interface IOrder extends Document {
   paymentId: string | null;
   paymentStatus: 'pending' | 'paid' | 'failed';
   status: OrderStatus;
+  statusHistory: StatusHistoryEntry[];
   trackingNumber?: string;
   courier?: string;
   placedAt: Date;
@@ -148,18 +160,15 @@ const OrderSchema = new Schema<IOrder>(
     },
     status: {
       type: String,
-      enum: [
-        'placed',
-        'packed',
-        'dispatched',
-        'delivered',
-        'confirmed',
-        'processing',
-        'shipped',
-        'cancelled',
-      ],
-      default: 'placed',
+      default: 'confirmed',
     },
+    statusHistory: [
+      {
+        status: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+        note: { type: String, default: '' },
+      },
+    ],
     trackingNumber: {
       type: String,
       default: '',

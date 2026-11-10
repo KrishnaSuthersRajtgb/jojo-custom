@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -199,6 +199,8 @@ export default function Payment() {
     null,
   );
 
+  const availableCoupons = useMemo(() => couponService.getCoupons().filter((c) => c.active), []);
+
   useEffect(() => {
     void loadRazorpayScript().then(setScriptReady);
   }, []);
@@ -214,7 +216,12 @@ export default function Payment() {
   const handleApplyCoupon = (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!couponInput.trim()) return;
-    const res = couponService.validateCoupon(couponInput, orderDetails.total);
+    handleQuickApplyCoupon(couponInput);
+  };
+
+  const handleQuickApplyCoupon = (code: string) => {
+    setCouponInput(code);
+    const res = couponService.validateCoupon(code, orderDetails.total);
     if (!res.valid) {
       setCouponMessage({ text: res.error || 'Invalid promo code', isError: true });
       setAppliedCoupon(null);
@@ -299,7 +306,7 @@ export default function Payment() {
       key: RAZORPAY_KEY_ID,
       amount: effectiveTotal * 100, // amount in paise
       currency: 'INR',
-      name: 'JoJo Boutique',
+      name: 'Customization',
       description: `${orderDetails.fabricName} — ${orderDetails.garment}`,
       prefill: {
         name: address.fullName,
@@ -836,6 +843,41 @@ export default function Payment() {
                       >
                         {couponMessage.text}
                       </p>
+                    )}
+
+                    {/* Available Active Atelier Promo Codes */}
+                    {availableCoupons.length > 0 && (
+                      <div className="pt-2 space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A7968] block">
+                          Available Promo Codes (Click to Apply):
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {availableCoupons.map((c) => {
+                            const eligible = orderDetails.total >= c.minOrderValue;
+                            return (
+                              <button
+                                key={c.code}
+                                type="button"
+                                onClick={() => handleQuickApplyCoupon(c.code)}
+                                title={`${c.description} · Min order ₹${c.minOrderValue}`}
+                                className={`px-2 py-1 rounded border text-[10px] font-mono font-bold transition-all text-left flex items-center gap-1 cursor-pointer ${
+                                  eligible
+                                    ? 'bg-[#FAF7F2] border-[#5C1A32]/25 hover:border-[#5C1A32] hover:bg-[#5C1A32]/5 text-[#5C1A32]'
+                                    : 'bg-neutral-50 border-neutral-200 text-neutral-400 hover:border-neutral-300'
+                                }`}
+                              >
+                                <Tag className="h-2.5 w-2.5 text-[#B8935A]" />
+                                <span>{c.code}</span>
+                                <span className="font-sans font-semibold text-[9px] text-[#B8935A]">
+                                  {c.discountType === 'percentage'
+                                    ? `${c.discountValue}% OFF`
+                                    : `₹${c.discountValue} OFF`}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
                   </form>
                 )}

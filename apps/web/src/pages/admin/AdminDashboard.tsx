@@ -1387,7 +1387,7 @@ export default function AdminDashboard() {
               ATELIER PORTAL
             </div>
             <h2 className="text-xl font-normal text-[#FAF7F2] mt-0.5 tracking-tight" style={serif}>
-              JoJo Boutique
+              Customization
             </h2>
           </div>
           <span
@@ -1655,7 +1655,7 @@ export default function AdminDashboard() {
               ATELIER PORTAL
             </div>
             <h2 className="text-sm font-normal text-[#FAF7F2] tracking-tight" style={serif}>
-              JoJo Boutique
+              Customization
             </h2>
           </div>
 
@@ -4058,7 +4058,7 @@ export default function AdminDashboard() {
                     </label>
                     <input
                       type="email"
-                      placeholder="e.g. staff@jojoboutique.com or user email"
+                      placeholder="e.g. staff@customization.com or user email"
                       value={roleEmailInput}
                       onChange={(e) => setRoleEmailInput(e.target.value)}
                       required
@@ -4873,7 +4873,7 @@ export default function AdminDashboard() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#1B1512]/90 via-black/20 to-transparent" />
                       <div className="absolute top-3 left-3 bg-[#5C1A32] text-[#FAF7F2] text-[9px] tracking-[0.2em] uppercase font-bold px-2 py-0.5 rounded-sm flex items-center gap-1 border border-[#B8935A]/50">
-                        <Sparkles className="w-2.5 h-2.5 text-[#B8935A]" /> JoJo Flora Exclusive
+                        <Sparkles className="w-2.5 h-2.5 text-[#B8935A]" /> Customization Exclusive
                       </div>
                     </div>
 

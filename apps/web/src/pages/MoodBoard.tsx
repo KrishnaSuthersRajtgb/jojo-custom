@@ -141,8 +141,8 @@ export default function MoodBoard() {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#1B1512] selection:bg-[#5C1A32] selection:text-[#FAF7F2] pb-24">
       <SEOMeta
-        title="Style Inspirations & Outfit Mood Board | JoJo Flora Couture"
-        description="Discover bespoke lookbook silhouettes, heirloom Indian weaves, and master-tailored ensemble pairings designed by JoJo Flora atelier."
+        title="Style Inspirations & Outfit Mood Board | Customization Couture"
+        description="Discover bespoke lookbook silhouettes, heirloom Indian weaves, and master-tailored ensemble pairings designed by Customization atelier."
       />
 
       {/* Hero Header */}
@@ -150,7 +150,7 @@ export default function MoodBoard() {
         <div className="max-w-6xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#5C1A32]/5 border border-[#5C1A32]/15 text-[#5C1A32] text-[11px] font-semibold tracking-[0.2em] uppercase rounded-full">
             <Sparkles className="h-3 w-3 text-[#B8935A]" />
-            JoJo Flora Couture Atelier Lookbook
+            Customization Couture Atelier Lookbook
           </div>
 
           <h1

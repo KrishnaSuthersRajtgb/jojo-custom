@@ -7,7 +7,8 @@ import type { CorsOptions } from 'cors';
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 requests per windowMs
+  max: process.env['NODE_ENV'] === 'production' ? 50 : 300,
+  skip: (req) => req.method === 'GET' || req.method === 'OPTIONS',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   message: {
@@ -68,6 +69,13 @@ export const corsOptions: CorsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-username', 'x-user-key', 'x-admin'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-username',
+    'x-email',
+    'x-user-key',
+    'x-admin',
+  ],
   exposedHeaders: ['x-fresh-token'],
 };

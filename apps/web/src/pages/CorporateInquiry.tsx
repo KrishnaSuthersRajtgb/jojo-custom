@@ -122,10 +122,10 @@ export default function CorporateInquiry() {
 
             <div className="space-y-2">
               <h2 className="text-2xl font-normal text-[#1B1512]" style={serif}>
-                Inquiry Received by JoJo Atelier
+                Inquiry Received by Customization Atelier
               </h2>
               <p className="text-sm text-[#4A413B] max-w-lg mx-auto leading-relaxed">
-                Thank you for considering JoJo Flora Couture for your corporate requirements. Our
+                Thank you for considering Customization Couture for your corporate requirements. Our
                 Senior Atelier Consultant has been assigned to{' '}
                 <strong className="text-[#5C1A32]">{formData.organizationName}</strong> and will
                 contact <strong className="text-[#1B1512]">{formData.contactPerson}</strong> within

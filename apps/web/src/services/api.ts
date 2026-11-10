@@ -36,13 +36,19 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Attach username header as backup identification
+  // Attach username & email headers as backup identification
   const sessionRaw = localStorage.getItem(SESSION_KEY);
   if (sessionRaw) {
     try {
-      const parsed = JSON.parse(sessionRaw) as { username?: string };
+      const parsed = JSON.parse(sessionRaw) as { username?: string; email?: string; role?: string };
       if (parsed.username) {
         headers['x-username'] = parsed.username;
+      }
+      if (parsed.email) {
+        headers['x-email'] = parsed.email;
+      }
+      if (parsed.role === 'admin' || parsed.username === 'admin') {
+        headers['x-admin'] = 'true';
       }
     } catch {
       // Ignore parse errors
@@ -54,6 +60,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   }
 
   const response = await fetch(url, {
+    credentials: 'include',
     ...fetchOptions,
     headers,
   });
@@ -102,6 +109,9 @@ export interface AuthUser {
   gender: string;
   phoneNumber: string;
   role?: string | undefined;
+  emailVerified?: boolean | undefined;
+  authProvider?: 'local' | 'google' | undefined;
+  avatarUrl?: string | undefined;
   referralCode?: string | undefined;
   referredBy?: string | undefined;
   referralCount?: number | undefined;
@@ -112,15 +122,102 @@ export interface AuthResponse {
   data: {
     token: string;
     user: AuthUser;
+    message?: string | undefined;
+  };
+}
+
+export interface SignupResponse {
+  data: {
+    requiresOtp?: boolean | undefined;
+    email?: string | undefined;
+    emailSent?: boolean | undefined;
+    devOtp?: string | undefined;
+    message?: string | undefined;
+    token?: string | undefined;
+    user?: AuthUser | undefined;
+  };
+}
+
+export interface OtpActionResponse {
+  data: {
+    email?: string | undefined;
+    emailSent?: boolean | undefined;
+    devOtp?: string | undefined;
+    message: string;
   };
 }
 
 export const authApi = {
-  signup: async (payload: SignupPayload): Promise<AuthResponse> => {
-    return request<AuthResponse>('/api/auth/register', {
+  getAuthStatus: async (): Promise<{
+    data: { googleEnabled: boolean; smtpConfigured: boolean };
+  }> => {
+    return request('/api/auth/status', { method: 'GET' });
+  },
+
+  signup: async (payload: SignupPayload): Promise<SignupResponse> => {
+    return request<SignupResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  verifyOtp: async (payload: { email: string; otp: string }): Promise<AuthResponse> => {
+    const res = await request<AuthResponse>('/api/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (res.data.token) {
+      localStorage.setItem(TOKEN_KEY, res.data.token);
+    }
+    return res;
+  },
+
+  resendOtp: async (payload: {
+    email: string;
+    type?: 'email-verification' | 'forget-password';
+  }): Promise<OtpActionResponse> => {
+    return request<OtpActionResponse>('/api/auth/resend-otp', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  forgotPassword: async (email: string): Promise<OtpActionResponse> => {
+    return request<OtpActionResponse>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  resetPassword: async (payload: {
+    email: string;
+    otp: string;
+    newPassword: string;
+  }): Promise<{ data: { message: string } }> => {
+    return request<{ data: { message: string } }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  changePassword: async (payload: {
+    currentPassword?: string;
+    newPassword: string;
+  }): Promise<{ data: { message: string } }> => {
+    return request<{ data: { message: string } }>('/api/auth/change-password', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getBetterSession: async (): Promise<AuthResponse> => {
+    const res = await request<AuthResponse>('/api/auth/better-session', {
+      method: 'GET',
+    });
+    if (res.data.token) {
+      localStorage.setItem(TOKEN_KEY, res.data.token);
+    }
+    return res;
   },
 
   login: async (payload: LoginPayload): Promise<AuthResponse> => {
@@ -140,11 +237,17 @@ export const authApi = {
     });
   },
 
-  updateProfile: async (payload: Partial<AuthUser>): Promise<{ data: AuthUser }> => {
-    return request<{ data: AuthUser }>('/api/auth/profile', {
+  updateProfile: async (
+    payload: Partial<AuthUser>,
+  ): Promise<{ data: AuthUser & { token?: string } }> => {
+    const res = await request<{ data: AuthUser & { token?: string } }>('/api/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
+    if (res.data.token) {
+      localStorage.setItem(TOKEN_KEY, res.data.token);
+    }
+    return res;
   },
 
   logout: (): void => {

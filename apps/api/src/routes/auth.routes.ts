@@ -4,12 +4,40 @@ import { authenticate } from '../middleware/index.js';
 
 export const authRouter = Router();
 
+authRouter.get('/status', (req, res) => {
+  authController.getAuthStatus(req, res);
+});
+
 authRouter.post('/register', (req, res) => {
   void authController.register(req, res);
 });
 
 authRouter.post('/signup', (req, res) => {
   void authController.register(req, res);
+});
+
+authRouter.post('/verify-otp', (req, res) => {
+  void authController.verifyOtp(req, res);
+});
+
+authRouter.post('/resend-otp', (req, res) => {
+  void authController.resendOtp(req, res);
+});
+
+authRouter.post('/forgot-password', (req, res) => {
+  void authController.forgotPassword(req, res);
+});
+
+authRouter.post('/reset-password', (req, res) => {
+  void authController.resetPassword(req, res);
+});
+
+authRouter.put('/change-password', authenticate, (req, res) => {
+  void authController.changePassword(req, res);
+});
+
+authRouter.get('/better-session', (req, res) => {
+  void authController.getBetterSession(req, res);
 });
 
 authRouter.post('/login', (req, res) => {

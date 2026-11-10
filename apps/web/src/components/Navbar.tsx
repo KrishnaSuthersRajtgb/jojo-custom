@@ -146,13 +146,13 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
           className="flex flex-col items-center justify-center text-center group cursor-pointer"
         >
           <span
-            className="text-2xl md:text-3xl text-[#1B1512] dark:text-[#FAF7F2] font-normal tracking-[0.28em] transition-transform duration-300 group-hover:scale-[1.02]"
+            className="text-lg sm:text-2xl md:text-3xl text-[#1B1512] dark:text-[#FAF7F2] font-normal tracking-[0.16em] sm:tracking-[0.24em] transition-transform duration-300 group-hover:scale-[1.02]"
             style={serif}
           >
-            JOJO
+            CUSTOMIZATION
           </span>
           <span className="text-[8px] md:text-[9px] tracking-[0.42em] uppercase text-[#B8935A] font-medium -mt-0.5">
-            Flora · Couture
+            Atelier · Couture
           </span>
         </button>
 
@@ -378,7 +378,7 @@ export default function Navbar({ user, onSignIn, onLogin, onLogout }: NavbarProp
               <div className="flex items-center gap-2.5">
                 <ShoppingBag className="h-5 w-5 text-[#5C1A32]" />
                 <h3 className="text-lg text-[#1B1512] font-semibold tracking-wide" style={serif}>
-                  JoJo Flora Atelier Bag
+                  Customization Atelier Bag
                 </h3>
               </div>
               <button

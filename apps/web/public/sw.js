@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jojo-flora-v1';
+const CACHE_NAME = 'customization-v2';
 const PRECACHE_ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -22,8 +22,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only intercept GET http/https requests
-  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+  // Never intercept API or auth endpoints in Service Worker
+  if (
+    event.request.method !== 'GET' ||
+    !event.request.url.startsWith('http') ||
+    event.request.url.includes('/api/')
+  ) {
     return;
   }
 

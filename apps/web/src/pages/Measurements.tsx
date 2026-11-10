@@ -547,7 +547,7 @@ export default function MeasurementPage() {
                         Atelier Experience
                       </span>
                       <h3 className="text-xl font-normal mb-3" style={serif}>
-                        The JoJo Flora Doorstep Fitting
+                        The Customization Doorstep Fitting
                       </h3>
                       <p className="text-xs text-[#FAF7F2]/80 leading-relaxed mb-6">
                         Experience bespoke luxury without traveling. Our senior master artisan

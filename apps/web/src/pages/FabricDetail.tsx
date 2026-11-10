@@ -1,8 +1,8 @@
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Minus, Plus, ShoppingCart, Scissors, Star, Heart } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
-import { FABRICS } from '../data/fabrics';
+import { FABRICS, type Fabric } from '../data/fabrics';
 import { useWishlist } from '../context/WishlistContext';
 import { pricingService, PRICING_UPDATED_EVENT } from '../services/pricingService';
 import {
@@ -55,6 +55,18 @@ export default function FabricDetail() {
   const fabric =
     FABRICS.find((f) => f.id === fabricId && (!tone || f.tone === tone)) ||
     FABRICS.find((f) => f.id === fabricId);
+
+  const relatedFabrics = useMemo(() => {
+    if (!fabric) return [];
+    return FABRICS.filter((f) => f.id !== fabric.id)
+      .sort((a, b) => {
+        if (a.tone === fabric.tone && b.tone !== fabric.tone) return -1;
+        if (b.tone === fabric.tone && a.tone !== fabric.tone) return 1;
+        if (a.material === fabric.material && b.material !== fabric.material) return -1;
+        return 0;
+      })
+      .slice(0, 10);
+  }, [fabric]);
 
   const defaultGarment = garments[0] ?? {
     id: 'blouse',
@@ -197,7 +209,7 @@ export default function FabricDetail() {
 
   return (
     <div className="w-full bg-[#FAF7F2] min-h-screen py-6">
-      <SEOMeta title={`${fabric.name} | JoJo Flora Couture`} description={fabric.description} />
+      <SEOMeta title={`${fabric.name} | Customization Couture`} description={fabric.description} />
       <section className="w-full px-4 sm:px-6 pt-8 pb-6">
         <div className="max-w-5xl mx-auto">
           <button
@@ -421,7 +433,7 @@ export default function FabricDetail() {
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#5C1A32] text-[#5C1A32] font-semibold py-3.5 px-4 hover:bg-[#5C1A32]/5 transition-colors shadow-sm"
                 >
                   <Scissors className="h-4 w-4" />
-                  Customize to JOJO
+                  Start Customization
                 </button>
               </div>
             </div>
@@ -453,78 +465,70 @@ export default function FabricDetail() {
 
         {/* 10 Suggestions Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          {FABRICS.filter((f) => f.id !== fabric.id)
-            .sort((a, b) => {
-              if (a.tone === fabric.tone && b.tone !== fabric.tone) return -1;
-              if (b.tone === fabric.tone && a.tone !== fabric.tone) return 1;
-              if (a.material === fabric.material && b.material !== fabric.material) return -1;
-              return 0;
-            })
-            .slice(0, 10)
-            .map((related) => {
-              const relPrice = pricingService.getFabricPrice(related.id, related.pricePerMeter);
-              return (
+          {relatedFabrics.map((related: Fabric) => {
+            const relPrice = pricingService.getFabricPrice(related.id, related.pricePerMeter);
+            return (
+              <div
+                key={related.id}
+                onClick={() => navigate(`/fabrics/${related.tone}/${related.id}`)}
+                className="group bg-white rounded-xl border border-[#5C1A32]/12 overflow-hidden hover:border-[#5C1A32] hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col"
+              >
                 <div
-                  key={related.id}
-                  onClick={() => navigate(`/fabrics/${related.tone}/${related.id}`)}
-                  className="group bg-white rounded-xl border border-[#5C1A32]/12 overflow-hidden hover:border-[#5C1A32] hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col"
+                  className="relative aspect-square w-full"
+                  style={{ backgroundColor: related.hex }}
                 >
-                  <div
-                    className="relative aspect-square w-full"
-                    style={{ backgroundColor: related.hex }}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-black/60 text-white px-2 py-0.5 rounded">
+                    {related.tone}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void toggleWishlist({
+                        fabricId: related.id,
+                        fabricName: related.name,
+                        tone: related.tone,
+                        hex: related.hex,
+                        pricePerMeter: related.pricePerMeter,
+                      });
+                    }}
+                    className="absolute top-2 right-2 p-1 rounded-full bg-white/80 hover:bg-white text-[#1B1512] shadow-sm transition-all hover:scale-110 z-10"
+                    aria-label={
+                      isWishlisted(related.id) ? 'Remove from wishlist' : 'Add to wishlist'
+                    }
                   >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-black/60 text-white px-2 py-0.5 rounded">
-                      {related.tone}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void toggleWishlist({
-                          fabricId: related.id,
-                          fabricName: related.name,
-                          tone: related.tone,
-                          hex: related.hex,
-                          pricePerMeter: related.pricePerMeter,
-                        });
-                      }}
-                      className="absolute top-2 right-2 p-1 rounded-full bg-white/80 hover:bg-white text-[#1B1512] shadow-sm transition-all hover:scale-110 z-10"
-                      aria-label={
-                        isWishlisted(related.id) ? 'Remove from wishlist' : 'Add to wishlist'
-                      }
+                    <Heart
+                      className={`h-3.5 w-3.5 transition-colors ${
+                        isWishlisted(related.id)
+                          ? 'fill-red-600 text-red-600'
+                          : 'text-[#1B1512]/70 hover:text-red-500'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="p-3 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h4
+                      className="text-xs font-semibold text-[#1B1512] group-hover:text-[#5C1A32] truncate"
+                      style={serif}
                     >
-                      <Heart
-                        className={`h-3.5 w-3.5 transition-colors ${
-                          isWishlisted(related.id)
-                            ? 'fill-red-600 text-red-600'
-                            : 'text-[#1B1512]/70 hover:text-red-500'
-                        }`}
-                      />
-                    </button>
+                      {related.name}
+                    </h4>
+                    <p className="text-[10px] text-[#8A7968]">{related.material}</p>
                   </div>
-                  <div className="p-3 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h4
-                        className="text-xs font-semibold text-[#1B1512] group-hover:text-[#5C1A32] truncate"
-                        style={serif}
-                      >
-                        {related.name}
-                      </h4>
-                      <p className="text-[10px] text-[#8A7968]">{related.material}</p>
-                    </div>
-                    <div className="pt-2 mt-2 border-t border-[#5C1A32]/10 flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#5C1A32] font-mono">
-                        ₹{relPrice}/m
-                      </span>
-                      <span className="text-[10px] font-semibold text-[#5C1A32] opacity-0 group-hover:opacity-100 transition-opacity">
-                        View &rarr;
-                      </span>
-                    </div>
+                  <div className="pt-2 mt-2 border-t border-[#5C1A32]/10 flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#5C1A32] font-mono">
+                      ₹{relPrice}/m
+                    </span>
+                    <span className="text-[10px] font-semibold text-[#5C1A32] opacity-0 group-hover:opacity-100 transition-opacity">
+                      View &rarr;
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
         </div>
       </section>
 

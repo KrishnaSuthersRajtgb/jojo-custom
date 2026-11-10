@@ -323,7 +323,7 @@ export default function OrderTracking() {
   return (
     <div className="w-full min-h-screen bg-[#FAF7F2] px-4 md:px-8 py-8">
       <SEOMeta
-        title="Order Tracking | JoJo Flora Couture"
+        title="Order Tracking | Customization Couture"
         description="Track your bespoke couture garment journey through pattern drafting, embroidery, inspection, and dispatch."
       />
       <div className="max-w-7xl mx-auto space-y-8">
@@ -470,7 +470,7 @@ export default function OrderTracking() {
                           const trackingMsg = activeOrder.trackingNumber
                             ? `\nTracking AWB: ${activeOrder.trackingNumber} (${activeOrder.courier || 'BlueDart'})`
                             : '';
-                          const text = `JoJo Flora Couture Order Update:\nOrder ID: #${orderId}\nGarment: ${garment}\nStatus: ${status}\nTotal: ${total}${trackingMsg}\nTrack live: ${window.location.origin}/order-tracking`;
+                          const text = `Customization Couture Order Update:\nOrder ID: #${orderId}\nGarment: ${garment}\nStatus: ${status}\nTotal: ${total}${trackingMsg}\nTrack live: ${window.location.origin}/order-tracking`;
                           const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
                           window.open(whatsappUrl, '_blank');
                         }}

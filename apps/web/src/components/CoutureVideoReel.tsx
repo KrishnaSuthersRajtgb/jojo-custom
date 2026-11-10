@@ -31,7 +31,7 @@ const SCENES: Scene[] = [
     subtitle: 'Each stitch is hand-guided by multi-generational artisans in our Chennai workshop.',
     image: '/images/artisan-embroidery.jpg',
     quote: '"A single bespoke bridal blouse commands 48 hours of uninterrupted needlework."',
-    artisan: 'Master Artisan K. Raman · 32 Years Crafting for JoJo',
+    artisan: 'Master Artisan K. Raman · 32 Years Crafting for Customization',
   },
   {
     id: 'kasavu',

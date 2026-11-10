@@ -97,7 +97,7 @@ export default function Home() {
   return (
     <div className="w-full bg-[#FAF7F2] text-[#1B1512] selection:bg-[#5C1A32] selection:text-[#FAF7F2]">
       <SEOMeta
-        title="JoJo Flora Couture | Luxury Bespoke Indian Couture"
+        title="Customization Couture | Luxury Bespoke Indian Couture"
         description="Luxury bespoke Indian couture tailored to your exact measurements with pure handlooms, silks, and master craftsmanship."
       />
       {/* ---------------- 1. EDITORIAL COUTURE HERO (100000 Lakhs Luxury Aesthetic) ---------------- */}
@@ -266,7 +266,7 @@ export default function Home() {
                 Crafted by human hands, never a production line.
               </h2>
               <p className="text-[#544B45] text-base leading-relaxed mt-4 font-light">
-                At JoJo Flora, every piece begins with a hand-drafted pattern specific to your
+                At Customization, every piece begins with a hand-drafted pattern specific to your
                 posture, shoulder slope, and bust curve. A single master artisan guides your garment
                 through cutting, zardozi needlework, and seam pressing.
               </p>
@@ -667,7 +667,7 @@ export default function Home() {
                 className="text-3xl sm:text-4xl md:text-5xl font-normal leading-tight"
                 style={serif}
               >
-                Bring the JoJo Flora atelier experience to your city.
+                Bring the Customization atelier experience to your city.
               </h2>
               <p className="text-[#FAF7F2]/75 text-sm sm:text-base leading-relaxed font-light">
                 Join South India's fastest-growing luxury bespoke tailoring network. Complete

@@ -243,7 +243,7 @@ export default function AmazonInvoiceModal({ isOpen, onClose, order }: InvoiceMo
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-[#B8935A]" />
             <span className="font-semibold text-sm tracking-wide">
-              Official Invoice — JoJo Flora Couture
+              Official Invoice — Customization Couture
             </span>
           </div>
 
@@ -294,7 +294,7 @@ export default function AmazonInvoiceModal({ isOpen, onClose, order }: InvoiceMo
           <div className="flex justify-between items-start border-b-2 border-neutral-900 pb-4 mb-4">
             <div>
               <div className="text-2xl font-black tracking-wide text-neutral-900">
-                JOJO FLORA COUTURE
+                CUSTOMIZATION COUTURE
               </div>
               <div className="text-[10px] text-neutral-600 uppercase tracking-wider mt-0.5">
                 Haute Couture Atelier &amp; Fine Handloom Textiles
@@ -409,7 +409,8 @@ export default function AmazonInvoiceModal({ isOpen, onClose, order }: InvoiceMo
               <div className="mt-4 pt-3 border-t border-neutral-200 text-[10px] text-neutral-500">
                 <p>• Complimentary measurement, tailor-fitting, and doorstep delivery included.</p>
                 <p>
-                  • For inquiries or adjustments, contact: atelier@jojoflora.com | +91 94440 12345
+                  • For inquiries or adjustments, contact: atelier@customization.com | +91 94440
+                  12345
                 </p>
               </div>
             </div>
@@ -443,7 +444,7 @@ export default function AmazonInvoiceModal({ isOpen, onClose, order }: InvoiceMo
             </div>
             <div className="text-right">
               <div className="text-[10px] font-bold text-[#5C1A32] tracking-wider mb-8">
-                FOR JOJO FLORA COUTURE LLP
+                FOR CUSTOMIZATION COUTURE LLP
               </div>
               <div className="inline-block border-t border-neutral-800 pt-1 px-8 text-[10px] font-bold text-neutral-800">
                 Authorized Signatory

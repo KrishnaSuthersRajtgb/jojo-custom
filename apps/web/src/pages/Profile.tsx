@@ -19,6 +19,9 @@ import {
   ShieldCheck,
   MessageCircle,
   ChevronRight,
+  KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 import { useAuth } from '../context/AuthContext';
@@ -28,7 +31,7 @@ import { referralService, type ReferralStats } from '../services';
 const serif = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" };
 
 export default function ProfilePage() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, changePassword } = useAuth();
   const { wishlist, removeFromWishlist } = useWishlist();
 
   const [editing, setEditing] = useState(false);
@@ -41,6 +44,16 @@ export default function ProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Change Password State
+  const [changingPass, setChangingPass] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
+  const [passSubmitting, setPassSubmitting] = useState(false);
 
   useEffect(() => {
     referralService
@@ -82,28 +95,62 @@ export default function ProfilePage() {
     e.preventDefault();
     setError('');
 
-    if (!username || !email || !gender || !phoneNumber) {
-      setError('Please fill in all fields.');
+    if (!username.trim() || !email.trim()) {
+      setError('Username and email are required.');
       return;
     }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
       setError('Please enter a valid email address.');
       return;
     }
-    if (!/^\d{10}$/.test(phoneNumber)) {
+    if (phoneNumber.trim() && !/^\d{10}$/.test(phoneNumber.trim())) {
       setError('Please enter a valid 10-digit phone number.');
       return;
     }
 
     setSubmitting(true);
     try {
-      await updateProfile({ username, email, gender, phoneNumber });
+      await updateProfile({
+        username: username.trim(),
+        email: email.trim(),
+        gender: gender || 'Not specified',
+        phoneNumber: phoneNumber.trim(),
+      });
       setEditing(false);
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update profile.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPassError('');
+    setPassSuccess('');
+
+    if (newPassword.length < 6) {
+      setPassError('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPassError('New passwords do not match.');
+      return;
+    }
+
+    setPassSubmitting(true);
+    try {
+      const msg = await changePassword(currentPassword || undefined, newPassword);
+      setPassSuccess(msg || 'Password updated successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setChangingPass(false);
+    } catch (err) {
+      setPassError(err instanceof Error ? err.message : 'Failed to update password.');
+    } finally {
+      setPassSubmitting(false);
     }
   };
 
@@ -115,13 +162,13 @@ export default function ProfilePage() {
   const referralCount = referralStats?.referralCount ?? user.referralCount ?? 0;
 
   const shareText = encodeURIComponent(
-    `Experience bespoke Indian couture with JoJo Flora! Use my patron code *${referralCode}* to receive ₹200 off your first bespoke outfit: ${window.location.origin}/signup`,
+    `Experience bespoke Indian couture with Customization! Use my patron code *${referralCode}* to receive ₹200 off your first bespoke outfit: ${window.location.origin}/signup`,
   );
 
   return (
     <div className="w-full bg-[#FAF7F2] dark:bg-[#0E0B09] min-h-[calc(100vh-7rem)] py-10 sm:py-14 px-4 sm:px-6 lg:px-8 transition-colors">
       <SEOMeta
-        title="My Profile | JoJo Flora Couture"
+        title="My Profile | Customization Couture"
         description="Manage your bespoke atelier profile, contact details, loyalty rewards, and custom fitting preferences."
       />
 
@@ -359,7 +406,7 @@ export default function ProfilePage() {
                     &amp; necklines.
                   </p>
                   <a
-                    href="https://wa.me/919597300773?text=Hello%20JoJo%20Flora%20Atelier,%20I%20would%20like%20guidance%20on%20my%20bespoke%20fit."
+                    href="https://wa.me/919597300773?text=Hello%20Customization%20Atelier,%20I%20would%20like%20guidance%20on%20my%20bespoke%20fit."
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#5C1A32] dark:text-[#D4B37F] hover:underline mt-2.5"
@@ -544,6 +591,148 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* 1.5 Security & Password Management Section */}
+            <div className="bg-white dark:bg-[#15100D] border border-[#5C1A32]/15 dark:border-[#5C1A32]/30 rounded-sm p-6 sm:p-8 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#5C1A32]/10 dark:border-[#5C1A32]/20 mb-5">
+                <div className="flex items-center gap-2.5">
+                  <KeyRound className="h-4 w-4 text-[#B8935A]" />
+                  <h2 className="text-[11px] font-semibold tracking-[0.25em] text-[#1B1512] dark:text-[#F6F1E7] uppercase">
+                    Security &amp; Password
+                  </h2>
+                </div>
+                {!changingPass && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChangingPass(true);
+                      setPassError('');
+                      setPassSuccess('');
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#5C1A32] dark:text-[#D4B37F] hover:text-[#1B1512] dark:hover:text-white transition-colors uppercase tracking-wider cursor-pointer"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    <span>Change Password</span>
+                  </button>
+                )}
+              </div>
+
+              {passSuccess && (
+                <div className="mb-4 flex items-center gap-2 rounded-sm bg-emerald-50 border border-emerald-200 px-3.5 py-2.5 text-xs text-emerald-800">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>{passSuccess}</span>
+                </div>
+              )}
+
+              {passError && (
+                <div className="mb-4 rounded-sm bg-rose-50 border border-rose-200 px-3.5 py-2.5 text-xs text-rose-700">
+                  {passError}
+                </div>
+              )}
+
+              {changingPass ? (
+                <form
+                  onSubmit={(e) => {
+                    void handleChangePassword(e);
+                  }}
+                  className="space-y-4 max-w-lg"
+                >
+                  {user.authProvider !== 'google' && (
+                    <div>
+                      <label className="block text-[10px] font-semibold text-[#8A7968] uppercase tracking-wider mb-1.5">
+                        Current Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPass ? 'text' : 'password'}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="Enter current password"
+                          required
+                          className="w-full rounded-sm border border-[#5C1A32]/20 dark:border-white/10 bg-[#FAF7F2] dark:bg-[#1A1411] px-3.5 py-2.5 text-sm text-[#1B1512] dark:text-[#F6F1E7] focus:outline-none focus:ring-1 focus:ring-[#5C1A32] pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPass((v) => !v)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[#8A7968] hover:text-[#1B1512]"
+                        >
+                          {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-[#8A7968] uppercase tracking-wider mb-1.5">
+                        New Password
+                      </label>
+                      <input
+                        type={showPass ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        minLength={6}
+                        required
+                        placeholder="Min 6 characters"
+                        className="w-full rounded-sm border border-[#5C1A32]/20 dark:border-white/10 bg-[#FAF7F2] dark:bg-[#1A1411] px-3.5 py-2.5 text-sm text-[#1B1512] dark:text-[#F6F1E7] focus:outline-none focus:ring-1 focus:ring-[#5C1A32]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-[#8A7968] uppercase tracking-wider mb-1.5">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type={showPass ? 'text' : 'password'}
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        minLength={6}
+                        required
+                        placeholder="Re-enter new password"
+                        className="w-full rounded-sm border border-[#5C1A32]/20 dark:border-white/10 bg-[#FAF7F2] dark:bg-[#1A1411] px-3.5 py-2.5 text-sm text-[#1B1512] dark:text-[#F6F1E7] focus:outline-none focus:ring-1 focus:ring-[#5C1A32]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <button
+                      type="submit"
+                      disabled={passSubmitting}
+                      className="inline-flex items-center justify-center gap-2 rounded-sm bg-[#5C1A32] hover:bg-[#431224] text-white font-semibold text-xs py-2.5 px-6 transition-colors disabled:opacity-60 uppercase tracking-wider cursor-pointer"
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      <span>{passSubmitting ? 'Updating...' : 'Update Password'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChangingPass(false);
+                        setPassError('');
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-sm border border-[#5C1A32]/20 dark:border-white/10 text-[#4A413B] dark:text-[#D8D0C5] font-semibold text-xs py-2.5 px-5 hover:border-[#5C1A32] transition-colors uppercase tracking-wider cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      <span>Cancel</span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#544B45] dark:text-[#A89886]">
+                  <span>
+                    Sign-in method:{' '}
+                    <strong className="text-[#1B1512] dark:text-[#F6F1E7] capitalize">
+                      {user.authProvider === 'google' ? 'Google OAuth' : 'Email & Password'}
+                    </strong>
+                    {' · '}
+                    <Link
+                      to="/forgot-password"
+                      className="text-[#5C1A32] dark:text-[#D4B37F] hover:underline font-medium"
+                    >
+                      Reset via Email OTP
+                    </Link>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* 2. My Wishlist Section */}

@@ -196,7 +196,7 @@ export default function MeasurementSidebar() {
         }}
         aria-label={collapsed ? 'Show measurements panel' : 'Hide measurements panel'}
         aria-expanded={!collapsed}
-        className="fixed top-36 right-0 z-[65] bg-[#1B1512] hover:bg-[#5C1A32] text-[#F6F1E7] border-l border-y border-[#B8935A]/50 rounded-l-md shadow-2xl px-2 py-3.5 flex flex-col items-center gap-2 cursor-pointer transition-all duration-300 group"
+        className="fixed top-52 sm:top-36 right-0 z-[65] bg-[#1B1512] hover:bg-[#5C1A32] text-[#F6F1E7] border-l border-y border-[#B8935A]/50 rounded-l-md shadow-2xl px-2 py-3.5 flex flex-col items-center gap-2 cursor-pointer transition-all duration-300 group"
       >
         <Ruler className="h-4 w-4 text-[#B8935A] group-hover:rotate-12 transition-transform" />
         <span className="text-[9px] font-semibold tracking-[0.22em] uppercase  text-[#E8DFC8]">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
 
 // ── Design tokens (same family as Home.jsx) ────────────────────────────────
@@ -44,8 +45,8 @@ export default function LoginPage() {
   return (
     <div className="w-full bg-[#FAF7F2] min-h-[calc(100vh-7rem)] flex flex-col justify-center py-16 px-6">
       <SEOMeta
-        title="Login | JoJo Flora Couture Atelier Portal"
-        description="Sign in to your JoJo Flora patron account to manage fittings, orders, and bespoke couture designs."
+        title="Login | Customization Couture Atelier Portal"
+        description="Sign in to your Customization patron account to manage fittings, orders, and bespoke couture designs."
       />
       <div className="max-w-md w-full mx-auto">
         <div className="text-center mb-8">
@@ -53,7 +54,7 @@ export default function LoginPage() {
             <LogIn className="h-5 w-5 text-[#5C1A32]" />
           </div>
           <span className="text-[10px] font-semibold tracking-[0.28em] text-[#5C1A32] uppercase block mb-1">
-            CLIENT PORTAL · JOJO FLORA
+            CLIENT PORTAL · CUSTOMIZATION
           </span>
           <h1 className="text-3xl sm:text-4xl text-[#1B1512] font-normal" style={serif}>
             Welcome{' '}
@@ -74,7 +75,13 @@ export default function LoginPage() {
           )}
 
           {error && (
-            <div className="mb-5 border border-[#5C1A32]/30 bg-[#5C1A32]/5 text-[#5C1A32] text-xs px-4 py-2.5">
+            <div
+              className={`mb-5 border text-xs px-4 py-3 leading-relaxed ${
+                error.toLowerCase().includes('locked')
+                  ? 'border-rose-300 bg-rose-50 text-rose-900 font-medium'
+                  : 'border-[#5C1A32]/30 bg-[#5C1A32]/5 text-[#5C1A32]'
+              }`}
+            >
               {error}
             </div>
           )}
@@ -102,9 +109,17 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold tracking-wider text-[#1B1512] uppercase mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold tracking-wider text-[#1B1512] uppercase">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-[11px] font-semibold text-[#5C1A32] hover:text-[#B8935A] transition-colors"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -131,14 +146,24 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[#5C1A32] text-[#FAF7F2] text-xs font-semibold tracking-[0.2em] uppercase py-3.5 shadow-md hover:bg-[#451325] transition-all disabled:opacity-50 mt-2"
+              className="w-full bg-[#5C1A32] text-[#FAF7F2] text-xs font-semibold tracking-[0.2em] uppercase py-3.5 shadow-md hover:bg-[#451325] transition-all disabled:opacity-50 mt-2 cursor-pointer"
             >
               {submitting ? 'Authenticating...' : 'Sign In to Atelier'}
             </button>
           </form>
 
+          <div className="my-6 flex items-center gap-3">
+            <span className="flex-1 h-px bg-[#5C1A32]/15" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8A7968]">
+              Or
+            </span>
+            <span className="flex-1 h-px bg-[#5C1A32]/15" />
+          </div>
+
+          <GoogleSignInButton label="Continue with Google" />
+
           <div className="mt-8 pt-6 border-t border-[#5C1A32]/10 text-center">
-            <span className="text-xs text-[#544B45]">New to JoJo Flora? </span>
+            <span className="text-xs text-[#544B45]">New to Customization? </span>
             <Link
               to="/signup"
               className="text-xs font-semibold text-[#5C1A32] hover:text-[#B8935A] uppercase tracking-wider ml-1"

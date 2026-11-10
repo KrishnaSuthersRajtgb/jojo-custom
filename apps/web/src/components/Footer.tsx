@@ -108,7 +108,7 @@ export default function Footer() {
               HAUTE COUTURE INSIDER
             </span>
             <h3 className="text-xl sm:text-2xl text-[#1B1512] dark:text-[#F6F1E7]" style={serif}>
-              Join the JoJo Flora Atelier Circle
+              Join the Customization Atelier Circle
             </h3>
             <p className="text-xs text-[#6B5E54] dark:text-[#A89886] mt-1 font-light">
               Receive private invitations to rare seasonal handloom drops, trunk shows, and
@@ -155,13 +155,13 @@ export default function Footer() {
         {/* Brand Column (2 cols on large screens) */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center gap-3">
-            <img src="/image.png" alt="JoJo Flora Couture" className="h-9 w-9 object-contain" />
+            <img src="/image.png" alt="Customization Couture" className="h-9 w-9 object-contain" />
             <div>
               <span
                 className="text-xl tracking-wide text-[#1B1512] dark:text-[#F6F1E7] block"
                 style={serif}
               >
-                JoJo Flora
+                Customization
               </span>
               <span className="text-[9px] uppercase tracking-[0.3em] text-[#8A7968] dark:text-[#A89886] block">
                 Couture Atelier
@@ -192,7 +192,7 @@ export default function Footer() {
               <FaFacebook className="h-4 w-4" />
             </a>
             <a
-              href="https://wa.me/919597300773?text=Hello%20JoJo%20Flora%20Atelier,%20I%20would%20like%20assistance%20with%20my%20order."
+              href="https://wa.me/919597300773?text=Hello%20Customization%20Atelier,%20I%20would%20like%20assistance%20with%20my%20order."
               target="_blank"
               rel="noopener noreferrer"
               aria-label="WhatsApp Stylist Concierge"
@@ -339,10 +339,10 @@ export default function Footer() {
             <li className="flex items-center gap-2.5">
               <Mail className="h-3.5 w-3.5 shrink-0 text-[#B8935A]" />
               <a
-                href="mailto:hello@jojoflora.com"
+                href="mailto:hello@customization.com"
                 className="hover:text-[#5C1A32] dark:hover:text-[#D4B37F]"
               >
-                hello@jojoflora.com
+                hello@customization.com
               </a>
             </li>
             <li className="flex items-center gap-2.5">
@@ -356,7 +356,7 @@ export default function Footer() {
       {/* ── 4. BOTTOM COPYRIGHT & LEGAL BAR ── */}
       <div className="border-t border-[#5C1A32]/10 dark:border-white/5 bg-[#EFE9DC] dark:bg-[#080605]">
         <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#6B5E54] dark:text-[#A89886]">
-          <p>© {year} JoJo Flora Couture Atelier. All rights reserved.</p>
+          <p>© {year} Customization Couture Atelier. All rights reserved.</p>
           <div className="flex items-center gap-4 text-[11px]">
             <span>Handcrafted with pride in Tamil Nadu, India</span>
             <span className="h-1 w-1 rounded-full bg-[#B8935A]" />

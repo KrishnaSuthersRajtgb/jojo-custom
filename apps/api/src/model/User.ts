@@ -14,6 +14,13 @@ export interface IUser extends Document {
   phoneNumber: string;
   password?: string | undefined;
   role: 'user' | 'staff' | 'admin';
+  emailVerified: boolean;
+  otpCode?: string | undefined;
+  otpExpiresAt?: Date | undefined;
+  authProvider: 'local' | 'google';
+  avatarUrl?: string | undefined;
+  failedLoginAttempts: number;
+  lockUntil?: Date | undefined;
   adminNotes?: AdminNote[] | undefined;
   flag?: CustomerFlag | undefined;
   referralCode?: string | undefined;
@@ -41,17 +48,44 @@ const UserSchema = new Schema<IUser>(
     },
     gender: {
       type: String,
-      required: true,
+      required: false,
+      default: 'Not specified',
       trim: true,
     },
     phoneNumber: {
       type: String,
-      required: true,
+      required: false,
+      default: '',
       trim: true,
     },
     password: {
       type: String,
-      required: true,
+      required: false,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otpCode: {
+      type: String,
+    },
+    otpExpiresAt: {
+      type: Date,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+    avatarUrl: {
+      type: String,
+    },
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
     },
     role: {
       type: String,
@@ -95,6 +129,8 @@ const UserSchema = new Schema<IUser>(
       transform(_doc, ret) {
         const obj = ret as Record<string, unknown>;
         delete obj['password'];
+        delete obj['otpCode'];
+        delete obj['otpExpiresAt'];
         delete obj['__v'];
         return obj;
       },

@@ -17,7 +17,7 @@ export default function FabricCompare() {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#1B1512] selection:bg-[#5C1A32] selection:text-[#FAF7F2] pb-24">
       <SEOMeta
-        title="Compare Handloom Fabrics | JoJo Flora Couture"
+        title="Compare Handloom Fabrics | Customization Couture"
         description="Compare pure Indian handloom silks, Banarasi weaves, and custom atelier swatches side-by-side."
       />
 

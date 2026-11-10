@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { toNodeHandler } from 'better-auth/node';
+import { getAuth } from './lib/auth.js';
 import { authRouter } from './routes/auth.routes.js';
 import { addressRouter } from './routes/address.routes.js';
 import { measurementRouter } from './routes/measurement.routes.js';
@@ -33,6 +35,15 @@ app.use(cors(corsOptions));
 
 // 3. General API rate limiter
 app.use('/api', apiLimiter);
+
+// 3.5 BetterAuth Endpoints on /api/auth/* (mounted before express.json() so raw stream is preserved)
+app.all(
+  /^\/api\/auth\/(sign-in|callback|get-session|sign-out|email-otp|ok|error)(\/.*)?$/,
+  (req, res) => {
+    const handler = toNodeHandler(getAuth());
+    void handler(req, res);
+  },
+);
 
 // 4. Request Body Parsing
 app.use(express.json({ limit: '10mb' }));

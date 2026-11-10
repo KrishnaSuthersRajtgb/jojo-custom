@@ -9,21 +9,21 @@ const CONCIERGE_PROMPTS = [
   {
     title: 'Book a Home Fitting',
     message:
-      'Hello JoJo Flora! I would like to schedule a Master Tailor home visit in Chennai / Coimbatore / Bengaluru.',
+      'Hello Customization! I would like to schedule a Master Tailor home visit in Chennai / Coimbatore / Bengaluru.',
   },
   {
     title: 'Bridal & Couture Blouse Inquiry',
     message:
-      'Hello JoJo Flora Atelier! I am looking for custom bridal blouse and hand zardozi embroidery options.',
+      'Hello Customization Atelier! I am looking for custom bridal blouse and hand zardozi embroidery options.',
   },
   {
     title: 'Fabric Swatch & Silk Consultation',
     message:
-      'Hello JoJo Flora! Could you assist me with pure silk fabric recommendations from your library?',
+      'Hello Customization! Could you assist me with pure silk fabric recommendations from your library?',
   },
   {
     title: 'Check Existing Order Status',
-    message: 'Hello JoJo Flora Atelier! I would like an update on my bespoke tailoring order.',
+    message: 'Hello Customization Atelier! I would like an update on my bespoke tailoring order.',
   },
 ];
 
@@ -33,7 +33,8 @@ export default function WhatsAppConcierge() {
 
   const handleSend = (text: string) => {
     const encoded = encodeURIComponent(
-      text.trim() || 'Hello JoJo Flora Atelier! I would like to inquire about bespoke tailoring.',
+      text.trim() ||
+        'Hello Customization Atelier! I would like to inquire about bespoke tailoring.',
     );
     window.open(
       `https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`,
@@ -63,7 +64,7 @@ export default function WhatsAppConcierge() {
                   className="text-sm font-semibold tracking-wide flex items-center gap-1.5"
                   style={serif}
                 >
-                  JoJo Flora Concierge <Sparkles className="w-3.5 h-3.5 text-[#B8935A]" />
+                  Customization Concierge <Sparkles className="w-3.5 h-3.5 text-[#B8935A]" />
                 </h4>
                 <p className="text-[11px] text-[#FAF7F2]/80 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3 text-[#B8935A]" /> Master Stylists Online · Fast

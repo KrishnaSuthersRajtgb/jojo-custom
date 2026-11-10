@@ -16,6 +16,8 @@ import FabricDetail from './pages/FabricDetail';
 import Address from './pages/Address';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import ForgotPassword from './pages/ForgotPassword';
+import AuthCallback from './pages/AuthCallback';
 import Measurements from './pages/Measurements';
 import Profile from './pages/Profile';
 import Order from './pages/Order';
@@ -84,6 +86,8 @@ function AppContent() {
             <Route path="/addresses" element={<Address />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/order" element={<Order />} />
             <Route path="/order-tracking" element={<OrderTracking />} />
             <Route

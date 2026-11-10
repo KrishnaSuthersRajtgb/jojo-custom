@@ -324,7 +324,7 @@ export function generateAmazonInvoiceHtml(data: InvoiceData): string {
     <table class="header-table">
       <tr>
         <td style="vertical-align: middle;">
-          <div class="brand-title">JOJO FLORA COUTURE</div>
+          <div class="brand-title">CUSTOMIZATION COUTURE</div>
           <div class="brand-subtitle">Haute Couture Atelier &amp; Fine Textiles</div>
         </td>
         <td style="vertical-align: middle; text-align: right;">
@@ -337,9 +337,9 @@ export function generateAmazonInvoiceHtml(data: InvoiceData): string {
     <!-- Meta Grid -->
     <div class="meta-grid">
       <div class="meta-col">
-        <p><span class="strong">Sold By:</span> JoJo Flora Couture</p>
+        <p><span class="strong">Sold By:</span> Customization Couture</p>
         <p>14/2, KNK Road, Nungambakkam, Chennai, Tamil Nadu 600034</p>
-        <p><span class="strong">Customer Service:</span> concierge@jojoflora.com | +91 94440 12345</p>
+        <p><span class="strong">Customer Service:</span> concierge@customization.com | +91 94440 12345</p>
       </div>
       <div class="meta-col-right">
         <p><span class="strong">Invoice Number:</span> ${data.invoiceNumber}</p>
@@ -433,10 +433,10 @@ export function generateAmazonInvoiceHtml(data: InvoiceData): string {
       <div class="signatory-left">
         <p class="strong">Declaration:</p>
         <p>We declare that this bill shows the actual price of the goods described and that all particulars are true and correct.</p>
-        <p>Customer Service: concierge@jojoflora.com | +91 94440 12345</p>
+        <p>Customer Service: concierge@customization.com | +91 94440 12345</p>
       </div>
       <div class="signatory-right">
-        <div class="stamp-text">FOR JOJO FLORA COUTURE</div>
+        <div class="stamp-text">FOR CUSTOMIZATION COUTURE</div>
         <div class="signature-line">Authorized Signatory</div>
       </div>
     </div>

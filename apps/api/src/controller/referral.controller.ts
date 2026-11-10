@@ -1,5 +1,21 @@
 import type { Request, Response } from 'express';
-import { User } from '../model/index.js';
+import mongoose from 'mongoose';
+import { User, type IUser } from '../model/index.js';
+
+async function findRequestUser(req: Request): Promise<IUser | null> {
+  const id = req.user?.id;
+  if (id && mongoose.Types.ObjectId.isValid(id)) {
+    const byId = await User.findById(id);
+    if (byId) return byId;
+  }
+  const orConditions: Record<string, string>[] = [];
+  if (req.user?.username) orConditions.push({ username: req.user.username });
+  if (req.user?.email) orConditions.push({ email: req.user.email.toLowerCase() });
+  const xEmail = (req.headers['x-email'] as string | undefined)?.trim().toLowerCase();
+  if (xEmail) orConditions.push({ email: xEmail });
+  if (orConditions.length === 0) return null;
+  return User.findOne({ $or: orConditions });
+}
 
 export function generateReferralCode(username: string): string {
   const clean = username
@@ -18,13 +34,12 @@ export class ReferralController {
    */
   async getCode(req: Request, res: Response): Promise<void> {
     try {
-      const username = req.user?.username;
-      if (!username) {
+      if (!req.user) {
         res.status(401).json({ error: 'Unauthorized.' });
         return;
       }
 
-      const user = await User.findOne({ username });
+      const user = await findRequestUser(req);
       if (!user) {
         res.status(404).json({ error: 'User not found.' });
         return;
@@ -106,13 +121,12 @@ export class ReferralController {
    */
   async getStats(req: Request, res: Response): Promise<void> {
     try {
-      const username = req.user?.username;
-      if (!username) {
+      if (!req.user) {
         res.status(401).json({ error: 'Unauthorized.' });
         return;
       }
 
-      const user = await User.findOne({ username });
+      const user = await findRequestUser(req);
       if (!user) {
         res.status(404).json({ error: 'User not found.' });
         return;

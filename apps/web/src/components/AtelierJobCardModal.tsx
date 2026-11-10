@@ -115,7 +115,7 @@ export default function AtelierJobCardModal({ isOpen, onClose, order }: AtelierJ
           <div className="border-b-2 border-[#1B1512] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="text-[10px] tracking-[0.25em] font-bold text-[#5C1A32] uppercase">
-                JoJo Flora Couture Atelier
+                Customization Couture Atelier
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-[#1B1512]" style={serif}>
                 MASTER TAILOR PRODUCTION WORK ORDER

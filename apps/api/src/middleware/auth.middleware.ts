@@ -27,12 +27,16 @@ declare global {
 export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   const xUsername = (req.headers['x-username'] as string | undefined)?.trim();
+  const xEmail = (req.headers['x-email'] as string | undefined)?.trim().toLowerCase();
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as AuthenticatedUser;
-      req.user = decoded;
+      req.user = {
+        ...decoded,
+        ...(xEmail && !decoded.email ? { email: xEmail } : {}),
+      };
       next();
       return;
     } catch {
@@ -40,12 +44,17 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     }
   }
 
-  // Fallback: If username is provided from authenticated frontend session
-  if (xUsername) {
+  // Fallback: If username or email is provided from authenticated frontend session
+  if (xUsername || xEmail) {
     try {
-      const dbUser = await User.findOne({
-        $or: [{ username: xUsername }, { email: xUsername.toLowerCase() }],
-      }).lean();
+      const lookupOr: Record<string, string>[] = [];
+      if (xEmail) lookupOr.push({ email: xEmail });
+      if (xUsername) {
+        lookupOr.push({ username: xUsername });
+        lookupOr.push({ email: xUsername.toLowerCase() });
+      }
+
+      const dbUser = await User.findOne({ $or: lookupOr }).lean();
 
       if (dbUser) {
         req.user = {

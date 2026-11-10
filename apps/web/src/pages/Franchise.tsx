@@ -182,8 +182,8 @@ export default function Franchise() {
     return (
       <div className="w-full bg-[#FAF7F2] min-h-[70vh] flex items-center py-12">
         <SEOMeta
-          title="Franchise Opportunity | JoJo Flora Couture"
-          description="Partner with JoJo Flora Couture to bring bespoke luxury Indian tailoring to your city."
+          title="Franchise Opportunity | Customization Couture"
+          description="Partner with Customization Couture to bring bespoke luxury Indian tailoring to your city."
         />
         <section className="w-full px-6 py-8">
           <div className="max-w-md mx-auto text-center bg-white border border-[#5C1A32]/12 rounded-sm shadow-sm p-10">
@@ -216,8 +216,8 @@ export default function Franchise() {
   return (
     <div className="w-full bg-[#FAF7F2] py-8">
       <SEOMeta
-        title="Franchise Opportunity | JoJo Flora Couture"
-        description="Partner with JoJo Flora Couture to bring bespoke luxury Indian tailoring to your city."
+        title="Franchise Opportunity | Customization Couture"
+        description="Partner with Customization Couture to bring bespoke luxury Indian tailoring to your city."
       />
       {/* ---------------- HERO ---------------- */}
       <section className="w-full px-6 pb-14">
@@ -236,7 +236,7 @@ export default function Franchise() {
             className="text-[#1B1512] text-4xl md:text-5xl font-medium leading-[1.1] mb-6"
             style={serif}
           >
-            Bring JoJo Flora
+            Bring Customization
             <br />
             <span style={serifItalic} className="text-[#5C1A32]">
               to your city.
